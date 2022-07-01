@@ -9,11 +9,13 @@ https://docs.djangoproject.com/en/4.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.0/ref/settings/
 """
-
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+PARENT_DIR = BASE_DIR.parent
+FRONTEND_DIR = os.environ.get('FRONTEND_DIR', os.path.join(PARENT_DIR, 'core_frontend'))
 
 
 # Quick-start development settings - unsuitable for production
@@ -55,7 +57,7 @@ ROOT_URLCONF = 'core_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
+        'DIRS': [os.path.join(FRONTEND_DIR, 'build')]
         ,
         'APP_DIRS': True,
         'OPTIONS': {
@@ -68,6 +70,8 @@ TEMPLATES = [
         },
     },
 ]
+
+STATICFILES_DIRS = [os.path.join(FRONTEND_DIR, 'build', 'static')]
 
 WSGI_APPLICATION = 'core_backend.wsgi.application'
 
