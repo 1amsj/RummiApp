@@ -97,9 +97,9 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
-CORS_ALLOWED_ORIGINS = ['http://localhost:8000']
+CORS_ALLOWED_ORIGINS = ['http://localhost:8000', 'http://localhost:3000']
 
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://localhost:3000']
 
 CORS_ALLOW_METHODS = list(corsheaders.defaults.default_methods)
 
@@ -107,10 +107,6 @@ CORS_ALLOW_HEADERS = list(corsheaders.defaults.default_headers) + \
     ['referer']
 
 CORS_ALLOW_CREDENTIALS = True
-
-# CSRF_COOKIE_SECURE = True
-
-print(CORS_ALLOW_HEADERS)
 
 ROOT_URLCONF = 'core_backend.urls'
 
