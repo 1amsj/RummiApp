@@ -18,16 +18,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True, required=True, validators=[validate_password])
-    password_confirmation = serializers.CharField(write_only=True, required=True)
+    confirmation = serializers.CharField(write_only=True, required=True)
 
     class Meta:
         model = User
-        fields = ('username', 'password', 'password_confirmation')
+        fields = ('username', 'password', 'confirmation')
 
     def validate(self, attrs):
-        if attrs['password'] != attrs['password_confirmation']:
+        if attrs['password'] != attrs['confirmation']:
             raise serializers.ValidationError(
-                {"password": "Password fields didn't match."})
+                {"confirmation": "Password fields didn't match."})
 
         return attrs
 
