@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'phonenumber_field',
+    'nested_admin',
     'core_backend',
     'core_api.apps.CoreApiConfig',
 ]
