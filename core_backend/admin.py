@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from nested_admin.nested import NestedStackedInline, NestedModelAdmin
 
 from core_backend.models import User, Provider, Consumer, Payer, Agent, Case, Rule, Service, Event, Bill, \
-    InterpreterCase, Company, Certificate, Contact
+    InterpreterCase, Company, Certificate, Contact, Location
 
 
 def stacked_inline_all(models):
@@ -17,20 +17,16 @@ def stacked_inline_all(models):
     return classes
 
 
-class CertificateInline(NestedStackedInline):
-    model = Certificate
-    extra = 0
-
-
 class ProviderInline(NestedStackedInline):
     model = Provider
-    inlines = [CertificateInline]
+    inlines = stacked_inline_all([Certificate])
     extra = 0
 
 
 class UserAdmin(NestedModelAdmin, BaseUserAdmin):
     inlines = [ProviderInline]
     inlines += stacked_inline_all([Consumer, Payer, Agent])
+    readonly_fields = ('is_provider', 'is_consumer', 'is_payer', 'is_agent')
     fieldsets = (
         *BaseUserAdmin.fieldsets[:2],
         (
@@ -39,16 +35,23 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin):
                 'fields': ('contact', 'company')
             }
         ),
+        (
+            _('Information'),
+            {
+                'fields': ('is_provider', 'is_consumer', 'is_payer', 'is_agent')
+            }
+        ),
         *BaseUserAdmin.fieldsets[2:],
     )
 
 
-class EventAdmin(admin.ModelAdmin):
+class EventAdmin(NestedModelAdmin):
     inlines = stacked_inline_all([Case])
 
 
 admin.site.register(Contact)
 admin.site.register(Company)
+admin.site.register(Location)
 
 admin.site.register(User, UserAdmin)
 admin.site.register(Certificate)
