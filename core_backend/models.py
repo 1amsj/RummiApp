@@ -4,6 +4,21 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 
 
+# Abstract models
+class AbstractPerson(models.Model):
+    contact = models.OneToOneField("Contact", on_delete=models.SET_NULL, null=True, blank=True)
+    first_name = models.CharField(_('first name'), max_length=150, blank=True)
+    last_name = models.CharField(_('last name'), max_length=150, blank=True)
+    national_id = models.CharField(_('national ID'), max_length=50, blank=True)
+    ssn = models.CharField(_('social security number'), max_length=50, blank=True)
+
+    class Meta:
+        abstract = True
+        ordering = ['last_name', 'first_name']
+        verbose_name = _('person')
+        verbose_name_plural = _('people')
+
+
 # General data models
 class Contact(models.Model):
     phone = PhoneNumberField(_('phone number'), blank=True)
@@ -45,13 +60,8 @@ class Location(models.Model):
         return F"{self.country}, {self.state}, {self.city}, {self.address}"
 
 
-# class AdditionalParty(models.Model):
-#     pass  # TODO
-
-
 # User models
-class User(AbstractUser):
-    contact = models.OneToOneField(Contact, on_delete=models.SET_NULL, null=True, blank=True)
+class User(AbstractUser, AbstractPerson):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='employees', null=True, blank=True)
     # TODO check if "role" column referes to consumer/provider/payer/agent or something else, and add it
 
@@ -89,7 +99,6 @@ class Provider(models.Model):
 
     def __str__(self):
         return '[Provider] %s' % self.user
-
 
 
 class Consumer(models.Model):
@@ -148,8 +157,7 @@ class Rule(models.Model):
 class Service(models.Model):
     provider = models.ForeignKey(Provider, models.PROTECT, related_name='services')
     rules = models.ManyToManyField(Rule, blank=False, related_name='services')
-    # name
-    # metadata
+    description = models.CharField(_('description'), max_length=256, blank=True)
 
     class Meta:
         verbose_name = _('service')
