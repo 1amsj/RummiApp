@@ -3,8 +3,8 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 from nested_admin.nested import NestedStackedInline, NestedModelAdmin
 
-from core_backend.models import User, Provider, Consumer, Payer, Agent, Case, Rule, Service, Event, Bill, \
-    InterpreterCase, Company, Certificate, Contact, Location
+from core_backend.models import User, Provider, Consumer, Payer, Agent, Case, Rule, Service, Event, Bill, Company, \
+    Certificate, Contact, Location, Interpreter, Patient, Insurance, ClinicStaff, Claim
 
 
 def stacked_inline_all(models):
@@ -46,7 +46,7 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin):
 
 
 class EventAdmin(NestedModelAdmin):
-    inlines = stacked_inline_all([Case])
+    inlines = stacked_inline_all([Case, Event.claims.through])
 
 
 admin.site.register(Contact)
@@ -54,12 +54,16 @@ admin.site.register(Company)
 admin.site.register(Location)
 
 admin.site.register(User, UserAdmin)
-admin.site.register(Certificate)
 
+admin.site.register(Certificate)
+admin.site.register(Claim)
 admin.site.register(Rule)
 admin.site.register(Service)
 admin.site.register(Event, EventAdmin)
 
 admin.site.register(Bill)
 
-admin.site.register(InterpreterCase)
+admin.site.register(Interpreter)
+admin.site.register(Patient)
+admin.site.register(Insurance)
+admin.site.register(ClinicStaff)

@@ -1,4 +1,5 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
@@ -20,6 +21,14 @@ class AbstractPerson(models.Model):
 
 
 # General data models
+class AdditionalParty(AbstractPerson):
+    role = models.CharField(_('role'), max_length=128)
+
+    class Meta:
+        verbose_name = _('additional party')
+        verbose_name_plural = _('additional parties')
+
+
 class Contact(models.Model):
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
@@ -88,7 +97,7 @@ class User(AbstractUser, AbstractPerson):
 
 class Provider(models.Model):
     """Who provides the service"""
-    user = models.OneToOneField(User, models.CASCADE, related_name='as_provider', primary_key=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider', primary_key=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
@@ -103,7 +112,7 @@ class Provider(models.Model):
 
 class Consumer(models.Model):
     """Who receives the service case"""
-    user = models.OneToOneField(User, models.CASCADE, related_name='as_consumer', primary_key=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_consumer', primary_key=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('consumer data')
@@ -114,7 +123,7 @@ class Consumer(models.Model):
 
 class Payer(models.Model):
     """Who pays the service bill"""
-    user = models.OneToOneField(User, models.CASCADE, related_name='as_payer', primary_key=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer', primary_key=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
@@ -125,7 +134,7 @@ class Payer(models.Model):
 
 class Agent(models.Model):
     """Who requests the service case for the Customer"""
-    user = models.OneToOneField(User, models.CASCADE, related_name='as_agent', primary_key=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_agent', primary_key=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('agent data')
@@ -148,6 +157,15 @@ class Certificate(models.Model):
         return F"{self.type} - {self.certificant.user}"
 
 
+class Claim(models.Model):
+    additional_parties = models.ForeignKey(AdditionalParty, on_delete=models.PROTECT, related_name='additional_parties')
+    consumer = models.ForeignKey(Consumer, on_delete=models.CASCADE, related_name='consumer')
+
+    class Meta:
+        verbose_name = _('claim')
+        verbose_name_plural = _('claims')
+
+
 class Rule(models.Model):
     class Meta:
         verbose_name = _('rule')
@@ -155,7 +173,7 @@ class Rule(models.Model):
 
 
 class Service(models.Model):
-    provider = models.ForeignKey(Provider, models.PROTECT, related_name='services')
+    provider = models.ForeignKey(Provider, on_delete=models.PROTECT, related_name='services')
     rules = models.ManyToManyField(Rule, blank=False, related_name='services')
     description = models.CharField(_('description'), max_length=256, blank=True)
 
@@ -165,7 +183,8 @@ class Service(models.Model):
 
 
 class Event(models.Model):
-    service = models.ForeignKey(Service, models.PROTECT, related_name='events')
+    claims = models.ManyToManyField(Claim, related_name='events')
+    service = models.ForeignKey(Service, on_delete=models.PROTECT, related_name='events')
     description = models.CharField(_('description'), max_length=256, blank=True)
 
     class Meta:
@@ -174,12 +193,13 @@ class Event(models.Model):
 
 
 class Case(models.Model):
-    agent = models.ForeignKey(Agent, models.PROTECT, related_name='cases')
+    agent = models.ForeignKey(Agent, on_delete=models.PROTECT, related_name='cases')
     consumers = models.ManyToManyField(Consumer, related_name='cases')
-    event = models.ForeignKey(Event, models.PROTECT, related_name='cases')
-    location = models.ForeignKey(Location, models.PROTECT, null=True, blank=True, related_name='cases')
+    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name='cases')
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='cases')
     date = models.DateField(_('date'))
     time = models.TimeField(_('time'))
+    observations = models.CharField(_('observations'), max_length=256, blank=True)
     url = models.CharField(_('video URL'), max_length=2048, blank=True)
 
     class Meta:
@@ -197,8 +217,8 @@ class Case(models.Model):
 
 # Bill models
 class Bill(models.Model):
-    case = models.ForeignKey(Case, models.PROTECT, related_name='bills')
-    payer = models.ForeignKey(Payer, models.PROTECT, related_name='bills')
+    case = models.ForeignKey(Case, on_delete=models.PROTECT, related_name='bills')
+    payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='bills')
 
     class Meta:
         verbose_name = _('bill')
@@ -206,5 +226,43 @@ class Bill(models.Model):
 
 
 # Interpreter models
-class InterpreterCase(Case):
-    pass
+class Interpreter(Provider):
+    class Meta:
+        verbose_name = _('interpreter')
+        verbose_name_plural = _('interpreters')
+
+
+class Patient(Consumer):
+    class Meta:
+        verbose_name = _('patient')
+        verbose_name_plural = _('patients')
+
+
+class Insurance(Payer):
+    class Meta:
+        verbose_name = _('insurance carrier')
+        verbose_name_plural = _('insurance carriers')
+
+    def clean(self):
+        if self.user.company is None:
+            raise ValidationError('A related company is required for an insurance carrier.')
+
+    @property
+    def company(self):
+        return self.user.company
+
+
+class ClinicStaff(Agent):
+    agent_ptr = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='clinic_staff', parent_link=True)
+
+    class Meta:
+        verbose_name = _('clinic staff')
+        verbose_name_plural = _('clinic staves')
+
+    def clean(self):
+        if self.user.company is None:
+            raise ValidationError('A related clinic (company) is required for an insurance carrier.')
+
+    @property
+    def clinic(self):
+        return self.user.company
