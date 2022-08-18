@@ -4,7 +4,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
+from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer, UserSerializer
 from core_backend.models import User
 
 
@@ -18,6 +18,12 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
 
 
+class UserViewSet(generics.ListAPIView):
+    queryset = User.objects.all()
+    permission_classes = (AllowAny,)
+    serializer_class = UserSerializer
+
+
 @api_view(['GET'])
 def get_routes(request):
     routes = [
@@ -26,6 +32,28 @@ def get_routes(request):
         'token/refresh/'
     ]
     return Response(['api/v1/' + r for r in routes])
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def manage_users(request):
+    users = User.objects.all()
+
+    # Get filters
+    email = request.query_params.get('email')
+    first_name = request.query_params.get('first_name')
+    last_name = request.query_params.get('last_name')
+
+    # Filter
+    if email:
+        users = users.filter(email__icontains=email)
+    if first_name:
+        users = users.filter(first_name__icontains=first_name)
+    if last_name:
+        users = users.filter(last_name__icontains=last_name)
+
+    serialized = UserSerializer(users, many=True)
+    return Response(serialized.data)
 
 
 @api_view(['GET', 'POST'])
