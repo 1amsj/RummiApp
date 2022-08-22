@@ -1,5 +1,4 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
@@ -21,14 +20,6 @@ class AbstractPerson(models.Model):
 
 
 # General data models
-class AdditionalParty(AbstractPerson):
-    role = models.CharField(_('role'), max_length=128)
-
-    class Meta:
-        verbose_name = _('additional party')
-        verbose_name_plural = _('additional parties')
-
-
 class Contact(models.Model):
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
@@ -79,51 +70,40 @@ class User(AbstractUser, AbstractPerson):
         verbose_name_plural = _("users")
 
     @property
-    def is_consumer(self):
-        return hasattr(self, 'as_consumer') and self.as_consumer is not None
+    def is_operator(self):
+        return hasattr(self, 'as_operator') and self.as_operator is not None
 
     @property
     def is_provider(self):
         return hasattr(self, 'as_provider') and self.as_provider is not None
 
     @property
+    def is_recipient(self):
+        return hasattr(self, 'as_recipient') and self.as_recipient is not None
+
+    @property
+    def is_requestor(self):
+        return hasattr(self, 'as_requestor') and self.as_requestor is not None
+
+    @property
     def is_payer(self):
         return hasattr(self, 'as_payer') and self.as_payer is not None
 
-    @property
-    def is_agent(self):
-        return hasattr(self, 'as_agent') and self.as_agent is not None
 
-
-class Provider(models.Model):
-    """Who provides the service"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider', primary_key=True)
+class Operator(models.Model):
+    """Staff who maintain the platform"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
 
     class Meta:
-        verbose_name = verbose_name_plural = _('provider data')
-
-    @property
-    def is_certified(self):
-        return hasattr(self, 'certificates') and self.certificates is not None
+        verbose_name = verbose_name_plural = _('operator data')
 
     def __str__(self):
-        return '[Provider] %s' % self.user
-
-
-class Consumer(models.Model):
-    """Who receives the service case"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_consumer', primary_key=True)
-
-    class Meta:
-        verbose_name = verbose_name_plural = _('consumer data')
-
-    def __str__(self):
-        return '[Consumer] %s' % self.user
+        return '[Operator] %s' % self.user
 
 
 class Payer(models.Model):
-    """Who pays the service bill"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer', primary_key=True)
+    """Who pays the service invoice"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
 
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
@@ -132,137 +112,132 @@ class Payer(models.Model):
         return '[Payer] %s' % self.user
 
 
-class Agent(models.Model):
-    """Who requests the service case for the Customer"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_agent', primary_key=True)
+class Provider(models.Model):
+    """Who provides the service"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
 
     class Meta:
-        verbose_name = verbose_name_plural = _('agent data')
+        verbose_name = verbose_name_plural = _('provider data')
 
     def __str__(self):
-        return '[Agent] %s' % self.user
+        return '[Provider] %s' % self.user
+
+
+class Recipient(models.Model):
+    """Who receives the service"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
+
+    class Meta:
+        verbose_name = verbose_name_plural = _('recipient data')
+
+    def __str__(self):
+        return '[Recipient] %s' % self.user
+
+
+class Requestor(models.Model):
+    """Who requests the service case for the Recipient"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requestor')
+
+    class Meta:
+        verbose_name = verbose_name_plural = _('requestor data')
+
+    def __str__(self):
+        return '[Requestor] %s' % self.user
 
 
 # Service models
-class Certificate(models.Model):
-    certificant = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='certificates')
-    type = models.CharField(_('type'), max_length=128)
-    code = models.CharField(_('code'), max_length=128)
-
-    class Meta:
-        verbose_name = _('certificate')
-        verbose_name_plural = _('certificates')
-
-    def __str__(self):
-        return F"{self.type} - {self.certificant.user}"
-
-
-class Claim(models.Model):
-    additional_parties = models.ForeignKey(AdditionalParty, on_delete=models.PROTECT, related_name='additional_parties')
-    consumer = models.ForeignKey(Consumer, on_delete=models.CASCADE, related_name='consumer')
-
-    class Meta:
-        verbose_name = _('claim')
-        verbose_name_plural = _('claims')
-
-
 class Rule(models.Model):
+    # TODO many to many to all
+
     class Meta:
         verbose_name = _('rule')
         verbose_name_plural = _('rules')
 
 
+class Category(models.Model):
+    name = models.CharField(_('name'), max_length=64)
+    supercategory = models.ForeignKey('self', on_delete=models.CASCADE, related_name='subcategories',
+                                      null=True, blank=True)
+
+    class Meta:
+        verbose_name = _('category')
+        verbose_name_plural = _('categories')
+
+    @property
+    def is_root(self):
+        return self.supercategory is None
+
+    @property
+    def has_children(self):
+        return hasattr(self, 'subcategories') and self.subcategories is not None
+
+    @property
+    def has_services(self):
+        return hasattr(self, 'services') and self.services is not None
+
+
+class ProviderService(models.Model):
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='providers')
+    service = models.ForeignKey("Service", on_delete=models.CASCADE, related_name='services')
+
+    class Meta:
+        verbose_name = _('provider service')
+        verbose_name_plural = _('provider services')
+
+
 class Service(models.Model):
-    provider = models.ForeignKey(Provider, on_delete=models.PROTECT, related_name='services')
-    rules = models.ManyToManyField(Rule, blank=False, related_name='services')
-    description = models.CharField(_('description'), max_length=256, blank=True)
+    categories = models.ManyToManyField(Category, related_name='services')
+    providers = models.ManyToManyField(Provider, through=ProviderService)
 
     class Meta:
         verbose_name = _('service')
         verbose_name_plural = _('services')
 
 
+class Booking(models.Model):
+    operator = models.ManyToManyField(Operator, related_name='bookings')
+    payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='bookings')
+    provider_services = models.ManyToManyField(ProviderService, related_name='bookings')
+    recipients = models.ManyToManyField(Recipient, related_name='bookings')
+    requestor = models.ForeignKey(Requestor, on_delete=models.PROTECT, related_name='bookings')
+
+    class Meta:
+        verbose_name = _('booking')
+        verbose_name_plural = _('bookings')
+
+
 class Event(models.Model):
-    claims = models.ManyToManyField(Claim, related_name='events')
-    service = models.ForeignKey(Service, on_delete=models.PROTECT, related_name='events')
-    description = models.CharField(_('description'), max_length=256, blank=True)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
+    meeting_url = models.CharField(_('meeting URL'), max_length=2048, blank=True)
+    date = models.DateField(_('date'))
+    start_time = models.TimeField(_('start time'))
+    end_time = models.TimeField(_('end time'))
+    observations = models.CharField(_('observations'), max_length=256, blank=True)
 
     class Meta:
         verbose_name = _('event')
         verbose_name_plural = _('events')
 
-
-class Case(models.Model):
-    agent = models.ForeignKey(Agent, on_delete=models.PROTECT, related_name='cases')
-    consumers = models.ManyToManyField(Consumer, related_name='cases')
-    event = models.ForeignKey(Event, on_delete=models.PROTECT, related_name='cases')
-    location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='cases')
-    date = models.DateField(_('date'))
-    time = models.TimeField(_('time'))
-    observations = models.CharField(_('observations'), max_length=256, blank=True)
-    url = models.CharField(_('video URL'), max_length=2048, blank=True)
-
-    class Meta:
-        verbose_name = _('case')
-        verbose_name_plural = _('cases')
-    
     @property
     def is_on_site(self):
         return self.location is not None
-    
+
     @property
     def is_online(self):
-        return bool(self.url)
+        return bool(self.meeting_url)
 
 
-# Bill models
-class Bill(models.Model):
-    case = models.ForeignKey(Case, on_delete=models.PROTECT, related_name='bills')
-    payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='bills')
-
-    class Meta:
-        verbose_name = _('bill')
-        verbose_name_plural = _('bills')
-
-
-# Interpreter models
-class Interpreter(Provider):
-    class Meta:
-        verbose_name = _('interpreter')
-        verbose_name_plural = _('interpreters')
-
-
-class Patient(Consumer):
-    class Meta:
-        verbose_name = _('patient')
-        verbose_name_plural = _('patients')
-
-
-class Insurance(Payer):
-    class Meta:
-        verbose_name = _('insurance carrier')
-        verbose_name_plural = _('insurance carriers')
-
-    def clean(self):
-        if self.user.company is None:
-            raise ValidationError('A related company is required for an insurance carrier.')
-
-    @property
-    def company(self):
-        return self.user.company
-
-
-class ClinicStaff(Agent):
-    agent_ptr = models.OneToOneField(Agent, on_delete=models.CASCADE, related_name='clinic_staff', parent_link=True)
+class Ledger(models.Model):
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='ledgers')
+    invoice = models.ForeignKey("Invoice", on_delete=models.PROTECT, related_name='ledgers')
 
     class Meta:
-        verbose_name = _('clinic staff')
-        verbose_name_plural = _('clinic staves')
+        verbose_name = _('ledger')
+        verbose_name_plural = _('ledgers')
 
-    def clean(self):
-        if self.user.company is None:
-            raise ValidationError('A related clinic (company) is required for an insurance carrier.')
 
-    @property
-    def clinic(self):
-        return self.user.company
+class Invoice(models.Model):
+    class Meta:
+        verbose_name = _('invoice')
+        verbose_name_plural = _('invoices')
