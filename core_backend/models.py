@@ -1,7 +1,35 @@
 from django.contrib.auth.models import AbstractUser
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
+
+
+# Generic helpers
+class AdditionalProperty(models.Model):
+    parent_id = models.PositiveIntegerField()
+    parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    parent = GenericForeignKey('parent_ct', 'parent_id')
+    business = models.CharField(_('business'), max_length=128)
+    key = models.CharField(_('key'), max_length=256)
+    value = models.CharField(_('value'), max_length=512)
+
+    class Meta:
+        verbose_name = _('additional property')
+        verbose_name_plural = _('additional properties')
+        indexes = [
+            models.Index(fields=["parent_ct", "business", "key"]),
+            models.Index(fields=["parent_id"]),
+        ]
+        unique_together = ["parent_id", "business", "key"]
+
+
+class ExtendableModel(models.Model):
+    extra = GenericRelation(AdditionalProperty, 'parent_id', 'parent_ct', verbose_name=_('extra data'))
+
+    class Meta:
+        abstract = True
 
 
 # Abstract models
@@ -90,9 +118,23 @@ class User(AbstractUser, AbstractPerson):
         return hasattr(self, 'as_payer') and self.as_payer is not None
 
 
+class Agent(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
+    role = models.CharField(_('role'), max_length=64)
+
+    class Meta:
+        verbose_name = _('agent')
+        verbose_name_plural = _('agents')
+        unique_together = ('user', 'role',)
+
+    def __str__(self):
+        return '[%s (agent)] %s' % (self.role, self.user)
+
+
 class Operator(models.Model):
     """Staff who maintain the platform"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
+    hiring_date = models.DateField(_('hiring date'))
 
     class Meta:
         verbose_name = verbose_name_plural = _('operator data')
@@ -104,6 +146,7 @@ class Operator(models.Model):
 class Payer(models.Model):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
+    method = models.CharField(_('paying method'), max_length=64)
 
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
@@ -112,7 +155,7 @@ class Payer(models.Model):
         return '[Payer] %s' % self.user
 
 
-class Provider(models.Model):
+class Provider(ExtendableModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
 
@@ -123,7 +166,7 @@ class Provider(models.Model):
         return '[Provider] %s' % self.user
 
 
-class Recipient(models.Model):
+class Recipient(ExtendableModel):
     """Who receives the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
 
@@ -194,7 +237,7 @@ class Service(models.Model):
         verbose_name_plural = _('services')
 
 
-class Booking(models.Model):
+class Booking(ExtendableModel):
     operator = models.ManyToManyField(Operator, related_name='bookings')
     payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='bookings')
     provider_services = models.ManyToManyField(ProviderService, related_name='bookings')
@@ -206,10 +249,10 @@ class Booking(models.Model):
         verbose_name_plural = _('bookings')
 
 
-class Event(models.Model):
+class Event(ExtendableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
-    meeting_url = models.CharField(_('meeting URL'), max_length=2048, blank=True)
+    meeting_url = models.URLField(_('meeting URL'), null=True, blank=True)
     date = models.DateField(_('date'))
     start_time = models.TimeField(_('start time'))
     end_time = models.TimeField(_('end time'))

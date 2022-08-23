@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
-from nested_admin.nested import NestedStackedInline, NestedModelAdmin
+from nested_admin.nested import NestedStackedInline, NestedModelAdmin, NestedGenericTabularInline
 
 from core_backend.models import *
 
@@ -14,6 +14,18 @@ def stacked_inline(*models):
             extra = 0
         classes.append(Stacked)
     return classes
+
+
+class AdditionalPropertyInline(NestedGenericTabularInline):
+    model = AdditionalProperty
+    extra = 0
+    ordering = ("business", "key")
+    ct_fk_field = 'parent_id'
+    ct_field = 'parent_ct'
+
+
+class ExtendableAdmin(NestedModelAdmin):
+    inlines = [AdditionalPropertyInline]
 
 
 class UserAdmin(NestedModelAdmin, BaseUserAdmin):
@@ -36,16 +48,29 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin):
     )
 
 
+class ProviderAdmin(NestedModelAdmin):
+    inlines = [AdditionalPropertyInline]
+    inlines += stacked_inline(ProviderService)
+
+
 class ServiceAdmin(NestedModelAdmin):
-    inlines = stacked_inline(Category, ProviderService)
+    inlines = stacked_inline(Category)
 
 
 class LedgerAdmin(NestedModelAdmin):
     inlines = stacked_inline(Invoice)
 
 
+class EventInline(NestedStackedInline):
+    model = Event
+    inlines = [AdditionalPropertyInline]
+    extra = 0
+
+
 class BookingAdmin(NestedModelAdmin):
-    inlines = stacked_inline(Event, Ledger)
+    inlines = [AdditionalPropertyInline]
+    inlines += stacked_inline(Ledger)
+    inlines += [EventInline]
 
 
 admin.site.register(Contact)
@@ -55,14 +80,14 @@ admin.site.register(Location)
 admin.site.register(User, UserAdmin)
 admin.site.register(Operator)
 admin.site.register(Payer)
-admin.site.register(Provider)
-admin.site.register(Recipient)
+admin.site.register(Provider, ProviderAdmin)
+admin.site.register(Recipient, ExtendableAdmin)
 admin.site.register(Requestor)
 
 admin.site.register(Category)
 admin.site.register(Service)
-admin.site.register(Event)
+admin.site.register(Event, ExtendableAdmin)
 
-admin.site.register(Booking)
+admin.site.register(Booking, BookingAdmin)
 
 # admin.site.register(Rule)
