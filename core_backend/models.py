@@ -263,7 +263,7 @@ class Event(ExtendableModel):
         verbose_name_plural = _('events')
 
     @property
-    def is_on_site(self):
+    def is_onsite(self):
         return self.location is not None
 
     @property
