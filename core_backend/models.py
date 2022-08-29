@@ -20,7 +20,7 @@ class AdditionalProperty(models.Model):
         verbose_name_plural = _('additional properties')
         indexes = [
             models.Index(fields=["parent_ct", "business", "key"]),
-            models.Index(fields=["parent_id"]),
+            models.Index(fields=["parent_id", "key"]),
         ]
         unique_together = ["parent_id", "business", "key"]
 
@@ -219,7 +219,7 @@ class Category(models.Model):
         return hasattr(self, 'services') and self.services is not None
 
 
-class ProviderService(models.Model):
+class ProviderService(ExtendableModel):
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='providers')
     service = models.ForeignKey("Service", on_delete=models.CASCADE, related_name='services')
 
@@ -249,7 +249,7 @@ class Booking(ExtendableModel):
         verbose_name_plural = _('bookings')
 
 
-class Event(ExtendableModel):
+class Event(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
     meeting_url = models.URLField(_('meeting URL'), null=True, blank=True)

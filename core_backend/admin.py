@@ -48,9 +48,14 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin):
     )
 
 
-class ProviderAdmin(NestedModelAdmin):
+class ProviderServiceInline(NestedStackedInline):
+    model = ProviderService
     inlines = [AdditionalPropertyInline]
-    inlines += stacked_inline(ProviderService)
+    extra = 0
+
+
+class ProviderAdmin(NestedModelAdmin):
+    inlines = [AdditionalPropertyInline, ProviderServiceInline]
 
 
 class ServiceAdmin(NestedModelAdmin):
@@ -86,7 +91,7 @@ admin.site.register(Requestor)
 
 admin.site.register(Category)
 admin.site.register(Service)
-admin.site.register(Event, ExtendableAdmin)
+admin.site.register(Event)
 
 admin.site.register(Booking, BookingAdmin)
 
