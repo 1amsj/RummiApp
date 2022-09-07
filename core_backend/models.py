@@ -49,6 +49,7 @@ class AbstractPerson(models.Model):
 
 # General data models
 class Contact(models.Model):
+    email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
 
@@ -61,7 +62,7 @@ class Company(models.Model):
     contact = models.OneToOneField(Contact, on_delete=models.SET_NULL, null=True, blank=True)
     location = models.OneToOneField("Location", on_delete=models.SET_NULL, related_name='owner', null=True, blank=True)
     name = models.CharField(_('name'), max_length=128)
-    type = models.CharField(_('type'), max_length=128)  # TODO review
+    type = models.CharField(_('type'), max_length=128)  # TODO review, probably change to an enum
     send_method = models.CharField(_('send method'), max_length=128)  # TODO review, probably change to an enum
     on_hold = models.BooleanField(_('on hold'))
 
@@ -91,7 +92,6 @@ class Location(models.Model):
 # User models
 class User(AbstractUser, AbstractPerson):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='employees', null=True, blank=True)
-    # TODO check if "role" column referes to consumer/provider/payer/agent or something else, and add it
 
     class Meta:
         verbose_name = _("user")
@@ -199,20 +199,10 @@ class Rule(models.Model):
 
 class Category(models.Model):
     name = models.CharField(_('name'), max_length=64)
-    supercategory = models.ForeignKey('self', on_delete=models.CASCADE, related_name='subcategories',
-                                      null=True, blank=True)
 
     class Meta:
         verbose_name = _('category')
         verbose_name_plural = _('categories')
-
-    @property
-    def is_root(self):
-        return self.supercategory is None
-
-    @property
-    def has_children(self):
-        return hasattr(self, 'subcategories') and self.subcategories is not None
 
     @property
     def has_services(self):
@@ -239,10 +229,7 @@ class Service(models.Model):
 
 class Booking(ExtendableModel):
     operator = models.ManyToManyField(Operator, related_name='bookings')
-    payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='bookings')
     provider_services = models.ManyToManyField(ProviderService, related_name='bookings')
-    recipients = models.ManyToManyField(Recipient, related_name='bookings')
-    requestor = models.ForeignKey(Requestor, on_delete=models.PROTECT, related_name='bookings')
 
     class Meta:
         verbose_name = _('booking')
@@ -250,7 +237,12 @@ class Booking(ExtendableModel):
 
 
 class Event(models.Model):
+    agent = models.ManyToManyField(Agent, related_name='events')
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
+    payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='events')
+    recipients = models.ManyToManyField(Recipient, related_name='events')
+    requestor = models.ForeignKey(Requestor, on_delete=models.PROTECT, related_name='events')
+
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
     meeting_url = models.URLField(_('meeting URL'), null=True, blank=True)
     date = models.DateField(_('date'))
@@ -273,6 +265,7 @@ class Event(models.Model):
 
 class Ledger(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='ledgers')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name='ledgers')
     invoice = models.ForeignKey("Invoice", on_delete=models.PROTECT, related_name='ledgers')
 
     class Meta:
