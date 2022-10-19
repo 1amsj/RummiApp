@@ -1,3 +1,7 @@
+class IllegalArgumentException(ValueError):
+    pass
+
+
 class ModelNotExtendableException(Exception):
     def __init__(self, message='Model is not subtype of ExtendableModel'):
         self.message = message

@@ -115,10 +115,10 @@ class Company(models.Model):
 
 
 class Location(models.Model):
-    address = models.CharField(_('address'), max_length=128, blank=True)
-    city = models.CharField(_('city'), max_length=128, blank=True)
-    state = models.CharField(_('state or province'), max_length=128, blank=True)
-    country = models.CharField(_('country'), max_length=128, blank=True)
+    address = models.CharField(_('address'), max_length=128)
+    city = models.CharField(_('city'), max_length=128)
+    state = models.CharField(_('state or province'), max_length=128)
+    country = models.CharField(_('country'), max_length=128)
     zip = models.CharField(_('ZIP code'), max_length=10, blank=True)
 
     class Meta:

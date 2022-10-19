@@ -13,9 +13,9 @@ from core_api.constants import NO_EXACT_MATCH_SUFFIX
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
-from core_api.services import prepare_query_params
+from core_api.services import contact_get_or_create, location_get_or_create, prepare_query_params
 from core_backend.exceptions import ModelNotExtendableException
-from core_backend.models import Agent, Booking, Company, Event, Operator, Payer, Provider, Recipient, \
+from core_backend.models import Agent, Booking, Company, Contact, Event, Location, Operator, Payer, Provider, Recipient, \
     Requester, Service, User
 from core_backend.serializers import AgentSerializer, CompanySerializer, OperatorSerializer, PayerSerializer, \
     ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, UserSerializer
@@ -194,7 +194,6 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
         if business:
             queryset = queryset.filter(extra__business__name=business)
         serialized = ProviderServiceSerializer(queryset, many=True)
-        print(F"{serialized.data=}")
 
         return Response(serialized.data)
 
@@ -203,7 +202,23 @@ ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
 
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
 
-ManageCompany = basic_view_manager(Company, CompanySerializer)
+
+class ManageCompany(basic_view_manager(Company, CompanySerializer)):
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Contact)
+    @expect_does_not_exist(Location)
+    def post(request):
+        company = Company.objects.create(
+            name=request.data['name'],
+            type=request.data['type'],
+            send_method=request.data['send_method'],
+            on_hold=request.data.get('on_hold', False),
+            contact=contact_get_or_create(request.data['contact']),
+            location=location_get_or_create(request.data.get('location')),
+        )
+        return Response(company.id, status=status.HTTP_201_CREATED)
 
 
 class ManageBooking(APIView):
