@@ -1,35 +1,72 @@
+from typing import Optional
+
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 
 
 # Generic helpers
-class AdditionalProperty(models.Model):
+class Extra(models.Model):
     parent_id = models.PositiveIntegerField()
     parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     parent = GenericForeignKey('parent_ct', 'parent_id')
-    business = models.CharField(_('business'), max_length=128)
+    business = models.ForeignKey("Business", on_delete=models.CASCADE)
     key = models.CharField(_('key'), max_length=256)
     value = models.CharField(_('value'), max_length=512)
 
     class Meta:
-        verbose_name = _('additional property')
-        verbose_name_plural = _('additional properties')
+        verbose_name = verbose_name_plural = _('extra data')
         indexes = [
             models.Index(fields=["parent_ct", "business", "key"]),
             models.Index(fields=["parent_id", "key"]),
         ]
-        unique_together = ["parent_id", "business", "key"]
+        unique_together = ["parent_ct", "parent_id", "business", "key"]
+
+    def __str__(self):
+        return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.value}"
+
+
+class ExtraQuerySet(models.QuerySet):
+    def prefetch_extra(self, business: Optional["Business"] = None):
+        ct = ContentType.objects.get_for_model(self.model)
+        query = Q(extra__parent_ct=ct)
+        if business:
+            query &= Q(extra__business=business)
+        return self.prefetch_related('extra').filter(query)
+
+    def filter_by_extra(self, **fields):
+        from core_backend.services import iter_extra_attrs
+        queryset = self
+        for (k, v) in iter_extra_attrs(self.model, fields):
+            params = k.split('__')
+            query_key = 'extra__key'
+            query_value = 'extra__value'
+            if len(params) > 1:
+                query_value += F'__{params[1]}'
+            queryset = queryset.filter(**{query_key: params[0], query_value: v})
+        return queryset
 
 
 class ExtendableModel(models.Model):
-    extra = GenericRelation(AdditionalProperty, 'parent_id', 'parent_ct', verbose_name=_('extra data'))
+    extra = GenericRelation(Extra, 'parent_id', 'parent_ct', verbose_name=_('extra data'))
+
+    objects = ExtraQuerySet.as_manager()
 
     class Meta:
         abstract = True
+
+    def get_extra_attrs(self, business: Optional["Business"] = None) -> dict:
+        queryset = self.extra.all()
+        if business:
+            queryset = queryset.filter(business=business)
+        return {
+            e.key: e.value
+            for e in queryset
+        }
 
 
 # Abstract models
@@ -57,13 +94,16 @@ class Contact(models.Model):
         verbose_name = _('contact')
         verbose_name_plural = _('contacts')
 
+    def __str__(self):
+        return F"{self.email}, {self.phone}, {self.fax}"
+
 
 class Company(models.Model):
     contact = models.OneToOneField(Contact, on_delete=models.SET_NULL, null=True, blank=True)
     location = models.OneToOneField("Location", on_delete=models.SET_NULL, related_name='owner', null=True, blank=True)
     name = models.CharField(_('name'), max_length=128)
-    type = models.CharField(_('type'), max_length=128)  # TODO review, probably change to an enum
-    send_method = models.CharField(_('send method'), max_length=128)  # TODO review, probably change to an enum
+    type = models.CharField(_('type'), max_length=128)
+    send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
 
     class Meta:
@@ -86,7 +126,7 @@ class Location(models.Model):
         verbose_name_plural = _('locations')
 
     def __str__(self):
-        return F"{self.country}, {self.state}, {self.city}, {self.address}"
+        return F"{self.country}, {self.state}, {self.city}, {self.address}, {self.zip}"
 
 
 # User models
@@ -110,15 +150,15 @@ class User(AbstractUser, AbstractPerson):
         return hasattr(self, 'as_recipient') and self.as_recipient is not None
 
     @property
-    def is_requestor(self):
-        return hasattr(self, 'as_requestor') and self.as_requestor is not None
+    def is_requester(self):
+        return hasattr(self, 'as_requester') and self.as_requester is not None
 
     @property
     def is_payer(self):
         return hasattr(self, 'as_payer') and self.as_payer is not None
 
 
-class Agent(models.Model):
+class Agent(ExtendableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
     role = models.CharField(_('role'), max_length=64)
 
@@ -128,7 +168,7 @@ class Agent(models.Model):
         unique_together = ('user', 'role',)
 
     def __str__(self):
-        return '[%s (agent)] %s' % (self.role, self.user)
+        return F"[{self.role} (agent)] {self.user}"
 
 
 class Operator(models.Model):
@@ -140,7 +180,7 @@ class Operator(models.Model):
         verbose_name = verbose_name_plural = _('operator data')
 
     def __str__(self):
-        return '[Operator] %s' % self.user
+        return F"[Operator] {self.user}"
 
 
 class Payer(models.Model):
@@ -152,7 +192,7 @@ class Payer(models.Model):
         verbose_name = verbose_name_plural = _('payer data')
 
     def __str__(self):
-        return '[Payer] %s' % self.user
+        return F"[Payer] {self.user}"
 
 
 class Provider(ExtendableModel):
@@ -163,7 +203,7 @@ class Provider(ExtendableModel):
         verbose_name = verbose_name_plural = _('provider data')
 
     def __str__(self):
-        return '[Provider] %s' % self.user
+        return F"[Provider] {self.user}"
 
 
 class Recipient(ExtendableModel):
@@ -174,18 +214,18 @@ class Recipient(ExtendableModel):
         verbose_name = verbose_name_plural = _('recipient data')
 
     def __str__(self):
-        return '[Recipient] %s' % self.user
+        return F"[Recipient] {self.user}"
 
 
-class Requestor(models.Model):
+class Requester(models.Model):
     """Who requests the service case for the Recipient"""
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requestor')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
 
     class Meta:
-        verbose_name = verbose_name_plural = _('requestor data')
+        verbose_name = verbose_name_plural = _('requester data')
 
     def __str__(self):
-        return '[Requestor] %s' % self.user
+        return F"[Requester] {self.user}"
 
 
 # Service models
@@ -197,62 +237,77 @@ class Rule(models.Model):
         verbose_name_plural = _('rules')
 
 
-class Category(models.Model):
+class Business(models.Model):
+    name = models.CharField(_('business'), max_length=128, unique=True)
+
+    class Meta:
+        verbose_name = _('business')
+        verbose_name_plural = _('businesses')
+
+    def __str__(self):
+        return self.name
+
+
+class Category(ExtendableModel):
     name = models.CharField(_('name'), max_length=64)
 
     class Meta:
         verbose_name = _('category')
         verbose_name_plural = _('categories')
 
+    def __str__(self):
+        return self.name
+
     @property
     def has_services(self):
         return hasattr(self, 'services') and self.services is not None
 
 
-class ProviderService(ExtendableModel):
-    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='providers')
-    service = models.ForeignKey("Service", on_delete=models.CASCADE, related_name='services')
-
-    class Meta:
-        verbose_name = _('provider service')
-        verbose_name_plural = _('provider services')
-
-
-class Service(models.Model):
+class Service(ExtendableModel):
+    business = models.ForeignKey("Business", on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
-    providers = models.ManyToManyField(Provider, through=ProviderService)
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
 
     class Meta:
         verbose_name = _('service')
         verbose_name_plural = _('services')
 
+    def __str__(self):
+        return F"{self.business} by {self.provider}"
+
 
 class Booking(ExtendableModel):
-    operator = models.ManyToManyField(Operator, related_name='bookings')
-    provider_services = models.ManyToManyField(ProviderService, related_name='bookings')
+    categories = models.ManyToManyField(Category, related_name='bookings')
+    operators = models.ManyToManyField(Operator, related_name='bookings')
+    services = models.ManyToManyField(Service, related_name='bookings')
 
     class Meta:
         verbose_name = _('booking')
         verbose_name_plural = _('bookings')
 
+    def __str__(self):
+        return super(Booking, self).__str__()
+
 
 class Event(models.Model):
-    agent = models.ManyToManyField(Agent, related_name='events')
+    agents = models.ManyToManyField(Agent, related_name='events')
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
     payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='events')
     recipients = models.ManyToManyField(Recipient, related_name='events')
-    requestor = models.ForeignKey(Requestor, on_delete=models.PROTECT, related_name='events')
+    requester = models.ForeignKey(Requester, on_delete=models.PROTECT, related_name='events')
 
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
     meeting_url = models.URLField(_('meeting URL'), null=True, blank=True)
-    date = models.DateField(_('date'))
-    start_time = models.TimeField(_('start time'))
-    end_time = models.TimeField(_('end time'))
+    start_at = models.DateTimeField(_('start date and time'))
+    end_at = models.DateTimeField(_('end date and time'))
     observations = models.CharField(_('observations'), max_length=256, blank=True)
 
     class Meta:
         verbose_name = _('event')
         verbose_name_plural = _('events')
+
+    def __str__(self):
+        return F"From {self.start_at} to {self.end_at}, {'onsite' if self.is_onsite else 'online'}"
 
     @property
     def is_onsite(self):
