@@ -5,7 +5,8 @@ from django.db import models
 from django.db.models import QuerySet
 
 import core_backend.models as app_models
-from core_api.constants import KEYS_BLACKLIST
+from core_api.constants import FIELDS_BLACKLIST
+from core_backend.datastructures import QueryParams
 from core_backend.exceptions import ModelNotExtendableException
 
 
@@ -28,7 +29,7 @@ def iter_base_attrs(model: Type[models.Model], fields: dict) -> Iterator[Tuple[s
     names = [f.name for f in model_fields]
     for (k, v) in fields.items():
         k_base = k.split('__')[0]
-        if k_base not in names or k_base in KEYS_BLACKLIST:
+        if k_base not in names or k_base in FIELDS_BLACKLIST:
             continue
         yield k, v
 
@@ -46,7 +47,7 @@ def iter_extra_attrs(model: Type[models.Model], fields: dict) -> Iterator[Tuple[
     names = [f.name for f in model_fields]
     for (k, v) in fields.items():
         k_base = k.split('__')[0]
-        if k_base in names or k_base in KEYS_BLACKLIST:
+        if k_base in names or k_base in FIELDS_BLACKLIST:
             continue
         yield k, v
 
@@ -75,29 +76,19 @@ def manage_extra_attrs(business: Union[str, app_models.Business], inst: models.M
         )
 
 
-# TODO review usage
-def filter_queryset(model: Type[models.Model], queryset: QuerySet[models.Model], params: dict):
-    base_attrs_filters = filter_base_attrs(model, params)
-    if base_attrs_filters:
-        queryset = queryset.filter(**base_attrs_filters)
-
-    if is_extendable(model):
-        extra_filters = filter_extra_attrs(model, params)
-        if extra_filters:
-            # noinspection PyUnresolvedReferences
-            queryset = queryset.filter_by_extra(**extra_filters)
-
-    return queryset
-
-
-def filter_attrs(model: Type[models.Model], fields: dict) -> Tuple[dict, dict]:
-    model_fields = model._meta.get_fields()
-    names = [f.name for f in model_fields]
-    base_attrs = {}
-    other_attrs = {}
-    for (k, v) in fields.items():
-        k_base = k.split('__')[0]
-        if k_base in KEYS_BLACKLIST:
+def filter_params(model: Type[models.Model], params: QueryParams) -> Tuple[QueryParams, QueryParams, QueryParams]:
+    field_names = [f.name for f in model._meta.get_fields()]
+    base_params = QueryParams()
+    nested_params = QueryParams()
+    extra_params = QueryParams()
+    for (f, p) in params.items():
+        if f in FIELDS_BLACKLIST:
             continue
-        (base_attrs if k_base in names else other_attrs)[k] = v
-    return base_attrs, other_attrs
+
+        if isinstance(p, QueryParams):
+            nested_params[f] = p
+
+        else:
+            (base_params if f in field_names else extra_params)[f] = p
+
+    return base_params, extra_params, nested_params

@@ -31,6 +31,10 @@ class Extra(models.Model):
 
 
 class ExtraQuerySet(models.QuerySet):
+    def filter(self, *args, **kwargs):
+        queryset = super(ExtraQuerySet, self).filter(*args, **kwargs)
+        return queryset
+
     def prefetch_extra(self, business: Optional["Business"] = None):
         ct = ContentType.objects.get_for_model(self.model)
         query = Q(extra__parent_ct=ct)
@@ -38,13 +42,13 @@ class ExtraQuerySet(models.QuerySet):
             query &= Q(extra__business=business)
         return self.prefetch_related('extra').filter(query)
 
-    def filter_by_extra(self, **fields):
+    def filter_by_extra(self, related_prefix='', **fields):
         from core_backend.services import iter_extra_attrs
         queryset = self
         for (k, v) in iter_extra_attrs(self.model, fields):
             params = k.split('__')
-            query_key = 'extra__key'
-            query_value = 'extra__value'
+            query_key = F'{related_prefix}extra__key'
+            query_value = F'{related_prefix}extra__value'
             if len(params) > 1:
                 query_value += F'__{params[1]}'
             queryset = queryset.filter(**{query_key: params[0], query_value: v})
