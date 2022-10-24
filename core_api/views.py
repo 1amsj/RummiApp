@@ -219,22 +219,6 @@ ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
 
 
-class ManageCompany(basic_view_manager(Company, CompanySerializer)):
-    @staticmethod
-    @transaction.atomic
-    @expect_key_error
-    def post(request):
-        company = Company.objects.create(
-            name=request.data['name'],
-            type=request.data['type'],
-            send_method=request.data['send_method'],
-            on_hold=request.data.get('on_hold', False),
-            contact=contact_get_or_create(request.data['contact']),
-            location=location_get_or_create(request.data.get('location')),
-        )
-        return Response(company.id, status=status.HTTP_201_CREATED)
-
-
 class ManageBooking(APIView):
     class CanManageBooking(BasePermission):
         message = 'You do not have permission to perform this operation'
@@ -308,3 +292,19 @@ class ManageBooking(APIView):
     @transaction.atomic
     def delete(request):
         ...
+
+
+class ManageCompany(basic_view_manager(Company, CompanySerializer)):
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        company = Company.objects.create(
+            name=request.data['name'],
+            type=request.data['type'],
+            send_method=request.data['send_method'],
+            on_hold=request.data.get('on_hold', False),
+            contact=contact_get_or_create(request.data['contact']),
+            location=location_get_or_create(request.data.get('location')),
+        )
+        return Response(company.id, status=status.HTTP_201_CREATED)
