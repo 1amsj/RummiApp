@@ -14,11 +14,12 @@ from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import contact_get_or_create, location_get_or_create, prepare_query_params
 from core_backend.datastructures import QueryParams
-from core_backend.models import Agent, Booking, Company, Contact, Event, ExtraQuerySet, Location, Operator, Payer, \
+from core_backend.models import Agent, Booking, Company, Event, ExtraQuerySet, Operator, Payer, \
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AgentSerializer, CompanySerializer, OperatorSerializer, PayerSerializer, \
+from core_backend.serializers import AgentSerializer, CompanySerializer, CreateUserSerializer, OperatorSerializer, \
+    PayerSerializer, \
     ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, UserSerializer
 from core_backend.services import filter_params, is_extendable, manage_extra_attrs
 
@@ -166,6 +167,14 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
         return super(ManageUsers, ManageUsers).get(request)
 
+    @staticmethod
+    @transaction.atomic
+    def post(request):
+        serializer = CreateUserSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.create()
+        return Response(user.id, status=status.HTTP_201_CREATED)
+
 
 ManageAgents = user_subtype_view_manager(Agent, AgentSerializer)
 
@@ -214,8 +223,6 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
     @staticmethod
     @transaction.atomic
     @expect_key_error
-    @expect_does_not_exist(Contact)
-    @expect_does_not_exist(Location)
     def post(request):
         company = Company.objects.create(
             name=request.data['name'],

@@ -70,6 +70,7 @@ class CompanySerializer(serializers.ModelSerializer):
 # User serializers
 class UserSerializer(serializers.ModelSerializer):
     company = CompanySerializer()
+    contact = ContactSerializer()
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
 
@@ -81,10 +82,22 @@ class UserSerializer(serializers.ModelSerializer):
             'email',
             'first_name',
             'last_name',
+            'national_id',
+            'ssn',
             'company',
+            'contact',
             'operator_id',
             'requester_id',
         )
+
+
+class CreateUserSerializer(UserSerializer):
+    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
+
+    def create(self, validated_data=None):
+        data = validated_data or self.validated_data
+        contact = Contact.objects.create(**data.pop('contact'))
+        return User.objects.create(**data, contact=contact)
 
 
 def user_subtype_serializer(serializer_model: Type[models.Model]):
