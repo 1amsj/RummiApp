@@ -141,7 +141,7 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-class CreateUserSerializer(UserSerializer):
+class UserCreateSerializer(UserSerializer):
     company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
 
     def create(self, validated_data=None):
@@ -200,7 +200,7 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
         fields = '__all__'
 
 
-class CreateServiceSerializer(extendable_serializer(Service)):
+class ServiceCreateSerializer(extendable_serializer(Service)):
     business = BusinessField()
     categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
     provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
@@ -233,8 +233,6 @@ RecipientSerializer = user_subtype_serializer(Recipient)
 
 RequesterSerializer = user_subtype_serializer(Requester)
 
-
-# Service serializers
 CategorySerializer = generic_serializer(Category)
 
 BusinessSerializer = generic_serializer(Business)

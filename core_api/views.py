@@ -18,11 +18,9 @@ from core_backend.models import Agent, Booking, Business, Company, Event, ExtraQ
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AgentSerializer, CompanySerializer, CreateServiceSerializer, CreateUserSerializer, \
-    OperatorSerializer, \
-    PayerSerializer, \
-    ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceSerializer, \
-    UserSerializer
+from core_backend.serializers import AgentSerializer, CompanySerializer, OperatorSerializer, PayerSerializer, \
+    ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
+    ServiceSerializer, UserCreateSerializer, UserSerializer
 from core_backend.services import filter_params, is_extendable, manage_extra_attrs
 
 
@@ -172,7 +170,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     @staticmethod
     @transaction.atomic
     def post(request):
-        serializer = CreateUserSerializer(data=request.data)
+        serializer = UserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.create()
         return Response(user.id, status=status.HTTP_201_CREATED)
@@ -320,7 +318,7 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     def post(request, business_name=None):
         data = request.data
         data['business'] = business_name
-        serializer = CreateServiceSerializer(data=data)
+        serializer = ServiceCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
