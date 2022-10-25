@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'nested_admin',
     'core_backend',
     'core_api.apps.CoreApiConfig',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
