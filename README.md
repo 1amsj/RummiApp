@@ -10,6 +10,8 @@ If you made modifications to the models in `core_backend/models.py`, before runn
 
 `python manage.py migrate`
 
+If a new package was added to `requirements.txt`, run `pip install -r requirements.txt`
+
 ## Initial setup
 
 Install:
