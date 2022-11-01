@@ -35,7 +35,3 @@ coverage.xml
 env/
 venv/
 ENV/
-
-# Images and diagrams
-.png
-.dot
