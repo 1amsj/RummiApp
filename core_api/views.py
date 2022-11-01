@@ -18,7 +18,8 @@ from core_backend.models import Agent, Booking, Business, Company, Event, ExtraQ
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AgentSerializer, CompanySerializer, OperatorSerializer, PayerSerializer, \
+from core_backend.serializers import AgentSerializer, BookingSerializer, CompanySerializer, OperatorSerializer, \
+    PayerSerializer, \
     ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer
 from core_backend.services import filter_params, is_extendable, manage_extra_attrs
@@ -219,24 +220,7 @@ ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
 
 
-class ManageBooking(APIView):
-    class CanManageBooking(BasePermission):
-        message = 'You do not have permission to perform this operation'
-
-        def has_permission(self, request, view):
-            method = request.method
-            user = request.user
-            return (method == 'GET' and user.has_perm('core_api.view_booking')) \
-                or (method == 'POST' and user.has_perm('core_api.add_booking')) \
-                or (method == 'PUT' and user.has_perm('core_api.change_booking')) \
-                or (method == 'DELETE' and user.has_perm('core_api.delete_booking'))
-
-    permission_classes = [IsAuthenticated, CanManageBooking]
-
-    @staticmethod
-    def get(request):
-        ...
-
+class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -255,7 +239,7 @@ class ManageBooking(APIView):
         for e in events:
             agent_ids = e.get('agents')
             payer_id = e['payer']
-            recipient_ids = e.get('recipients')
+            affiliation_ids = e.get('affiliations')
             requester_id = e.get('requester', user.as_requester.id if user.is_requester else None)
             location_id = e.get('location')
             meeting_url = e.get('meeting_url')
@@ -278,20 +262,10 @@ class ManageBooking(APIView):
             )
             if agent_ids:
                 event.agents.add(*agent_ids)
-            if recipient_ids:
-                event.recipients.add(*recipient_ids)
+            if affiliation_ids:
+                event.recipients.add(*affiliation_ids)
 
         return Response(booking.id, status=status.HTTP_201_CREATED)
-
-    @staticmethod
-    @transaction.atomic
-    def put(request):
-        ...
-
-    @staticmethod
-    @transaction.atomic
-    def delete(request):
-        ...
 
 
 class ManageCompany(basic_view_manager(Company, CompanySerializer)):

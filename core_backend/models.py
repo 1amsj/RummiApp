@@ -215,7 +215,7 @@ class Provider(ExtendableModel):
 class Recipient(ExtendableModel):
     """Who receives the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
-    companies = models.ManyToManyField(Company, related_name='recipients', through="Beneficiary")
+    companies = models.ManyToManyField(Company, related_name='recipients', through="Affiliation")
 
     class Meta:
         verbose_name = verbose_name_plural = _('recipient data')
@@ -224,16 +224,16 @@ class Recipient(ExtendableModel):
         return F"[Recipient] {self.user}"
 
 
-class Beneficiary(ExtendableModel):
+class Affiliation(ExtendableModel):
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
 
     class Meta:
-        verbose_name = _('beneficiary')
-        verbose_name_plural = _('beneficiaries')
+        verbose_name = _('affiliation')
+        verbose_name_plural = _('affiliations')
 
     def __str__(self):
-        return F"[Beneficiary] {self.recipient.user} with {self.company or 'no company'}"
+        return F"[Affiliation] {self.recipient.user} with {self.company or 'no company'}"
 
 
 class Requester(models.Model):
@@ -320,8 +320,8 @@ class Booking(ExtendableModel):
 class Event(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
 
+    affiliates = models.ManyToManyField(Affiliation, related_name='events')
     agents = models.ManyToManyField(Agent, related_name='events')
-    beneficiaries = models.ManyToManyField(Beneficiary, related_name='events')
     payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='events')
     requester = models.ForeignKey(Requester, on_delete=models.PROTECT, related_name='events')
 

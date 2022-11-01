@@ -63,14 +63,14 @@ class ProviderAdmin(NestedModelAdmin):
     inlines = [ExtraInline, ServiceInline]
 
 
-class BeneficiaryAdmin(NestedStackedInline):
-    model = Beneficiary
+class AffiliationAdmin(NestedStackedInline):
+    model = Affiliation
     inlines = [ExtraInline]
     extra = 0
 
 
 class RecipientAdmin(NestedModelAdmin):
-    inlines = [ExtraInline, BeneficiaryAdmin]
+    inlines = [ExtraInline, AffiliationAdmin]
 
 
 class LedgerAdmin(NestedModelAdmin):
