@@ -162,7 +162,7 @@ class User(AbstractUser, AbstractPerson):
 
 class Agent(ExtendableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
-    company = models.ManyToManyField(Company, related_name='agents')
+    companies = models.ManyToManyField(Company, related_name='agents')
     role = models.CharField(_('role'), max_length=64)
 
     class Meta:
@@ -177,7 +177,7 @@ class Agent(ExtendableModel):
 class Operator(models.Model):
     """Staff who maintain the platform"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
-    company = models.ManyToManyField(Company, related_name='operators')
+    companies = models.ManyToManyField(Company, related_name='operators')
     hiring_date = models.DateField(_('hiring date'))
 
     class Meta:
@@ -190,7 +190,7 @@ class Operator(models.Model):
 class Payer(models.Model):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
-    company = models.ManyToManyField(Company, related_name='payers')
+    companies = models.ManyToManyField(Company, related_name='payers')
     method = models.CharField(_('paying method'), max_length=64)
 
     class Meta:
@@ -203,7 +203,7 @@ class Payer(models.Model):
 class Provider(ExtendableModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
-    company = models.ManyToManyField(Company, related_name='providers')
+    companies = models.ManyToManyField(Company, related_name='providers')
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
@@ -239,7 +239,7 @@ class Affiliation(ExtendableModel):
 class Requester(models.Model):
     """Who requests the service case for the Recipient"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
-    company = models.ManyToManyField(Company, related_name='requesters')
+    companies = models.ManyToManyField(Company, related_name='requesters')
 
     class Meta:
         verbose_name = verbose_name_plural = _('requester data')
