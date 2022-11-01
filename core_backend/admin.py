@@ -63,6 +63,16 @@ class ProviderAdmin(NestedModelAdmin):
     inlines = [ExtraInline, ServiceInline]
 
 
+class BeneficiaryAdmin(NestedStackedInline):
+    model = Beneficiary
+    inlines = [ExtraInline]
+    extra = 0
+
+
+class RecipientAdmin(NestedModelAdmin):
+    inlines = [ExtraInline, BeneficiaryAdmin]
+
+
 class LedgerAdmin(NestedModelAdmin):
     inlines = stacked_inline(Invoice)
 
@@ -88,7 +98,7 @@ admin.site.register(Agent, ExtendableAdmin)
 admin.site.register(Operator)
 admin.site.register(Payer)
 admin.site.register(Provider, ProviderAdmin)
-admin.site.register(Recipient, ExtendableAdmin)
+admin.site.register(Recipient, RecipientAdmin)
 admin.site.register(Requester)
 
 admin.site.register(Business)
