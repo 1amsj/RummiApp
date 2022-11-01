@@ -1,11 +1,13 @@
 from typing import Type
 
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Agent, Booking, Business, Category, Company, Contact, Event, ExtendableModel, Extra, \
     Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
-from core_backend.services import assert_extendable, is_extendable
+from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
+    manage_extra_attrs
 
 
 # Extra serializers
@@ -15,31 +17,48 @@ class ExtraAttrSerializer(serializers.ModelSerializer):
         fields = ('key', 'value')
 
 
-class ExtendableSerializer(serializers.ModelSerializer):
-    extra = serializers.SerializerMethodField('get_extra_attrs')
+def extendable_serializer(serializer_model: Type[models.Model], serializer_fields='__all__'):
+    assert_extendable(serializer_model)
 
-    class Meta:
-        model = ExtendableModel
-        abstract = True
+    class ExtendableSerializer(serializers.ModelSerializer):
+        extra = serializers.SerializerMethodField('get_extra_attrs')
 
-    def get_extra_attrs(self, obj: ExtendableModel):
-        assert_extendable(obj.__class__)
-        business = self.context.get('business')
-        return obj.get_extra_attrs(business)
+        class Meta:
+            model = serializer_model
+            fields = serializer_fields
+            abstract = True
 
-    def to_representation(self, instance):
-        """Flatten extra fields"""
-        representation = super().to_representation(instance)
-        extra_representation = representation.pop('extra')
-        for k in extra_representation:
-            representation[k] = extra_representation[k]
-        return representation
+        def get_extra_attrs(self, obj: ExtendableModel):
+            assert_extendable(obj.__class__)
+            business = self.context.get('business')
+            return obj.get_extra_attrs(business)
+
+        def to_representation(self, instance):
+            """Flatten extra fields"""
+            representation = super().to_representation(instance)
+            extra_representation = representation.pop('extra', {})
+            for k in extra_representation:
+                representation[k] = extra_representation[k]
+            return representation
+
+        def to_internal_value(self, data: dict):
+            model_fields = get_model_field_names(serializer_model)
+            extra_fields = {}
+            for k in list(data.keys()):
+                if k in model_fields:
+                    continue
+                extra_fields[k] = data.pop(k)
+            data = super(ExtendableSerializer, self).to_internal_value(data)
+            data['extra'] = extra_fields  # TODO validate here rules regarding extra fields
+            return data
+
+    return ExtendableSerializer
 
 
 # Helper
 def generic_serializer(serializer_model: Type[models.Model], serializer_fields='__all__'):
     parent_serializer = (
-        ExtendableSerializer
+        extendable_serializer(serializer_model)
         if is_extendable(serializer_model)
         else serializers.ModelSerializer
     )
@@ -50,6 +69,37 @@ def generic_serializer(serializer_model: Type[models.Model], serializer_fields='
             fields = serializer_fields
 
     return GenericSerializer
+
+
+# Custom fields
+class BusinessField(serializers.RelatedField):
+    default_error_messages = {
+        'required': _('This field is required.'),
+        'does_not_exist': _('Invalid business name "{name}".'),
+        'incorrect_type': _('Incorrect type. Expected id, string or Business, received {data_type}.'),
+    }
+
+    def __init__(self, **kwargs):
+        super(BusinessField, self).__init__(queryset=kwargs.pop('queryset', Business.objects.all()))
+
+    def to_internal_value(self, data):
+        try:
+            if isinstance(data, str):
+                return Business.objects.get(name=data)
+            if isinstance(data, int):
+                return Business.objects.get(id=data)
+            if isinstance(data, Business):
+                return data
+            raise TypeError
+
+        except Business.DoesNotExist:
+            self.fail('does_not_exist', name=data)
+
+        except (TypeError, ValueError):
+            self.fail('incorrect_type', data_type=type(data).__name__)
+
+    def to_representation(self, value):
+        return super(BusinessField, self).to_representation(value)
 
 
 # General serializers
@@ -70,6 +120,7 @@ class CompanySerializer(serializers.ModelSerializer):
 # User serializers
 class UserSerializer(serializers.ModelSerializer):
     company = CompanySerializer()
+    contact = ContactSerializer()
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
 
@@ -81,15 +132,27 @@ class UserSerializer(serializers.ModelSerializer):
             'email',
             'first_name',
             'last_name',
+            'national_id',
+            'ssn',
             'company',
+            'contact',
             'operator_id',
             'requester_id',
         )
 
 
+class UserCreateSerializer(UserSerializer):
+    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
+
+    def create(self, validated_data=None):
+        data = validated_data or self.validated_data
+        contact = Contact.objects.create(**data.pop('contact'))
+        return User.objects.create(**data, contact=contact)
+
+
 def user_subtype_serializer(serializer_model: Type[models.Model]):
     serializer_parent = (
-        ExtendableSerializer
+        extendable_serializer(serializer_model)
         if is_extendable(serializer_model)
         else serializers.ModelSerializer
     )
@@ -128,13 +191,34 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
         fields = '__all__'
 
 
-class ServiceNoProviderSerializer(ExtendableSerializer):
+class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)
     categories = generic_serializer(Category)(many=True)
 
     class Meta:
         model = Service
         fields = '__all__'
+
+
+class ServiceCreateSerializer(extendable_serializer(Service)):
+    business = BusinessField()
+    categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
+    provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
+
+    class Meta:
+        model = Service
+        fields = '__all__'
+
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        categories = data.pop('categories', [])
+
+        service = Service.objects.create(**data)
+        service.categories.add(*categories)
+        manage_extra_attrs(service.business, service, extras)
+
+        return service.id
 
 
 class ProviderServiceSerializer(user_subtype_serializer(Provider)):
@@ -149,14 +233,12 @@ RecipientSerializer = user_subtype_serializer(Recipient)
 
 RequesterSerializer = user_subtype_serializer(Requester)
 
-
-# Service serializers
 CategorySerializer = generic_serializer(Category)
 
 BusinessSerializer = generic_serializer(Business)
 
 
-class ServiceSerializer(ExtendableSerializer):
+class ServiceSerializer(extendable_serializer(Service)):
     business = BusinessSerializer()
     categories = CategorySerializer(many=True)
     provider = ProviderSerializer()
@@ -166,7 +248,7 @@ class ServiceSerializer(ExtendableSerializer):
         fields = '__all__'
 
 
-class BookingSerializer(ExtendableSerializer):
+class BookingSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)

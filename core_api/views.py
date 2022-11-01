@@ -14,12 +14,13 @@ from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import contact_get_or_create, location_get_or_create, prepare_query_params
 from core_backend.datastructures import QueryParams
-from core_backend.models import Agent, Booking, Company, Contact, Event, ExtraQuerySet, Location, Operator, Payer, \
+from core_backend.models import Agent, Booking, Business, Company, Event, ExtraQuerySet, Operator, Payer, \
     Provider, \
     Recipient, \
     Requester, Service, User
 from core_backend.serializers import AgentSerializer, CompanySerializer, OperatorSerializer, PayerSerializer, \
-    ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, UserSerializer
+    ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
+    ServiceSerializer, UserCreateSerializer, UserSerializer
 from core_backend.services import filter_params, is_extendable, manage_extra_attrs
 
 
@@ -166,6 +167,14 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
         return super(ManageUsers, ManageUsers).get(request)
 
+    @staticmethod
+    @transaction.atomic
+    def post(request):
+        serializer = UserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.create()
+        return Response(user.id, status=status.HTTP_201_CREATED)
+
 
 ManageAgents = user_subtype_view_manager(Agent, AgentSerializer)
 
@@ -208,24 +217,6 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
 ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
 
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
-
-
-class ManageCompany(basic_view_manager(Company, CompanySerializer)):
-    @staticmethod
-    @transaction.atomic
-    @expect_key_error
-    @expect_does_not_exist(Contact)
-    @expect_does_not_exist(Location)
-    def post(request):
-        company = Company.objects.create(
-            name=request.data['name'],
-            type=request.data['type'],
-            send_method=request.data['send_method'],
-            on_hold=request.data.get('on_hold', False),
-            contact=contact_get_or_create(request.data['contact']),
-            location=location_get_or_create(request.data.get('location')),
-        )
-        return Response(company.id, status=status.HTTP_201_CREATED)
 
 
 class ManageBooking(APIView):
@@ -301,3 +292,33 @@ class ManageBooking(APIView):
     @transaction.atomic
     def delete(request):
         ...
+
+
+class ManageCompany(basic_view_manager(Company, CompanySerializer)):
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        company = Company.objects.create(
+            name=request.data['name'],
+            type=request.data['type'],
+            send_method=request.data['send_method'],
+            on_hold=request.data.get('on_hold', False),
+            contact=contact_get_or_create(request.data['contact']),
+            location=location_get_or_create(request.data.get('location')),
+        )
+        return Response(company.id, status=status.HTTP_201_CREATED)
+
+
+class ManageService(basic_view_manager(Service, ServiceSerializer)):
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Business)
+    def post(request, business_name=None):
+        data = request.data
+        data['business'] = business_name
+        serializer = ServiceCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        service_id = serializer.create()
+        return Response(service_id, status=status.HTTP_201_CREATED)
