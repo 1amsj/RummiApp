@@ -225,8 +225,8 @@ class Recipient(ExtendableModel):
 
 
 class Affiliation(ExtendableModel):
-    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True)
+    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='affiliations')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
 
     class Meta:
         verbose_name = _('affiliation')

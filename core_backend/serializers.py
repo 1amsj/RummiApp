@@ -4,8 +4,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from core_backend.models import Agent, Booking, Business, Category, Company, Contact, Event, ExtendableModel, Extra, \
-    Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
+from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
+    ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
     manage_extra_attrs
 
@@ -119,7 +119,6 @@ class CompanySerializer(serializers.ModelSerializer):
 
 # User serializers
 class UserSerializer(serializers.ModelSerializer):
-    company = CompanySerializer()
     contact = ContactSerializer()
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
@@ -134,7 +133,6 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'national_id',
             'ssn',
-            'company',
             'contact',
             'operator_id',
             'requester_id',
@@ -176,14 +174,20 @@ def user_subtype_serializer(serializer_model: Type[models.Model]):
     return UserSubTypeSerializer
 
 
-AgentSerializer = user_subtype_serializer(Agent)
+class AgentSerializer(user_subtype_serializer(Agent)):
+    companies = CompanySerializer(many=True)
 
-OperatorSerializer = user_subtype_serializer(Operator)
 
-PayerSerializer = user_subtype_serializer(Payer)
+class OperatorSerializer(user_subtype_serializer(Operator)):
+    companies = CompanySerializer(many=True)
+
+
+class PayerSerializer(user_subtype_serializer(Payer)):
+    companies = CompanySerializer(many=True)
 
 
 class ProviderSerializer(user_subtype_serializer(Provider)):
+    companies = CompanySerializer(many=True)
     services = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
@@ -229,7 +233,21 @@ class ProviderServiceSerializer(user_subtype_serializer(Provider)):
         fields = '__all__'
 
 
-RecipientSerializer = user_subtype_serializer(Recipient)
+class AffiliationSerializer(generic_serializer(Affiliation)):
+    company = CompanySerializer()
+
+    class Meta:
+        model = Affiliation
+        fields = ('id', 'company',)
+
+
+class RecipientSerializer(user_subtype_serializer(Recipient)):
+    affiliations = AffiliationSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Recipient
+        exclude = ('companies',)
+
 
 RequesterSerializer = user_subtype_serializer(Requester)
 
