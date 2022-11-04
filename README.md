@@ -1,23 +1,17 @@
-# core_backend
-
-## Everyday setup
-
-To start running the backend, run `python manage.py runserver localhost:8000`
-
-If you made modifications to the models in `core_backend/models.py`, before running the app, run 
-
-`python manage.py makemigrations`
-
-`python manage.py migrate`
-
-If a new package was added to `requirements.txt`, run `pip install -r requirements.txt`
+# CORE BACK-END
 
 ## Initial setup
 
 Install:
 - pgAdmin4
-- Postgresql
+- PostgreSQL
 - Python3
+
+Also, install the dependencies with the command `pip install -r requirements.txt`. If a new package was added to `requirements.txt`, run the same command previously mentioned.
+
+### Disclaimer
+
+Before installing al the dependencies of the project, be sure that you are not using a Python version superior to 3.9. The dependencie backports.zoneinfo does not support superior versions than 3.9. Also check-out that you set up the path of PostgreSQL to your system.
 
 **In pgAdmin4**,
 create `core_user` role,
@@ -39,3 +33,13 @@ then, **at project's root directory, open a terminal** and run
 `python manage.py migrate`
 
 `python manage.py runserver localhost:8000`
+
+## Everyday setup
+
+To start running the backend, run `python manage.py runserver localhost:8000`
+
+If you made modifications to the models in `core_backend/models.py`, before running the app, run 
+
+`python manage.py makemigrations`
+
+`python manage.py migrate`
