@@ -9,31 +9,6 @@ from simple_history.admin import SimpleHistoryAdmin
 from core_backend.models import *
 
 
-def stacked_inline(inline_model: Type[models.Model], extendable=False):
-    class Stacked(NestedStackedInline):
-        model = inline_model
-        extra = 0
-        if extendable:
-            inlines = [ExtraInline]
-
-    return Stacked
-
-
-def basic_register(admin_model: Type[models.Model], extendable=False, historical=False, admin_inlines: list = None):
-    parents = [SimpleHistoryAdmin] if historical else []
-
-    class BasicAdmin(NestedModelAdmin, *parents):
-        model = admin_model
-        inlines = []
-        if extendable:
-            inlines = [ExtraInline]
-            extra = 0
-        if admin_inlines:
-            inlines += admin_inlines
-
-    admin.site.register(admin_model, BasicAdmin)
-
-
 class ExtraInline(NestedGenericTabularInline):
     model = Extra
     extra = 0
@@ -64,6 +39,31 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin, SimpleHistoryAdmin):
         ),
         *BaseUserAdmin.fieldsets[2:],
     )
+
+
+def stacked_inline(inline_model: Type[models.Model], extendable=False):
+    class Stacked(NestedStackedInline):
+        model = inline_model
+        extra = 0
+        if extendable:
+            inlines = [ExtraInline]
+
+    return Stacked
+
+
+def basic_register(admin_model: Type[models.Model], extendable=False, historical=False, admin_inlines: list = None):
+    parents = [SimpleHistoryAdmin] if historical else []
+
+    class BasicAdmin(NestedModelAdmin, *parents):
+        model = admin_model
+        inlines = []
+        if extendable:
+            inlines = [ExtraInline]
+            extra = 0
+        if admin_inlines:
+            inlines += admin_inlines
+
+    admin.site.register(admin_model, BasicAdmin)
 
 
 basic_register(Contact, historical=True)
