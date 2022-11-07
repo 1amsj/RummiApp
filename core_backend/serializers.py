@@ -233,7 +233,7 @@ class ProviderServiceSerializer(user_subtype_serializer(Provider)):
         fields = '__all__'
 
 
-class AffiliationSerializer(generic_serializer(Affiliation)):
+class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
     company = CompanySerializer()
 
     class Meta:
@@ -241,12 +241,19 @@ class AffiliationSerializer(generic_serializer(Affiliation)):
         fields = ('id', 'company',)
 
 
-class RecipientSerializer(user_subtype_serializer(Recipient)):
-    affiliations = AffiliationSerializer(many=True, read_only=True)
-
+class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
     class Meta:
         model = Recipient
         exclude = ('companies',)
+
+
+class AffiliationSerializer(generic_serializer(Affiliation)):
+    company = CompanySerializer()
+    recipient = RecipientNoAffiliationSerializer()
+
+
+class RecipientSerializer(RecipientNoAffiliationSerializer):
+    affiliations = AffiliationNoRecipientSerializer(many=True, read_only=True)
 
 
 RequesterSerializer = user_subtype_serializer(Requester)

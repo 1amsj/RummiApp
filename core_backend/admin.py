@@ -35,7 +35,7 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin):
         (
             _('Contact'),
             {
-                'fields': ('contact', 'company')
+                'fields': ('contact',)
             }
         ),
         (

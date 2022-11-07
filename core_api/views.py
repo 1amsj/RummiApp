@@ -14,11 +14,12 @@ from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import contact_get_or_create, location_get_or_create, prepare_query_params
 from core_backend.datastructures import QueryParams
-from core_backend.models import Agent, Booking, Business, Company, Event, ExtraQuerySet, Operator, Payer, \
+from core_backend.models import Affiliation, Agent, Booking, Business, Company, Event, ExtraQuerySet, Operator, Payer, \
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AgentSerializer, BookingSerializer, CompanySerializer, OperatorSerializer, \
+from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingSerializer, CompanySerializer, \
+    OperatorSerializer, \
     PayerSerializer, \
     ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer
@@ -106,7 +107,11 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
         permission_classes = [IsAuthenticated, can_manage_model_basic_permissions(model._meta.model_name)]
 
         @staticmethod
-        def apply_filters(queryset: Union[QuerySet[model], ExtraQuerySet[model]], params: QueryParams):
+        def apply_nested_filters(queryset: Union[QuerySet[model], ExtraQuerySet[model]], nested_params: QueryParams):
+            return queryset.filter(**nested_params.to_dict())
+
+        @classmethod
+        def apply_filters(cls, queryset: Union[QuerySet[model], ExtraQuerySet[model]], params: QueryParams):
             base_params, extra_params, nested_params = filter_params(model, params)
 
             if not base_params.is_empty():
@@ -115,8 +120,7 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
             if is_extendable(model) and not extra_params.is_empty():
                 queryset = queryset.filter_by_extra(**extra_params.to_dict())
 
-            if not nested_params.is_empty():
-                queryset = queryset.filter(**nested_params.to_dict())
+            queryset = cls.apply_nested_filters(queryset, nested_params)
 
             return queryset
 
@@ -220,6 +224,36 @@ ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
 
 
+class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer)):
+    @staticmethod
+    def apply_nested_filters(queryset, nested_params):
+        recipient_params = nested_params.pop('recipient')
+        if recipient_params:
+            base_params, extra_params, _ = filter_params(Recipient, recipient_params)
+
+            if not base_params.is_empty():
+                queryset = queryset.filter(**base_params.to_dict('recipient__'))
+
+            user_params, extra_params, _ = filter_params(User, extra_params)
+            if not user_params.is_empty():
+                queryset = queryset.filter(**user_params.to_dict('recipient__user__'))
+
+            if is_extendable(Recipient) and not extra_params.is_empty():
+                queryset = queryset.filter_by_extra(**extra_params.to_dict('recipient__'))
+
+        company_params = nested_params.pop('company')
+        if company_params:
+            base_params, extra_params, _ = filter_params(Company, company_params)
+
+            if not base_params.is_empty():
+                queryset = queryset.filter(**base_params.to_dict('company__'))
+
+            if is_extendable(Company) and not extra_params.is_empty():
+                queryset = queryset.filter_by_extra(**extra_params.to_dict('company__'))
+
+        return queryset
+
+
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @staticmethod
     @transaction.atomic
@@ -260,10 +294,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 end_at=end_at,
                 observations=observations,
             )
+            if affiliation_ids:
+                event.affiliates.add(*affiliation_ids)
             if agent_ids:
                 event.agents.add(*agent_ids)
-            if affiliation_ids:
-                event.recipients.add(*affiliation_ids)
 
         return Response(booking.id, status=status.HTTP_201_CREATED)
 
