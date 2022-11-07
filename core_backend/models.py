@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
+from simple_history.models import HistoricalRecords
 
 
 # Generic helpers
@@ -31,10 +32,6 @@ class Extra(models.Model):
 
 
 class ExtraQuerySet(models.QuerySet):
-    def filter(self, *args, **kwargs):
-        queryset = super(ExtraQuerySet, self).filter(*args, **kwargs)
-        return queryset
-
     def prefetch_extra(self, business: Optional["Business"] = None):
         ct = ContentType.objects.get_for_model(self.model)
         query = Q(extra__parent_ct=ct)
@@ -73,6 +70,13 @@ class ExtendableModel(models.Model):
         }
 
 
+class HistoricalModel(models.Model):
+    history = HistoricalRecords(inherit=True)
+
+    class Meta:
+        abstract = True
+
+
 # Abstract models
 class AbstractPerson(models.Model):
     contact = models.OneToOneField("Contact", on_delete=models.SET_NULL, null=True, blank=True)
@@ -89,7 +93,7 @@ class AbstractPerson(models.Model):
 
 
 # General data models
-class Contact(models.Model):
+class Contact(HistoricalModel):
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
@@ -102,7 +106,7 @@ class Contact(models.Model):
         return F"{self.email}, {self.phone}, {self.fax}"
 
 
-class Company(models.Model):
+class Company(HistoricalModel):
     contact = models.OneToOneField(Contact, on_delete=models.SET_NULL, null=True, blank=True)
     location = models.OneToOneField("Location", on_delete=models.SET_NULL, related_name='owner', null=True, blank=True)
     name = models.CharField(_('name'), max_length=128)
@@ -134,7 +138,7 @@ class Location(models.Model):
 
 
 # User models
-class User(AbstractUser, AbstractPerson):
+class User(AbstractUser, AbstractPerson, HistoricalModel):
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
@@ -160,7 +164,7 @@ class User(AbstractUser, AbstractPerson):
         return hasattr(self, 'as_payer') and self.as_payer is not None
 
 
-class Agent(ExtendableModel):
+class Agent(ExtendableModel, HistoricalModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
     companies = models.ManyToManyField(Company, related_name='agents')
     role = models.CharField(_('role'), max_length=64)
@@ -174,7 +178,7 @@ class Agent(ExtendableModel):
         return F"[{self.role} (agent)] {self.user}"
 
 
-class Operator(models.Model):
+class Operator(HistoricalModel):
     """Staff who maintain the platform"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
     companies = models.ManyToManyField(Company, related_name='operators')
@@ -187,7 +191,7 @@ class Operator(models.Model):
         return F"[Operator] {self.user}"
 
 
-class Payer(models.Model):
+class Payer(HistoricalModel):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
     companies = models.ManyToManyField(Company, related_name='payers')
@@ -200,7 +204,7 @@ class Payer(models.Model):
         return F"[Payer] {self.user}"
 
 
-class Provider(ExtendableModel):
+class Provider(ExtendableModel, HistoricalModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
@@ -212,7 +216,7 @@ class Provider(ExtendableModel):
         return F"[Provider] {self.user}"
 
 
-class Recipient(ExtendableModel):
+class Recipient(ExtendableModel, HistoricalModel):
     """Who receives the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
     companies = models.ManyToManyField(Company, related_name='recipients', through="Affiliation")
@@ -224,7 +228,7 @@ class Recipient(ExtendableModel):
         return F"[Recipient] {self.user}"
 
 
-class Affiliation(ExtendableModel):
+class Affiliation(ExtendableModel, HistoricalModel):
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='affiliations')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
 
@@ -236,7 +240,7 @@ class Affiliation(ExtendableModel):
         return F"[Affiliation] {self.recipient.user} with {self.company or 'no company'}"
 
 
-class Requester(models.Model):
+class Requester(HistoricalModel):
     """Who requests the service case for the Recipient"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
     companies = models.ManyToManyField(Company, related_name='requesters')
@@ -296,7 +300,7 @@ class Service(ExtendableModel):
         return F"{self.business} by {self.provider}"
 
 
-class Booking(ExtendableModel):
+class Booking(ExtendableModel, HistoricalModel):
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
 
@@ -317,7 +321,7 @@ class Booking(ExtendableModel):
         return super(Booking, self).__str__()
 
 
-class Event(models.Model):
+class Event(HistoricalModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')

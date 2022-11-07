@@ -1,19 +1,37 @@
+from typing import Type
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline
+from simple_history.admin import SimpleHistoryAdmin
 
 from core_backend.models import *
 
 
-def stacked_inline(*models):
-    classes = []
-    for m in models:
-        class Stacked(NestedStackedInline):
-            model = m
+def stacked_inline(inline_model: Type[models.Model], extendable=False):
+    class Stacked(NestedStackedInline):
+        model = inline_model
+        extra = 0
+        if extendable:
+            inlines = [ExtraInline]
+
+    return Stacked
+
+
+def basic_register(admin_model: Type[models.Model], extendable=False, historical=False, admin_inlines: list = None):
+    parents = [SimpleHistoryAdmin] if historical else []
+
+    class BasicAdmin(NestedModelAdmin, *parents):
+        model = admin_model
+        inlines = []
+        if extendable:
+            inlines = [ExtraInline]
             extra = 0
-        classes.append(Stacked)
-    return classes
+        if admin_inlines:
+            inlines += admin_inlines
+
+    admin.site.register(admin_model, BasicAdmin)
 
 
 class ExtraInline(NestedGenericTabularInline):
@@ -28,7 +46,7 @@ class ExtendableAdmin(NestedModelAdmin):
     inlines = [ExtraInline]
 
 
-class UserAdmin(NestedModelAdmin, BaseUserAdmin):
+class UserAdmin(NestedModelAdmin, BaseUserAdmin, SimpleHistoryAdmin):
     readonly_fields = ('is_operator', 'is_payer', 'is_provider', 'is_recipient', 'is_requester')
     fieldsets = (
         *BaseUserAdmin.fieldsets[:2],
@@ -48,63 +66,25 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin):
     )
 
 
-class ServiceInline(NestedStackedInline):
-    model = Service
-    inlines = [ExtraInline]
-    extra = 0
-
-
-class ServiceAdmin(NestedModelAdmin):
-    model = Service
-    inlines = [ExtraInline]
-
-
-class ProviderAdmin(NestedModelAdmin):
-    inlines = [ExtraInline, ServiceInline]
-
-
-class AffiliationAdmin(NestedStackedInline):
-    model = Affiliation
-    inlines = [ExtraInline]
-    extra = 0
-
-
-class RecipientAdmin(NestedModelAdmin):
-    inlines = [ExtraInline, AffiliationAdmin]
-
-
-class LedgerAdmin(NestedModelAdmin):
-    inlines = stacked_inline(Invoice)
-
-
-class EventInline(NestedStackedInline):
-    model = Event
-    inlines = [ExtraInline]
-    extra = 0
-
-
-class BookingAdmin(NestedModelAdmin):
-    inlines = [ExtraInline]
-    inlines += stacked_inline(Ledger)
-    inlines += [EventInline]
-
-
-admin.site.register(Contact)
-admin.site.register(Company)
-admin.site.register(Location)
+basic_register(Contact, historical=True)
+basic_register(Company, historical=True)
+basic_register(Location)
 
 admin.site.register(User, UserAdmin)
-admin.site.register(Agent, ExtendableAdmin)
-admin.site.register(Operator)
-admin.site.register(Payer)
-admin.site.register(Provider, ProviderAdmin)
-admin.site.register(Recipient, RecipientAdmin)
-admin.site.register(Requester)
+basic_register(Agent, extendable=True)
+basic_register(Operator, historical=True)
+basic_register(Payer, historical=True)
+basic_register(Provider, extendable=True, admin_inlines=[stacked_inline(Service, extendable=True)])
+basic_register(Recipient, extendable=True, admin_inlines=[stacked_inline(Affiliation, extendable=True)])
+basic_register(Affiliation, extendable=True, historical=True)
+basic_register(Requester, historical=True)
 
-admin.site.register(Business)
-admin.site.register(Category)
-admin.site.register(Service, ServiceAdmin)
-admin.site.register(Booking, BookingAdmin)
-admin.site.register(Event)
+basic_register(Business)
+basic_register(Category)
+basic_register(Service, extendable=True)
+basic_register(Booking, extendable=True, admin_inlines=[stacked_inline(Ledger), stacked_inline(Event, extendable=True)])
+basic_register(Event, historical=True)
+
+basic_register(Extra, historical=True)
 
 # admin.site.register(Rule)
