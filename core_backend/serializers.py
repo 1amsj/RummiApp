@@ -219,7 +219,8 @@ class ServiceCreateSerializer(extendable_serializer(Service)):
         categories = data.pop('categories', [])
 
         service = Service.objects.create(**data)
-        service.categories.add(*categories)
+        if categories:
+            service.categories.add(*categories)
         manage_extra_attrs(service.business, service, extras)
 
         return service.id
@@ -284,15 +285,46 @@ class BookingSerializer(extendable_serializer(Booking)):
 
 
 class EventSerializer(serializers.ModelSerializer):
+    affiliates = AffiliationSerializer(many=True)
     agents = AgentSerializer(many=True)
     booking = BookingSerializer()
     payer = PayerSerializer()
-    recipients = RecipientSerializer(many=True)
     requester = RequesterSerializer()
 
     class Meta:
         model = Event
         fields = '__all__'
+
+
+class EventCreateSerializer(serializers.ModelSerializer):
+    affiliates = serializers.PrimaryKeyRelatedField(many=True, queryset=Affiliation.objects.all(), required=False)
+    agents = serializers.PrimaryKeyRelatedField(many=True, queryset=Agent.objects.all(), required=False)
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+    payer = serializers.PrimaryKeyRelatedField(queryset=Payer.objects.all())
+    requester = serializers.PrimaryKeyRelatedField(queryset=Requester.objects.all())
+
+    class Meta:
+        model = Event
+        fields = '__all__'
+
+    def validate(self, data: dict):
+        if not data.get('location') and not data.get('meeting_url'):
+            raise serializers.ValidationError(_('Either location or meeting URL must be specified'))
+
+        return super(EventCreateSerializer, self).validate(data)
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        affiliates = data.pop('affiliates', [])
+        agents = data.pop('agents', [])
+
+        event = Event.objects.create(**data)
+        if affiliates:
+            event.affiliates.add(*affiliates)
+        if agents:
+            event.agents.add(*agents)
+
+        return event.id
 
 
 InvoiceSerializer = generic_serializer(Invoice)

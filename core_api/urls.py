@@ -52,6 +52,7 @@ urlpatterns = [
 
     path('bookings/<str:business>/', views.ManageBooking.as_view(), name='manage_booking'),
     path('companies/', views.ManageCompany.as_view(), name='manage_companies'),
+    path('events/', views.ManageEvents.as_view(), name='manage_events'),
     *path_optional('services/', '<str:business_name>', views.ManageService.as_view(), name='manage_services'),
 
     path('', views.get_routes)
