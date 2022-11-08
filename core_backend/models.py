@@ -135,8 +135,6 @@ class Location(models.Model):
 
 # User models
 class User(AbstractUser, AbstractPerson):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='employees', null=True, blank=True)
-
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
@@ -164,6 +162,7 @@ class User(AbstractUser, AbstractPerson):
 
 class Agent(ExtendableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
+    companies = models.ManyToManyField(Company, related_name='agents')
     role = models.CharField(_('role'), max_length=64)
 
     class Meta:
@@ -178,6 +177,7 @@ class Agent(ExtendableModel):
 class Operator(models.Model):
     """Staff who maintain the platform"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
+    companies = models.ManyToManyField(Company, related_name='operators')
     hiring_date = models.DateField(_('hiring date'))
 
     class Meta:
@@ -190,6 +190,7 @@ class Operator(models.Model):
 class Payer(models.Model):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
+    companies = models.ManyToManyField(Company, related_name='payers')
     method = models.CharField(_('paying method'), max_length=64)
 
     class Meta:
@@ -202,6 +203,7 @@ class Payer(models.Model):
 class Provider(ExtendableModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
+    companies = models.ManyToManyField(Company, related_name='providers')
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
@@ -213,6 +215,7 @@ class Provider(ExtendableModel):
 class Recipient(ExtendableModel):
     """Who receives the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
+    companies = models.ManyToManyField(Company, related_name='recipients', through="Affiliation")
 
     class Meta:
         verbose_name = verbose_name_plural = _('recipient data')
@@ -221,9 +224,22 @@ class Recipient(ExtendableModel):
         return F"[Recipient] {self.user}"
 
 
+class Affiliation(ExtendableModel):
+    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='affiliations')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
+
+    class Meta:
+        verbose_name = _('affiliation')
+        verbose_name_plural = _('affiliations')
+
+    def __str__(self):
+        return F"[Affiliation] {self.recipient.user} with {self.company or 'no company'}"
+
+
 class Requester(models.Model):
     """Who requests the service case for the Recipient"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
+    companies = models.ManyToManyField(Company, related_name='requesters')
 
     class Meta:
         verbose_name = verbose_name_plural = _('requester data')
@@ -281,9 +297,17 @@ class Service(ExtendableModel):
 
 
 class Booking(ExtendableModel):
-    categories = models.ManyToManyField(Category, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
+
+    # Constraints
+    categories = models.ManyToManyField(Category, related_name='bookings')
+    agents_companies = models.ManyToManyField(Company, related_name='cstr_booking_agents')
+    operators_companies = models.ManyToManyField(Company, related_name='cstr_booking_operators')
+    payers_companies = models.ManyToManyField(Company, related_name='cstr_booking_payers')
+    providers_companies = models.ManyToManyField(Company, related_name='cstr_booking_providers')
+    recipients_companies = models.ManyToManyField(Company, related_name='cstr_booking_recipients')
+    requesters_companies = models.ManyToManyField(Company, related_name='cstr_booking_requesters')
 
     class Meta:
         verbose_name = _('booking')
@@ -294,10 +318,11 @@ class Booking(ExtendableModel):
 
 
 class Event(models.Model):
-    agents = models.ManyToManyField(Agent, related_name='events')
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
+
+    affiliates = models.ManyToManyField(Affiliation, related_name='events')
+    agents = models.ManyToManyField(Agent, related_name='events')
     payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='events')
-    recipients = models.ManyToManyField(Recipient, related_name='events')
     requester = models.ForeignKey(Requester, on_delete=models.PROTECT, related_name='events')
 
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')

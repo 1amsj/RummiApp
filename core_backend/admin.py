@@ -35,7 +35,7 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin):
         (
             _('Contact'),
             {
-                'fields': ('contact', 'company')
+                'fields': ('contact',)
             }
         ),
         (
@@ -63,6 +63,16 @@ class ProviderAdmin(NestedModelAdmin):
     inlines = [ExtraInline, ServiceInline]
 
 
+class AffiliationAdmin(NestedStackedInline):
+    model = Affiliation
+    inlines = [ExtraInline]
+    extra = 0
+
+
+class RecipientAdmin(NestedModelAdmin):
+    inlines = [ExtraInline, AffiliationAdmin]
+
+
 class LedgerAdmin(NestedModelAdmin):
     inlines = stacked_inline(Invoice)
 
@@ -88,7 +98,7 @@ admin.site.register(Agent, ExtendableAdmin)
 admin.site.register(Operator)
 admin.site.register(Payer)
 admin.site.register(Provider, ProviderAdmin)
-admin.site.register(Recipient, ExtendableAdmin)
+admin.site.register(Recipient, RecipientAdmin)
 admin.site.register(Requester)
 
 admin.site.register(Business)

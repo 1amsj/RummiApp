@@ -11,16 +11,17 @@ class Param:
 
 
 QueryParamsKey = Union[str, Tuple[str, bool]]
+QueryParamsValue = Union[Param, "QueryParams"]
 
 
-class QueryParams(Dict[str, Union[Param, "QueryParams"]]):
+class QueryParams(Dict[str, QueryParamsValue]):
     def __init__(self, params: Optional[Dict[QueryParamsKey, Any]] = None):
         super(QueryParams, self).__init__()
         if params:
             for (k, v) in params.items():
                 self[k] = v
 
-    def __getitem__(self, key: str) -> Param:
+    def __getitem__(self, key: str) -> QueryParamsValue:
         ks = key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
         current = self
         for k in ks:
@@ -66,3 +67,8 @@ class QueryParams(Dict[str, Union[Param, "QueryParams"]]):
 
             raise TypeError('Illegal QueryParams state')
         return ret
+
+    def pop(self, __key: str, default=None):
+        ks = __key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
+        query_param = self['.'.join(ks[:-1])] if len(ks) > 1 else self
+        return super(QueryParams, query_param).pop(ks[-1], default)
