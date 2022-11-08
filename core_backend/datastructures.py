@@ -70,5 +70,5 @@ class QueryParams(Dict[str, QueryParamsValue]):
 
     def pop(self, __key: str, default=None):
         ks = __key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
-        query_param = self['.'.join(ks[:-1])] if len(ks) > 1 else self
-        return super(QueryParams, query_param).pop(ks[-1], default)
+        q = self['.'.join(ks[:-1])] if len(ks) > 1 else self
+        return super(QueryParams, q).pop(ks[-1], default)
