@@ -103,9 +103,30 @@ class BusinessField(serializers.RelatedField):
 
 
 # General serializers
-ContactSerializer = generic_serializer(Contact)
+class ContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = '__all__'
 
-LocationSerializer = generic_serializer(Location)
+    def validate(self, data: dict):
+        if not (data.get('email') or data.get('phone') or data.get('fax')):
+            raise serializers.ValidationError(_('Contact data can not be empty'))
+
+        return super(ContactSerializer, self).validate(data)
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        return Contact.objects.create(**data).id
+
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = '__all__'
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        return Location.objects.create(**data).id
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -115,6 +136,30 @@ class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = '__all__'
+
+
+class CompanyCreateSerializer(serializers.ModelSerializer):
+    contact = ContactSerializer()
+    location = LocationSerializer()
+
+    class Meta:
+        model = Company
+        fields = '__all__'
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+
+        contact = data.pop('contact')
+        contact_id = ContactSerializer().create(validated_data=contact) if contact else None
+
+        location = data.pop('location')
+        location_id = LocationSerializer().create(validated_data=location) if location else None
+
+        return Company.objects.create(
+            contact_id=contact_id,
+            location_id=location_id,
+            **data
+        ).id
 
 
 # User serializers
