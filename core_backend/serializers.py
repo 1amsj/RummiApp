@@ -43,9 +43,10 @@ def extendable_serializer(serializer_model: Type[models.Model], serializer_field
 
         def to_internal_value(self, data: dict):
             model_fields = get_model_field_names(serializer_model)
+            ser_fields = self.get_fields().keys()
             extra_fields = {}
             for k in list(data.keys()):
-                if k in model_fields:
+                if k in model_fields or k in ser_fields:
                     continue
                 extra_fields[k] = data.pop(k)
             data = super(ExtendableSerializer, self).to_internal_value(data)
@@ -327,6 +328,41 @@ class BookingSerializer(extendable_serializer(Booking)):
     class Meta:
         model = Booking
         fields = '__all__'
+
+
+class BookingCreateSerializer(extendable_serializer(Booking)):
+    business = BusinessField()
+    categories = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Category.objects.all())
+    operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
+    services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
+
+    class Meta:
+        model = Booking
+        fields = (
+            'business',
+            'categories',
+            'operators',
+            'services',  # TODO add constraints here for incomplete bookings
+        )
+
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        business = BusinessField().to_internal_value(data.pop('business'))
+        extras = data.pop('extra', {})
+        categories = data.pop('categories', [])
+        operators = data.pop('operators', [])
+        services = data.pop('services', [])
+
+        booking = Booking.objects.create(**data)
+        if categories:
+            booking.categories.add(*categories)
+        if operators:
+            booking.operators.add(*operators)
+        if services:
+            booking.services.add(*services)
+        manage_extra_attrs(business, booking, extras)
+
+        return booking.id
 
 
 class EventSerializer(serializers.ModelSerializer):

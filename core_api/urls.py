@@ -50,7 +50,7 @@ urlpatterns = [
     path('requesters/', views.ManageRequesters.as_view(), name='manage_requesters'),
     path('affiliations/', views.ManageAffiliations.as_view(), name='manage_affiliations'),
 
-    path('bookings/<str:business>/', views.ManageBooking.as_view(), name='manage_booking'),
+    path('bookings/<str:business_name>/', views.ManageBooking.as_view(), name='manage_booking'),
     path('companies/', views.ManageCompany.as_view(), name='manage_companies'),
     path('events/', views.ManageEvents.as_view(), name='manage_events'),
     *path_optional('services/', '<str:business_name>', views.ManageService.as_view(), name='manage_services'),
