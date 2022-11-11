@@ -320,14 +320,30 @@ class ServiceSerializer(extendable_serializer(Service)):
         fields = '__all__'
 
 
-class BookingSerializer(extendable_serializer(Booking)):
+class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
+    events_count = serializers.IntegerField(source='events.count', read_only=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
 
     class Meta:
         model = Booking
         fields = '__all__'
+
+
+class EventNoBookingSerializer(serializers.ModelSerializer):
+    affiliates = AffiliationSerializer(many=True)
+    agents = AgentSerializer(many=True)
+    payer = PayerSerializer()
+    requester = RequesterSerializer()
+
+    class Meta:
+        model = Event
+        fields = '__all__'
+
+
+class BookingSerializer(BookingNoEventsSerializer):
+    events = EventNoBookingSerializer()
 
 
 class BookingCreateSerializer(extendable_serializer(Booking)):
@@ -365,16 +381,8 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         return booking.id
 
 
-class EventSerializer(serializers.ModelSerializer):
-    affiliates = AffiliationSerializer(many=True)
-    agents = AgentSerializer(many=True)
+class EventSerializer(EventNoBookingSerializer):
     booking = BookingSerializer()
-    payer = PayerSerializer()
-    requester = RequesterSerializer()
-
-    class Meta:
-        model = Event
-        fields = '__all__'
 
 
 class EventCreateSerializer(serializers.ModelSerializer):

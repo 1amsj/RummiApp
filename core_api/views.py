@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from core_api.constants import INCLUDE_EVENTS_KEY
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
@@ -17,7 +18,8 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Company, 
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, BookingSerializer, \
+from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, \
+    BookingNoEventsSerializer, BookingSerializer, \
     CompanyCreateSerializer, \
     CompanySerializer, \
     EventCreateSerializer, EventSerializer, OperatorSerializer, \
@@ -256,6 +258,20 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
 
 
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
+    @classmethod
+    def get(cls, request):
+        query_params = prepare_query_params(request.GET)
+        include_events = query_params.pop(INCLUDE_EVENTS_KEY, False)
+
+        queryset = Booking.objects.all()
+        if include_events:
+            queryset = queryset.prefetch_related('events')
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serializer = BookingSerializer if include_events else BookingNoEventsSerializer
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error

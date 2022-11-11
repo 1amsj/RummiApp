@@ -1,9 +1,11 @@
 NO_EXACT_MATCH_SUFFIX = '__icontains'
 
 EXACT_MATCH_KEY = '_exact_match'
+INCLUDE_EVENTS_KEY = '_include_events'
 
 FIELDS_BLACKLIST = [
     EXACT_MATCH_KEY,
+    INCLUDE_EVENTS_KEY,
 ]
 
 API_NESTED_QUERY_PARAM_SEPARATOR = '.'
