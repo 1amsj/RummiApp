@@ -10,7 +10,6 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core_api.decorators import expect_does_not_exist, expect_key_error
-from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import contact_get_or_create, location_get_or_create, prepare_query_params
 from core_backend.datastructures import QueryParams
@@ -19,7 +18,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Company, 
     Recipient, \
     Requester, Service, User
 from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingSerializer, CompanySerializer, \
-    OperatorSerializer, \
+    EventCreateSerializer, EventSerializer, OperatorSerializer, \
     PayerSerializer, \
     ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer
@@ -269,37 +268,23 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking.services.add(*service_ids)
         manage_extra_attrs(business, booking, request.data)
 
-        events = request.data.get('events', [])
-        for e in events:
-            agent_ids = e.get('agents')
-            payer_id = e['payer']
-            affiliation_ids = e.get('affiliations')
-            requester_id = e.get('requester', user.as_requester.id if user.is_requester else None)
-            location_id = e.get('location')
-            meeting_url = e.get('meeting_url')
-            start_at = e['start_at']
-            end_at = e['end_at']
-            observations = e.get('observations', '')
-
-            if not location_id and not meeting_url:
-                raise BadRequestException('Either location or meeting_url must be specified')
-
-            event = Event.objects.create(
-                booking=booking,
-                payer_id=payer_id,
-                requester_id=requester_id,
-                location_id=location_id,
-                meeting_url=meeting_url,
-                start_at=start_at,
-                end_at=end_at,
-                observations=observations,
-            )
-            if affiliation_ids:
-                event.affiliates.add(*affiliation_ids)
-            if agent_ids:
-                event.agents.add(*agent_ids)
-
         return Response(booking.id, status=status.HTTP_201_CREATED)
+
+
+class ManageEvents(basic_view_manager(Event, EventSerializer)):
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        if not data.get('requester'):
+            user: User = request.user
+            data['requester'] = user.as_requester.id if user.is_requester else None
+
+        serializer = EventCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        event_id = serializer.create()
+        return Response(event_id, status=status.HTTP_201_CREATED)
 
 
 class ManageCompany(basic_view_manager(Company, CompanySerializer)):
