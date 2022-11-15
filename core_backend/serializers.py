@@ -43,9 +43,10 @@ def extendable_serializer(serializer_model: Type[models.Model], serializer_field
 
         def to_internal_value(self, data: dict):
             model_fields = get_model_field_names(serializer_model)
+            ser_fields = self.get_fields().keys()
             extra_fields = {}
             for k in list(data.keys()):
-                if k in model_fields:
+                if k in model_fields or k in ser_fields:
                     continue
                 extra_fields[k] = data.pop(k)
             data = super(ExtendableSerializer, self).to_internal_value(data)
@@ -103,9 +104,30 @@ class BusinessField(serializers.RelatedField):
 
 
 # General serializers
-ContactSerializer = generic_serializer(Contact)
+class ContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = '__all__'
 
-LocationSerializer = generic_serializer(Location)
+    def validate(self, data: dict):
+        if not (data.get('email') or data.get('phone') or data.get('fax')):
+            raise serializers.ValidationError(_('Contact data can not be empty'))
+
+        return super(ContactSerializer, self).validate(data)
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        return Contact.objects.create(**data).id
+
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = '__all__'
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        return Location.objects.create(**data).id
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -115,6 +137,30 @@ class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = '__all__'
+
+
+class CompanyCreateSerializer(serializers.ModelSerializer):
+    contact = ContactSerializer()
+    location = LocationSerializer()
+
+    class Meta:
+        model = Company
+        fields = '__all__'
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+
+        contact = data.pop('contact')
+        contact_id = ContactSerializer().create(validated_data=contact) if contact else None
+
+        location = data.pop('location')
+        location_id = LocationSerializer().create(validated_data=location) if location else None
+
+        return Company.objects.create(
+            contact_id=contact_id,
+            location_id=location_id,
+            **data
+        ).id
 
 
 # User serializers
@@ -282,6 +328,41 @@ class BookingSerializer(extendable_serializer(Booking)):
     class Meta:
         model = Booking
         fields = '__all__'
+
+
+class BookingCreateSerializer(extendable_serializer(Booking)):
+    business = BusinessField()
+    categories = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Category.objects.all())
+    operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
+    services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
+
+    class Meta:
+        model = Booking
+        fields = (
+            'business',
+            'categories',
+            'operators',
+            'services',  # TODO add constraints here for incomplete bookings
+        )
+
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        business = BusinessField().to_internal_value(data.pop('business'))
+        extras = data.pop('extra', {})
+        categories = data.pop('categories', [])
+        operators = data.pop('operators', [])
+        services = data.pop('services', [])
+
+        booking = Booking.objects.create(**data)
+        if categories:
+            booking.categories.add(*categories)
+        if operators:
+            booking.operators.add(*operators)
+        if services:
+            booking.services.add(*services)
+        manage_extra_attrs(business, booking, extras)
+
+        return booking.id
 
 
 class EventSerializer(serializers.ModelSerializer):

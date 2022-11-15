@@ -11,18 +11,20 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
-from core_api.services import contact_get_or_create, location_get_or_create, prepare_query_params
+from core_api.services import prepare_query_params
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Company, Event, ExtraQuerySet, Operator, Payer, \
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingSerializer, CompanySerializer, \
+from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, BookingSerializer, \
+    CompanyCreateSerializer, \
+    CompanySerializer, \
     EventCreateSerializer, EventSerializer, OperatorSerializer, \
     PayerSerializer, \
     ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer
-from core_backend.services import filter_params, is_extendable, manage_extra_attrs
+from core_backend.services import filter_params, is_extendable
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -257,18 +259,17 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_key_error
-    def post(request, business):
-        user: User = request.user
+    def post(request, business_name):
+        data = request.data
+        data['business'] = business_name
+        if not data.get('operators'):
+            user: User = request.user
+            data['operators'] = [user.as_operator.id] if user.is_operator else None
 
-        operator_ids = request.data.get('operators', [user.as_operator.id] if user.is_operator else None)
-        service_ids = request.data['services']
-
-        booking = Booking.objects.create()
-        booking.operators.add(*operator_ids)
-        booking.services.add(*service_ids)
-        manage_extra_attrs(business, booking, request.data)
-
-        return Response(booking.id, status=status.HTTP_201_CREATED)
+        serializer = BookingCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        booking_id = serializer.create()
+        return Response(booking_id, status=status.HTTP_201_CREATED)
 
 
 class ManageEvents(basic_view_manager(Event, EventSerializer)):
@@ -292,15 +293,10 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request):
-        company = Company.objects.create(
-            name=request.data['name'],
-            type=request.data['type'],
-            send_method=request.data['send_method'],
-            on_hold=request.data.get('on_hold', False),
-            contact=contact_get_or_create(request.data['contact']),
-            location=location_get_or_create(request.data.get('location')),
-        )
-        return Response(company.id, status=status.HTTP_201_CREATED)
+        serializer = CompanyCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        company_id = serializer.create()
+        return Response(company_id, status=status.HTTP_201_CREATED)
 
 
 class ManageService(basic_view_manager(Service, ServiceSerializer)):
