@@ -22,7 +22,7 @@ from core_backend.serializers import AffiliationSerializer, AgentSerializer, Boo
     BookingNoEventsSerializer, BookingSerializer, \
     CompanyCreateSerializer, \
     CompanySerializer, \
-    EventCreateSerializer, EventSerializer, OperatorSerializer, \
+    EventCreateSerializer, EventNoBookingSerializer, OperatorSerializer, \
     PayerSerializer, \
     ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer
@@ -288,7 +288,17 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         return Response(booking_id, status=status.HTTP_201_CREATED)
 
 
-class ManageEvents(basic_view_manager(Event, EventSerializer)):
+class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
+    @classmethod
+    def get(cls, request, business_name=None):
+        query_params = prepare_query_params(request.GET)
+        queryset = Event.objects.all()
+        if business_name:
+            queryset = queryset.filter(booking__business__name=business_name)
+        queryset = cls.apply_filters(queryset, query_params)
+        serialized = EventNoBookingSerializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
