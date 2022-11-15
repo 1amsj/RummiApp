@@ -2,6 +2,7 @@ from typing import Type, Union
 
 from django.db import models, transaction
 from django.db.models import QuerySet
+from django.utils.translation import gettext_lazy as _
 from rest_framework import generics, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
@@ -11,6 +12,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core_api.constants import INCLUDE_EVENTS_KEY
 from core_api.decorators import expect_does_not_exist, expect_key_error
+from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_backend.datastructures import QueryParams
@@ -312,6 +314,16 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
         serializer.is_valid(raise_exception=True)
         event_id = serializer.create()
         return Response(event_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, event_id=None):
+        if not event_id:
+            raise BadRequestException(_('ID not provided'))
+
+        Event.objects.get(id=event_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ManageCompany(basic_view_manager(Company, CompanySerializer)):
