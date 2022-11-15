@@ -316,7 +316,7 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(Event)
-    def update(request, event_id=None):
+    def put(request, event_id=None):
         serializer = EventCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(Event.objects.get(id=event_id))
