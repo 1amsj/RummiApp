@@ -288,7 +288,7 @@ class Category(ExtendableModel):
 
 
 class Service(ExtendableModel):
-    business = models.ForeignKey("Business", on_delete=models.CASCADE, related_name='services')
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
 
@@ -301,6 +301,7 @@ class Service(ExtendableModel):
 
 
 class Booking(ExtendableModel, HistoricalModel):
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
 

@@ -363,7 +363,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
 
     def create(self, validated_data=None) -> int:
         data = validated_data or self.validated_data
-        business = BusinessField().to_internal_value(data.pop('business'))
+        business = BusinessField().to_internal_value(data.get('business'))
         extras = data.pop('extra', {})
         categories = data.pop('categories', [])
         operators = data.pop('operators', [])
