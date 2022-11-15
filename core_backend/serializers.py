@@ -7,7 +7,7 @@ from rest_framework import serializers
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
     ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
-    manage_extra_attrs
+    manage_extra_attrs, sync_m2m
 
 
 # Extra serializers
@@ -414,6 +414,28 @@ class EventCreateSerializer(serializers.ModelSerializer):
             event.agents.add(*agents)
 
         return event.id
+
+    def update(self, instance: Event, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        affiliates = data.pop('affiliates', [])
+        agents = data.pop('agents', [])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+
+        sync_m2m(
+            instance.affiliates.all().values_list('id', flat=True),
+            affiliates,
+            instance.affiliates.add,
+            instance.affiliates.remove,
+        )
+
+        sync_m2m(
+            instance.agents.all().values_list('id', flat=True),
+            agents,
+            instance.agents.add,
+            instance.agents.remove,
+        )
 
 
 InvoiceSerializer = generic_serializer(Invoice)

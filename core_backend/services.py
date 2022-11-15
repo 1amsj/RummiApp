@@ -100,3 +100,16 @@ def filter_params(model: Type[models.Model], params: QueryParams) -> Tuple[Query
             (base_params if f in field_names else extra_params)[f] = p
 
     return base_params, extra_params, nested_params
+
+
+def sync_m2m(original_set: set, new_set: set, add, remove):
+    original_set = set(original_set)
+    new_set = set(new_set)
+
+    deleted = original_set.difference(new_set)
+    if deleted:
+        remove(*deleted)
+
+    created = new_set.difference(original_set)
+    if created:
+        add(*created)
