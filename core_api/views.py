@@ -317,9 +317,10 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def put(request, event_id=None):
+        event = Event.objects.get(id=event_id)
         serializer = EventCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.update(Event.objects.get(id=event_id))
+        serializer.update(event)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @staticmethod
