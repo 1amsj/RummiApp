@@ -24,7 +24,7 @@ from core_backend.serializers import AffiliationSerializer, AgentSerializer, Boo
     CompanySerializer, \
     EventCreateSerializer, EventNoBookingSerializer, OperatorSerializer, \
     PayerSerializer, \
-    ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
+    ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer
 from core_backend.services import filter_params, is_extendable
 
@@ -218,7 +218,7 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
         queryset = cls.apply_filters(queryset, query_params)
         if business_name:
             queryset = queryset.filter(extra__business__name=business_name)
-        serialized = ProviderSerializer(queryset, many=True)
+        serialized = ProviderServiceSerializer(queryset, many=True)
         return Response(serialized.data)
 
 

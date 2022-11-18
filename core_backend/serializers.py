@@ -334,6 +334,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
 class EventNoBookingSerializer(serializers.ModelSerializer):
     affiliates = AffiliationSerializer(many=True)
     agents = AgentSerializer(many=True)
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
     payer = PayerSerializer()
     requester = RequesterSerializer()
 
@@ -422,6 +423,7 @@ class EventCreateSerializer(serializers.ModelSerializer):
 
         for (k, v) in data.items():
             setattr(instance, k, v)
+        instance.save()
 
         sync_m2m(
             instance.affiliates.all().values_list('id', flat=True),
