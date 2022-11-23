@@ -1,5 +1,9 @@
 # CORE BACK-END
 
+## Note on OS
+
+This README file was originally written for a Linux installation on a Virtual Machine running on Windows. Scroll down for the Mac OS version. 
+
 ## Initial setup
 
 Install:
@@ -43,3 +47,95 @@ If you made modifications to the models in `core_backend/models.py`, before runn
 `python manage.py makemigrations`
 
 `python manage.py migrate`
+
+<br />
+<br />
+
+# CORE BACK-END Mac OS
+
+## Initial setup
+
+Before trying to install the dependecnies you need to install the following:
+- PostgreSQL and pgAdmin4
+- Python3
+- Graphviz package
+
+### PostgreSQL and pgAdmin4
+
+The easiest way to install PostgresSQL on Mac is trough the Postgres.App you can find a detailed tutorial [here](https://lifewithdata.com/2021/12/08/sql-tutorial-how-to-install-postgresql-and-pgadmin-on-mac/), including how to install pgAdmin4.
+
+After the installations you need to set up the path of PostgreSQL to your system. Instructions on how to do this can be found [here](https://www.makeuseof.com/postgresql-macos-installing/).
+
+### Python3
+
+It is important that you use python version 3.8.10, you can find it and all the ohter versions at https://www.python.org. 
+
+### Graphviz package
+
+The easiest way to dowload packages on Mac OS is with the [Homebrew](https://brew.sh) package manager and we will be using to intsall Graphviz.
+
+1. Install graphviz
+`brew install graphviz`
+
+2. Check the path to your graphviz by running:
+`brew info graphviz`
+
+In my case this was my path: `/opt/homebrew/Cellar/graphviz/7.0.1`
+
+3. Change to your directory
+`export GRAPHVIZ_DIR="/usr/local/Cellar/graphviz/<VERSION>"`. Replace the path between " " with the path you found in the second step. In my case the command i ran was: `export GRAPHVIZ_DIR="/opt/homebrew/Cellar/graphviz/7.0.1"` 
+
+4. Finally install pygraphviz by running:
+`pip3 install pygraphviz --global-option=build_ext --global-option="-I$GRAPHVIZ_DIR/include" --global-option="-L$GRAPHVIZ_DIR/lib"`
+
+## Virtual Environment
+
+All the dependencies will be installed after creating and activating a virtual environment.
+
+When running python and pip commands I ran into the issue that my Mac's default python version (3.8.9) kept getting called instead of the one intended for use in this project (3.8.10). This caused me a bunch of different problems that i won't get into but all you need to prevent this is to run python3 or pip3 instead. 
+
+Create the virtualenv by specifying the path to the correct python version and path to where you want it created.
+`virtualenv --python3="/usr/bin/pythonX.X" "/path/to/new/virtualenv/"`
+
+Here is an example of how the command looked when i ran it for my Mac:
+`virtualenv --python3="/Library/Frameworks/Python.framework/Versions/3.8/bin/python3" "/Users/marcel/Desktop/CORE/core_backend`
+
+Where `core_backend` is the projects root directory.
+
+Move to the project's root directory and activate the venv specifying it's path with: 
+`source /path/to/new/virtualenv/bin/activate`
+
+Example: 
+`source /Users/marcel/Desktop/CORE/core_backend/bin/activate`
+
+Now we are finally ready to install the dependencies. Run:
+`pip3 install -r requirements.txt`. If a new package was added to `requirements.txt`, run the same command previously mentioned.
+
+**In pgAdmin4**,
+create `core_user` role,
+
+![image](https://user-images.githubusercontent.com/53912324/199030034-d79ba002-7ea6-4e8a-976d-264d23d85488.png)
+
+with login and superuser priviledges,
+
+![image](https://user-images.githubusercontent.com/53912324/199030193-4563a741-6dcf-4a3d-8563-6bab0d63bf95.png)
+
+then create a server group with any name, with user `core_user` and password `core_password`,
+
+![image](https://user-images.githubusercontent.com/53912324/199030464-8a51af7b-a48b-44cc-bc81-de4194839285.png)
+![image](https://user-images.githubusercontent.com/53912324/199030669-789ce73f-33ef-4a23-a5e4-cd53e543fd74.png)
+![image](https://user-images.githubusercontent.com/53912324/199030956-dc7b9243-e0be-4d89-82c9-3d4420bf1a07.png)
+
+<br />
+
+This step isn't in the original README, but as Mac OS user i was having the following error: `dingo.db.utils.OperationalError: connection to server at "127.0.0.1", port 5432 failed: FATAL: database "core_db" does not exist`. I could only solve it by creating a `core_db` inside the `core_server`: 
+
+<br />
+
+![image](https://user-images.githubusercontent.com/64095070/202921443-9d0b500e-e89b-4c88-8428-425ffb7ef5ee.png)
+
+then, **at project's root directory, open a terminal** and run
+
+`python3 manage.py migrate`
+
+`python3 manage.py runserver localhost:8000`
