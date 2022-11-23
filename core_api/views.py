@@ -259,7 +259,11 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
 
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
-    def get(cls, request):
+    def get(cls, request, business_name=None, booking_id=None):
+        if booking_id:
+            serialized = BookingSerializer(Booking.objects.get(id=booking_id))
+            return Response(serialized.data)
+
         query_params = prepare_query_params(request.GET)
         include_events = query_params.pop(INCLUDE_EVENTS_KEY, False)
 

@@ -344,7 +344,7 @@ class EventNoBookingSerializer(serializers.ModelSerializer):
 
 
 class BookingSerializer(BookingNoEventsSerializer):
-    events = EventNoBookingSerializer()
+    events = EventNoBookingSerializer(many=True)
 
 
 class BookingCreateSerializer(extendable_serializer(Booking)):
