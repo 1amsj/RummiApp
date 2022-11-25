@@ -302,6 +302,7 @@ class Service(ExtendableModel):
 
 class Booking(ExtendableModel, HistoricalModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
+    companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
 

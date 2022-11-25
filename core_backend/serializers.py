@@ -322,6 +322,7 @@ class ServiceSerializer(extendable_serializer(Service)):
 
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
+    companies = CompanySerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
