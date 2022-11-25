@@ -351,6 +351,7 @@ class BookingSerializer(BookingNoEventsSerializer):
 class BookingCreateSerializer(extendable_serializer(Booking)):
     business = BusinessField()
     categories = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Category.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Company.objects.all())
     operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
 
@@ -359,6 +360,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         fields = (
             'business',
             'categories',
+            'companies',
             'operators',
             'services',  # TODO add constraints here for incomplete bookings
         )
@@ -368,12 +370,15 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         business = BusinessField().to_internal_value(data.get('business'))
         extras = data.pop('extra', {})
         categories = data.pop('categories', [])
+        companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
 
         booking = Booking.objects.create(**data)
         if categories:
             booking.categories.add(*categories)
+        if companies:
+            booking.categories.add(*companies)
         if operators:
             booking.operators.add(*operators)
         if services:
