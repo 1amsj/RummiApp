@@ -378,7 +378,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         if categories:
             booking.categories.add(*categories)
         if companies:
-            booking.categories.add(*companies)
+            booking.companies.add(*companies)
         if operators:
             booking.operators.add(*operators)
         if services:
