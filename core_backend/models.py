@@ -307,13 +307,13 @@ class Booking(ExtendableModel, HistoricalModel):
     services = models.ManyToManyField(Service, related_name='bookings')
 
     # Constraints
-    categories = models.ManyToManyField(Category, related_name='bookings')
-    agents_companies = models.ManyToManyField(Company, related_name='cstr_booking_agents')
-    operators_companies = models.ManyToManyField(Company, related_name='cstr_booking_operators')
-    payers_companies = models.ManyToManyField(Company, related_name='cstr_booking_payers')
-    providers_companies = models.ManyToManyField(Company, related_name='cstr_booking_providers')
-    recipients_companies = models.ManyToManyField(Company, related_name='cstr_booking_recipients')
-    requesters_companies = models.ManyToManyField(Company, related_name='cstr_booking_requesters')
+    categories = models.ManyToManyField(Category, blank=True, related_name='bookings')
+    agents_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_agents')
+    operators_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_operators')
+    payers_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_payers')
+    providers_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_providers')
+    recipients_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_recipients')
+    requesters_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_requesters')
 
     class Meta:
         verbose_name = _('booking')
