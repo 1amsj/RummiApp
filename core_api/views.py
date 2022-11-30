@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from core_api.constants import INCLUDE_EVENTS_KEY
+from core_api.constants import INCLUDE_BOOKING_KEY, INCLUDE_EVENTS_KEY
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
@@ -22,7 +22,7 @@ from core_backend.serializers import AffiliationSerializer, AgentSerializer, Boo
     BookingNoEventsSerializer, BookingSerializer, \
     CompanyCreateSerializer, \
     CompanySerializer, \
-    EventCreateSerializer, EventNoBookingSerializer, OperatorSerializer, \
+    EventCreateSerializer, EventNoBookingSerializer, EventSerializer, OperatorSerializer, \
     PayerSerializer, \
     ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer
@@ -291,16 +291,36 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking_id = serializer.create()
         return Response(booking_id, status=status.HTTP_201_CREATED)
 
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Booking)
+    def put(request, booking_id=None):
+        booking = Booking.objects.get(id=booking_id)
+        business = request.data.pop('business')
+        serializer = BookingCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(booking, business)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, booking_id=None):
+        Booking.objects.get(id=booking_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None):
         query_params = prepare_query_params(request.GET)
+        include_booking = query_params.pop(INCLUDE_BOOKING_KEY, False)
         queryset = Event.objects.all()
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
         queryset = cls.apply_filters(queryset, query_params)
-        serialized = EventNoBookingSerializer(queryset, many=True)
+        serializer = EventSerializer if include_booking else EventNoBookingSerializer
+        serialized = serializer(queryset, many=True)
         return Response(serialized.data)
 
     @staticmethod
