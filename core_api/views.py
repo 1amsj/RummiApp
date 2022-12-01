@@ -356,14 +356,30 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
 
 
 class ManageCompany(basic_view_manager(Company, CompanySerializer)):
+    @classmethod
+    @expect_does_not_exist(Company)
+    def get(cls, request, company_id=None):
+        if company_id:
+            serialized = CompanySerializer(Company.objects.get(id=company_id))
+            return Response(serialized.data)
+        query_params = prepare_query_params(request.GET)
+        queryset = cls.apply_filters(Company.objects.all(), query_params)
+        serialized = CompanySerializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
     def post(request):
-        serializer = CompanyCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        company_id = serializer.create()
-        return Response(company_id, status=status.HTTP_201_CREATED)
+        company = Company.objects.create(
+            name=request.data['name'],
+            type=request.data['type'],
+            send_method=request.data['send_method'],
+            on_hold=request.data.get('on_hold', False),
+            contact=contact_get_or_create(request.data['contact']),
+            location=location_get_or_create(request.data.get('location')),
+        )
+        return Response(company.id, status=status.HTTP_201_CREATED)
 
 
 class ManageService(basic_view_manager(Service, ServiceSerializer)):
