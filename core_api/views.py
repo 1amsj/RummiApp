@@ -371,15 +371,10 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request):
-        company = Company.objects.create(
-            name=request.data['name'],
-            type=request.data['type'],
-            send_method=request.data['send_method'],
-            on_hold=request.data.get('on_hold', False),
-            contact=contact_get_or_create(request.data['contact']),
-            location=location_get_or_create(request.data.get('location')),
-        )
-        return Response(company.id, status=status.HTTP_201_CREATED)
+        serializer = CompanyCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        company_id = serializer.create()
+        return Response(company_id, status=status.HTTP_201_CREATED)
 
 
 class ManageService(basic_view_manager(Service, ServiceSerializer)):
