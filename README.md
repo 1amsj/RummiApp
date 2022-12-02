@@ -1,21 +1,27 @@
 # CORE BACK-END
 
-## Note on OS
+## Table of Contents
 
-This README file was originally written for a Linux installation on a Virtual Machine running on Windows. Scroll down for the Mac OS version. 
+- [Initial Setup](#initial-setup)
+- [Setup on MacOs](#core-back-end-mac-os)
+- [Resources for Debugging](#debugging-resources)
 
-## Initial setup
+---
 
-Install:
-- pgAdmin4
-- PostgreSQL
+## Initial Setup
+
+First of all install:
+- PostgreSQL and pgAdmin4
 - Python3
+- Graphviz
 
 Also, install the dependencies with the command `pip install -r requirements.txt`. If a new package was added to `requirements.txt`, run the same command previously mentioned.
 
 ### Disclaimer
 
-Before installing al the dependencies of the project, be sure that you are not using a Python version superior to 3.9. The dependencie backports.zoneinfo does not support superior versions than 3.9. Also check-out that you set up the path of PostgreSQL to your system.
+This README file was originally written for a Linux installation on a Virtual Machine running on Windows. Scroll down for the Mac OS version. 
+
+Before installing all the dependencies of the project, be sure that you are using Python 3.8.10. The dependencie backports.zoneinfo does not support superior versions than 3.8.10. Also check-out that you set up the path of PostgreSQL to your system.
 
 **In pgAdmin4**,
 create `core_user` role,
@@ -48,8 +54,7 @@ If you made modifications to the models in `core_backend/models.py`, before runn
 
 `python manage.py migrate`
 
-<br />
-<br />
+---
 
 # CORE BACK-END Mac OS
 
@@ -139,3 +144,12 @@ then, **at project's root directory, open a terminal** and run
 `python3 manage.py migrate`
 
 `python3 manage.py runserver localhost:8000`
+
+---
+
+## Debugging Resources
+
+Here are some useful resources for learning how to debug project.
+
+- https://code.visualstudio.com/docs/python/tutorial-django
+- https://www.youtube.com/watch?v=7qZBwhSlfOo
