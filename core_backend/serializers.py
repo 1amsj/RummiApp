@@ -190,7 +190,6 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(UserSerializer):
-    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
 
     def create(self, validated_data=None):
         data = validated_data or self.validated_data
