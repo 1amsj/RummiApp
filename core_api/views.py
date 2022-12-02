@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from core_api.constants import INCLUDE_BOOKING_KEY, INCLUDE_EVENTS_KEY
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
@@ -17,12 +18,13 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Company, 
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, BookingSerializer, \
+from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, \
+    BookingNoEventsSerializer, BookingSerializer, \
     CompanyCreateSerializer, \
     CompanySerializer, \
-    EventCreateSerializer, EventSerializer, OperatorSerializer, \
+    EventCreateSerializer, EventNoBookingSerializer, EventSerializer, OperatorSerializer, \
     PayerSerializer, \
-    ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
+    ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer
 from core_backend.services import filter_params, is_extendable
 
@@ -216,7 +218,7 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
         queryset = cls.apply_filters(queryset, query_params)
         if business_name:
             queryset = queryset.filter(extra__business__name=business_name)
-        serialized = ProviderSerializer(queryset, many=True)
+        serialized = ProviderServiceSerializer(queryset, many=True)
         return Response(serialized.data)
 
 
@@ -256,6 +258,24 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
 
 
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
+    @classmethod
+    def get(cls, request, business_name=None, booking_id=None):
+        if booking_id:
+            serialized = BookingSerializer(Booking.objects.get(id=booking_id))
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+        include_events = query_params.pop(INCLUDE_EVENTS_KEY, False)
+
+        queryset = Booking.objects.all()
+        if include_events:
+            queryset = queryset.prefetch_related('events')
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serializer = BookingSerializer if include_events else BookingNoEventsSerializer
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -271,8 +291,38 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking_id = serializer.create()
         return Response(booking_id, status=status.HTTP_201_CREATED)
 
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Booking)
+    def put(request, booking_id=None):
+        booking = Booking.objects.get(id=booking_id)
+        business = request.data.pop('business')
+        serializer = BookingCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(booking, business)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-class ManageEvents(basic_view_manager(Event, EventSerializer)):
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, booking_id=None):
+        Booking.objects.get(id=booking_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
+    @classmethod
+    def get(cls, request, business_name=None):
+        query_params = prepare_query_params(request.GET)
+        include_booking = query_params.pop(INCLUDE_BOOKING_KEY, False)
+        queryset = Event.objects.all()
+        if business_name:
+            queryset = queryset.filter(booking__business__name=business_name)
+        queryset = cls.apply_filters(queryset, query_params)
+        serializer = EventSerializer if include_booking else EventNoBookingSerializer
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -287,8 +337,36 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         event_id = serializer.create()
         return Response(event_id, status=status.HTTP_201_CREATED)
 
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def put(request, event_id=None):
+        event = Event.objects.get(id=event_id)
+        serializer = EventCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(event)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, event_id=None):
+        Event.objects.get(id=event_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class ManageCompany(basic_view_manager(Company, CompanySerializer)):
+    @classmethod
+    @expect_does_not_exist(Company)
+    def get(cls, request, company_id=None):
+        if company_id:
+            serialized = CompanySerializer(Company.objects.get(id=company_id))
+            return Response(serialized.data)
+        query_params = prepare_query_params(request.GET)
+        queryset = cls.apply_filters(Company.objects.all(), query_params)
+        serialized = CompanySerializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error

@@ -7,7 +7,7 @@ from rest_framework import serializers
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
     ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
-    manage_extra_attrs
+    manage_extra_attrs, sync_m2m
 
 
 # Extra serializers
@@ -81,7 +81,11 @@ class BusinessField(serializers.RelatedField):
     }
 
     def __init__(self, **kwargs):
-        super(BusinessField, self).__init__(queryset=kwargs.pop('queryset', Business.objects.all()))
+        try:
+            qs = kwargs.pop('queryset', Business.objects.all())
+            super(BusinessField, self).__init__(queryset=qs, **kwargs)
+        except AssertionError:
+            super(BusinessField, self).__init__(**kwargs)
 
     def to_internal_value(self, data):
         try:
@@ -232,21 +236,21 @@ class PayerSerializer(user_subtype_serializer(Payer)):
     companies = CompanySerializer(many=True)
 
 
-class ProviderSerializer(user_subtype_serializer(Provider)):
-    companies = CompanySerializer(many=True)
-    services = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-
-    class Meta:
-        model = Provider
-        fields = '__all__'
-
-
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)
     categories = generic_serializer(Category)(many=True)
 
     class Meta:
         model = Service
+        fields = '__all__'
+
+
+class ProviderSerializer(user_subtype_serializer(Provider)):
+    companies = CompanySerializer(many=True)
+    services = ServiceNoProviderSerializer(many=True)
+
+    class Meta:
+        model = Provider
         fields = '__all__'
 
 
@@ -320,8 +324,10 @@ class ServiceSerializer(extendable_serializer(Service)):
         fields = '__all__'
 
 
-class BookingSerializer(extendable_serializer(Booking)):
+class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
+    companies = CompanySerializer(many=True)
+    events_count = serializers.IntegerField(source='events.count', read_only=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
 
@@ -330,9 +336,26 @@ class BookingSerializer(extendable_serializer(Booking)):
         fields = '__all__'
 
 
+class EventNoBookingSerializer(serializers.ModelSerializer):
+    affiliates = AffiliationSerializer(many=True)
+    agents = AgentSerializer(many=True)
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+    payer = PayerSerializer()
+    requester = RequesterSerializer()
+
+    class Meta:
+        model = Event
+        fields = '__all__'
+
+
+class BookingSerializer(BookingNoEventsSerializer):
+    events = EventNoBookingSerializer(many=True)
+
+
 class BookingCreateSerializer(extendable_serializer(Booking)):
-    business = BusinessField()
+    business = BusinessField(required=False)
     categories = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Category.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Company.objects.all())
     operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
 
@@ -341,21 +364,27 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         fields = (
             'business',
             'categories',
+            'companies',
             'operators',
             'services',  # TODO add constraints here for incomplete bookings
         )
 
     def create(self, validated_data=None) -> int:
         data = validated_data or self.validated_data
-        business = BusinessField().to_internal_value(data.pop('business'))
+        business = BusinessField().to_internal_value(data.get('business'))
         extras = data.pop('extra', {})
         categories = data.pop('categories', [])
+        companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
+
+        # TODO add constraints here for incomplete bookings
 
         booking = Booking.objects.create(**data)
         if categories:
             booking.categories.add(*categories)
+        if companies:
+            booking.companies.add(*companies)
         if operators:
             booking.operators.add(*operators)
         if services:
@@ -364,17 +393,32 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
 
         return booking.id
 
+    def update(self, instance: Booking, business, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        data.pop('business', None)  # Ensure business will not be modified accidentally
+        business = BusinessField().to_internal_value(business)
+        extras = data.pop('extra', {})
+        categories = data.pop('categories', [])
+        companies = data.pop('companies', [])
+        operators = data.pop('operators', [])
+        services = data.pop('services', [])
 
-class EventSerializer(serializers.ModelSerializer):
-    affiliates = AffiliationSerializer(many=True)
-    agents = AgentSerializer(many=True)
-    booking = BookingSerializer()
-    payer = PayerSerializer()
-    requester = RequesterSerializer()
+        # TODO add constraints here for incomplete bookings
 
-    class Meta:
-        model = Event
-        fields = '__all__'
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.categories, categories)
+        sync_m2m(instance.companies, companies)
+        sync_m2m(instance.operators, operators)
+        sync_m2m(instance.services, services)
+
+        manage_extra_attrs(business, instance, extras)
+
+
+class EventSerializer(EventNoBookingSerializer):
+    booking = BookingNoEventsSerializer()
 
 
 class EventCreateSerializer(serializers.ModelSerializer):
@@ -406,6 +450,18 @@ class EventCreateSerializer(serializers.ModelSerializer):
             event.agents.add(*agents)
 
         return event.id
+
+    def update(self, instance: Event, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        affiliates = data.pop('affiliates', [])
+        agents = data.pop('agents', [])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.affiliates, affiliates)
+        sync_m2m(instance.agents, agents)
 
 
 InvoiceSerializer = generic_serializer(Invoice)
