@@ -14,7 +14,8 @@ from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_backend.datastructures import QueryParams
-from core_backend.models import Affiliation, Agent, Booking, Business, Company, Event, ExtraQuerySet, Operator, Payer, \
+from core_backend.models import Affiliation, Agent, Booking, Business, Company, Contact, Event, ExtraQuerySet, Operator, \
+    Payer, \
     Provider, \
     Recipient, \
     Requester, Service, User
@@ -182,6 +183,24 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         serializer.is_valid(raise_exception=True)
         user = serializer.create()
         return Response(user.id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(User)
+    @expect_does_not_exist(Contact)
+    def put(request, user_id=None):
+        user = User.objects.get(id=user_id)
+        serializer = UserCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, user_id=None):
+        User.objects.get(id=user_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 ManageAgents = user_subtype_view_manager(Agent, AgentSerializer)
