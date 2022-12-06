@@ -186,6 +186,11 @@ class UserSerializer(serializers.ModelSerializer):
             'contact',
             'operator_id',
             'requester_id',
+            'is_operator',
+            'is_provider',
+            'is_recipient',
+            'is_requester',
+            'is_payer',
         )
 
 
