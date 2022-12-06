@@ -170,7 +170,6 @@ class CompanyCreateSerializer(serializers.ModelSerializer):
 # User serializers
 class UserSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
-    username = serializers.ReadOnlyField()
     contact = ContactSerializer()
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
@@ -201,6 +200,10 @@ class UserCreateSerializer(UserSerializer):
         data = validated_data or self.validated_data
         contact = Contact.objects.create(**data.pop('contact'))
         return User.objects.create(**data, contact=contact)
+
+
+class UserUpdateSerializer(UserSerializer):
+    username = serializers.ReadOnlyField()
 
     def update(self, instance: User, validated_data=None):
         data: dict = validated_data or self.validated_data

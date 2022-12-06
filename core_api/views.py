@@ -26,7 +26,7 @@ from core_backend.serializers import AffiliationSerializer, AgentSerializer, Boo
     EventCreateSerializer, EventNoBookingSerializer, EventSerializer, OperatorSerializer, \
     PayerSerializer, \
     ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
-    ServiceSerializer, UserCreateSerializer, UserSerializer
+    ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 
 
@@ -190,7 +190,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     @expect_does_not_exist(Contact)
     def put(request, user_id=None):
         user = User.objects.get(id=user_id)
-        serializer = UserCreateSerializer(data=request.data)
+        serializer = UserUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(user)
         return Response(status=status.HTTP_204_NO_CONTENT)
