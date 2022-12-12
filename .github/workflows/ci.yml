@@ -32,7 +32,7 @@ jobs:
           ECR_REPOSITORY: core-communications-rcore-be
           IMAGE_TAG: ${{ steps.vars.outputs.tag }}
         run: |
-          echo "$($ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)" >> ../../latest_deploy.txt
+          echo "$($ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)" >> ../../logs/latest_commit.txt
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
