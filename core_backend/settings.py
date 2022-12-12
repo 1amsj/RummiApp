@@ -19,6 +19,7 @@ import corsheaders.defaults
 BASE_DIR = Path(__file__).resolve().parent.parent
 PARENT_DIR = BASE_DIR.parent
 STATIC_ROOT = os.environ.get('FRONTEND_DIR', os.path.join(PARENT_DIR, 'core_frontend'))
+VERSION_FILE_DIR = os.path.join(BASE_DIR, 'logs', 'latest_commit.txt')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
