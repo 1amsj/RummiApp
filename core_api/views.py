@@ -28,6 +28,7 @@ from core_backend.serializers import AffiliationSerializer, AgentSerializer, Boo
     ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
+from core_backend.settings import VERSION_FILE_DIR
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -89,6 +90,12 @@ def test_end_point(request):
         data = f'Congratulation your API just responded to POST request with text: {text}'
         return Response({'response': data}, status=status.HTTP_200_OK)
     return Response({}, status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+def get_version(request):
+    with open(VERSION_FILE_DIR, 'r') as f:
+        return Response(f.readline().strip('\n'))
 
 
 def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:

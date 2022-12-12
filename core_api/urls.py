@@ -40,6 +40,7 @@ urlpatterns = [
     path('token/refresh/', csrf_exempt(TokenRefreshView.as_view()), name='token_refresh'),
     path('register/', views.RegisterView.as_view(), name='auth_register'),
     path('test/', views.test_end_point, name='test'),
+    path('version/', views.get_version, name='test'),
 
     *path_optional('users/', '<id:user_id>', views.ManageUsers.as_view(), name='manage_users'),
     path('agents/', views.ManageAgents.as_view(), name='manage_agents'),
