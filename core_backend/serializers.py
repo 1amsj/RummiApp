@@ -169,6 +169,7 @@ class CompanyCreateSerializer(serializers.ModelSerializer):
 
 # User serializers
 class UserSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField()
     contact = ContactSerializer()
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
@@ -186,15 +187,43 @@ class UserSerializer(serializers.ModelSerializer):
             'contact',
             'operator_id',
             'requester_id',
+            'is_operator',
+            'is_provider',
+            'is_recipient',
+            'is_requester',
+            'is_payer',
         )
 
 
 class UserCreateSerializer(UserSerializer):
-
     def create(self, validated_data=None):
         data = validated_data or self.validated_data
         contact = Contact.objects.create(**data.pop('contact'))
         return User.objects.create(**data, contact=contact)
+
+
+class UserUpdateSerializer(UserSerializer):
+    username = serializers.ReadOnlyField()
+
+    def update(self, instance: User, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        contact_data = data.pop('contact', {})
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+
+        if contact_data:
+            contact_id = contact_data.pop('id', None)
+            if contact_id:
+                contact = Contact.objects.get(id=contact_id)
+                for (k, v) in contact_data.items():
+                    setattr(contact, k, v)
+                contact.save()
+
+            else:
+                instance.contact = Contact.objects.create(**contact_data)
+
+        instance.save()
 
 
 def user_subtype_serializer(serializer_model: Type[models.Model]):
