@@ -33,7 +33,7 @@ jobs:
           IMAGE_TAG: ${{ steps.vars.outputs.tag }}
         run: |
           mkdir -p logs
-          echo "$($ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)" >> logs/latest_commit.txt
+          echo "$($GITHUB_SHA)" >> logs/latest_commit.txt
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
