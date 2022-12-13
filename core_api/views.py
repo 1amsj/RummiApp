@@ -235,8 +235,6 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
         query_params = prepare_query_params(request.GET)
         queryset = Provider.objects.all().prefetch_related('services', 'services__extra')
         queryset = cls.apply_filters(queryset, query_params)
-        if business_name:
-            queryset = queryset.filter(extra__business__name=business_name)
         serialized = ProviderServiceSerializer(queryset, many=True)
         return Response(serialized.data)
 
