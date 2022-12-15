@@ -102,23 +102,46 @@ def filter_params(model: Type[models.Model], params: QueryParams) -> Tuple[Query
     return base_params, extra_params, nested_params
 
 
-def sync_sets(original_set, new_set, add, remove):
+def sync_sets(original_set, new_set, add, remove, update):
     original_set = set(original_set)
     new_set = set(new_set)
 
     deleted = original_set.difference(new_set)
     if deleted:
-        remove(*deleted)
+        remove(deleted)
 
     created = new_set.difference(original_set)
     if created:
-        add(*created)
+        add(created)
+
+    updated = new_set.intersection(original_set)
+    if updated:
+        update()
 
 
 def sync_m2m(manager, new_set, field='id'):
     return sync_sets(
-        manager.all().values_list(field, flat=True),
-        new_set,
-        manager.add,
-        manager.remove,
+        original_set=manager.all().values_list(field, flat=True),
+        new_set=new_set,
+        add=lambda s: manager.add(*s),
+        remove=lambda s: manager.remove(*s),
     )
+
+
+def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset):
+    created, updated = [], []
+    for data in dataset:
+        obj_id = data.get('id', None)
+        if not obj_id:
+            # Created
+            obj = obj_type(**data)
+            created.append(obj)
+            continue
+
+        # Updated
+        obj = obj_type.objects.get(id=obj_id)
+        for (k, v) in data.items():
+            setattr(obj, k, v)
+        updated.append(obj)
+
+    return created, updated
