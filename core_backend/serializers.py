@@ -119,10 +119,6 @@ class ContactSerializer(serializers.ModelSerializer):
 
         return super(ContactSerializer, self).validate(data)
 
-    def create(self, validated_data=None) -> int:
-        data: dict = validated_data or self.validated_data
-        return Contact.objects.create(**data).id
-
 
 class ContactUnsafeSerializer(ContactSerializer):
     id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
@@ -133,42 +129,35 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = '__all__'
 
-    def create(self, validated_data=None) -> int:
-        data: dict = validated_data or self.validated_data
-        return Location.objects.create(**data).id
-
 
 class CompanySerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
-    location = LocationSerializer()
+    contacts = ContactSerializer(many=True)
+    locations = LocationSerializer(many=True)
 
     class Meta:
         model = Company
         fields = '__all__'
 
 
-class CompanyCreateSerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
-    location = LocationSerializer()
-
-    class Meta:
-        model = Company
-        fields = '__all__'
-
+class CompanyCreateSerializer(CompanySerializer):
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
+        contacts_data = data.pop('contacts', None)
+        locations_data = data.pop('locations', None)
 
-        contact = data.pop('contact')
-        contact_id = ContactSerializer().create(validated_data=contact) if contact else None
+        company = Company.objects.create(**data)
 
-        location = data.pop('location')
-        location_id = LocationSerializer().create(validated_data=location) if location else None
+        if contacts_data:
+            contacts = [Contact(**d) for d in contacts_data]
+            contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
+            company.contacts.add(*contact_ids)
 
-        return Company.objects.create(
-            contact_id=contact_id,
-            location_id=location_id,
-            **data
-        ).id
+        if locations_data:
+            locations = [Location(**d) for d in locations_data]
+            location_ids = [c.id for c in Location.objects.bulk_create(locations)]
+            company.locations.add(*location_ids)
+
+        return company.id
 
 
 # User serializers
