@@ -307,7 +307,7 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     def post(request, business_name=None):
         data = request.data
         data['business'] = business_name
-        serializer = def(data=data)
+        serializer = ServiceCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
