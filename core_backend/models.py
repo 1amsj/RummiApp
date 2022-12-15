@@ -79,7 +79,7 @@ class HistoricalModel(models.Model):
 
 # Abstract models
 class AbstractPerson(models.Model):
-    contact = models.OneToOneField("Contact", on_delete=models.SET_NULL, null=True, blank=True)
+    contacts = models.ManyToManyField("Contact", blank=True)
     first_name = models.CharField(_('first name'), max_length=150, blank=True)
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
     national_id = models.CharField(_('national ID'), max_length=50, blank=True)
@@ -107,8 +107,8 @@ class Contact(HistoricalModel):
 
 
 class Company(HistoricalModel):
-    contact = models.OneToOneField(Contact, on_delete=models.SET_NULL, null=True, blank=True)
-    location = models.OneToOneField("Location", on_delete=models.SET_NULL, related_name='owner', null=True, blank=True)
+    contacts = models.ManyToManyField(Contact, blank=True)
+    locations = models.ManyToManyField("Location", related_name='owner', blank=True)
     name = models.CharField(_('name'), max_length=128)
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
