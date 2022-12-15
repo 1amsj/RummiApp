@@ -212,7 +212,7 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
-        queryset = Provider.objects.all().prefetch_related('services', 'services__extra')
+        queryset = Provider.objects.filtrer(is_deleted=False).prefetch_related('services', 'services__extra')
         queryset = cls.apply_filters(queryset, query_params)
         if business_name:
             queryset = queryset.filter(extra__business__name=business_name)
@@ -307,7 +307,7 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     def post(request, business_name=None):
         data = request.data
         data['business'] = business_name
-        serializer = ServiceCreateSerializer(data=data)
+        serializer = def(data=data)
         serializer.is_valid(raise_exception=True)
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
