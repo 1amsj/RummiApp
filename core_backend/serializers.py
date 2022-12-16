@@ -7,7 +7,7 @@ from rest_framework import serializers
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
     ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
-    manage_extra_attrs, sync_m2m
+    manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m
 
 
 # Extra serializers
@@ -119,9 +119,9 @@ class ContactSerializer(serializers.ModelSerializer):
 
         return super(ContactSerializer, self).validate(data)
 
-    def create(self, validated_data=None) -> int:
-        data: dict = validated_data or self.validated_data
-        return Contact.objects.create(**data).id
+
+class ContactUnsafeSerializer(ContactSerializer):
+    id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -129,48 +129,41 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = '__all__'
 
-    def create(self, validated_data=None) -> int:
-        data: dict = validated_data or self.validated_data
-        return Location.objects.create(**data).id
-
 
 class CompanySerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
-    location = LocationSerializer()
+    contacts = ContactSerializer(many=True)
+    locations = LocationSerializer(many=True)
 
     class Meta:
         model = Company
         fields = '__all__'
 
 
-class CompanyCreateSerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
-    location = LocationSerializer()
-
-    class Meta:
-        model = Company
-        fields = '__all__'
-
+class CompanyCreateSerializer(CompanySerializer):
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
+        contacts_data = data.pop('contacts', None)
+        locations_data = data.pop('locations', None)
 
-        contact = data.pop('contact')
-        contact_id = ContactSerializer().create(validated_data=contact) if contact else None
+        company = Company.objects.create(**data)
 
-        location = data.pop('location')
-        location_id = LocationSerializer().create(validated_data=location) if location else None
+        if contacts_data:
+            contacts = [Contact(**d) for d in contacts_data]
+            contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
+            company.contacts.add(*contact_ids)
 
-        return Company.objects.create(
-            contact_id=contact_id,
-            location_id=location_id,
-            **data
-        ).id
+        if locations_data:
+            locations = [Location(**d) for d in locations_data]
+            location_ids = [c.id for c in Location.objects.bulk_create(locations)]
+            company.locations.add(*location_ids)
+
+        return company.id
 
 
 # User serializers
 class UserSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
-    contact = ContactSerializer()
+    contacts = ContactSerializer(many=True)
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
 
@@ -184,7 +177,7 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'national_id',
             'ssn',
-            'contact',
+            'contacts',
             'operator_id',
             'requester_id',
             'is_operator',
@@ -198,31 +191,34 @@ class UserSerializer(serializers.ModelSerializer):
 class UserCreateSerializer(UserSerializer):
     def create(self, validated_data=None):
         data = validated_data or self.validated_data
-        contact = Contact.objects.create(**data.pop('contact'))
-        return User.objects.create(**data, contact=contact)
+        contacts_data = data.pop('contacts', None)
+        user = User.objects.create(**data)
+        if contacts_data:
+            contacts = [Contact(**d) for d in contacts_data]
+            contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
+            user.contacts.add(*contact_ids)
+        return user
 
 
 class UserUpdateSerializer(UserSerializer):
+    contacts = ContactUnsafeSerializer(many=True)
     username = serializers.ReadOnlyField()
 
     def update(self, instance: User, validated_data=None):
         data: dict = validated_data or self.validated_data
-        contact_data = data.pop('contact', {})
+
+        if contacts_data := data.pop('contacts', None):
+            created_contacts, updated_contacts = fetch_updated_from_validated_data(Contact, contacts_data)
+            # Create
+            if created_contacts:
+                created_contacts = Contact.objects.bulk_create(created_contacts)
+                instance.contacts.add(*created_contacts)
+            # Update
+            if updated_contacts:
+                Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
 
         for (k, v) in data.items():
             setattr(instance, k, v)
-
-        if contact_data:
-            contact_id = contact_data.pop('id', None)
-            if contact_id:
-                contact = Contact.objects.get(id=contact_id)
-                for (k, v) in contact_data.items():
-                    setattr(contact, k, v)
-                contact.save()
-
-            else:
-                instance.contact = Contact.objects.create(**contact_data)
-
         instance.save()
 
 
