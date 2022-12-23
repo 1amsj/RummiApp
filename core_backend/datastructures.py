@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, Union
 
-from core_api.constants import API_NESTED_QUERY_PARAM_SEPARATOR, NO_EXACT_MATCH_SUFFIX
+from core_api.constants import API_NESTED_QUERY_PARAM_SEPARATOR, API_QUERY_LOOKUP_MAP, API_QUERY_LOOKUP_SEPARATOR, \
+    NO_EXACT_MATCH_SUFFIX
 
 
 @dataclass
@@ -10,7 +11,7 @@ class Param:
     lookup: str = ''
 
 
-QueryParamsKey = Union[str, Tuple[str, bool]]
+QueryParamsKey = str
 QueryParamsValue = Union[Param, "QueryParams"]
 
 
@@ -30,13 +31,15 @@ class QueryParams(Dict[str, QueryParamsValue]):
 
     # noinspection PySuperArguments
     def __setitem__(self, key: QueryParamsKey, value: Any):
-        if isinstance(key, tuple):
-            suffix = NO_EXACT_MATCH_SUFFIX if not key[1] else ''
-            ks = key[0].split(API_NESTED_QUERY_PARAM_SEPARATOR)
+        affixes = key.split(API_QUERY_LOOKUP_SEPARATOR)
+        if len(affixes) > 2 or len(affixes) < 1:
+            raise ValueError('Invalid query')
 
-        else:
-            suffix = ''
-            ks = key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
+        ks = affixes[0].split(API_NESTED_QUERY_PARAM_SEPARATOR)
+        try:
+            suffix = affixes[1]
+        except IndexError:
+            suffix = None
 
         current = self
         for k in ks[:-1]:
@@ -58,7 +61,11 @@ class QueryParams(Dict[str, QueryParamsValue]):
         ret = {}
         for (k, p) in self.items():
             if isinstance(p, Param):
-                ret[F'{prefix}{k}{p.lookup}'] = p.value
+                try:
+                    lookup = API_QUERY_LOOKUP_MAP[p.lookup] if p.lookup else None
+                except KeyError:
+                    raise ValueError('Invalid lookup value')
+                ret[F'{prefix}{k}{f"__{lookup}" if lookup else ""}'] = p.value
                 continue
 
             if isinstance(p, QueryParams):

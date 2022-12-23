@@ -10,3 +10,13 @@ FIELDS_BLACKLIST = [
 ]
 
 API_NESTED_QUERY_PARAM_SEPARATOR = '.'
+API_QUERY_LOOKUP_SEPARATOR = '__'
+
+API_QUERY_LOOKUP_MAP = {
+    "em": "exact",
+    "nem": "icontains",
+    "gt": "gt",
+    "lt": "lt",
+    "gte": "gte",
+    "lte": "lte",
+}
