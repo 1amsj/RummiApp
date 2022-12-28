@@ -24,7 +24,7 @@ from core_backend.serializers import AffiliationSerializer, AgentSerializer, Boo
     CompanyCreateSerializer, \
     CompanySerializer, \
     EventCreateSerializer, EventNoBookingSerializer, EventSerializer, OperatorSerializer, \
-    PayerSerializer, \
+    PayerSerializer, PayerCreateSerializer, \
     ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
@@ -214,7 +214,20 @@ ManageAgents = user_subtype_view_manager(Agent, AgentSerializer)
 
 ManageOperators = user_subtype_view_manager(Operator, OperatorSerializer)
 
-ManagePayers = user_subtype_view_manager(Payer, PayerSerializer)
+class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
+    permission_classes = []
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Payer)
+    def post(request, payer=None):
+        data = request.data
+        data['payer'] = payer
+        serializer = PayerCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        service_id = serializer.create()
+        return Response(service_id, status=status.HTTP_201_CREATED)
+
 
 
 class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSerializer)):
