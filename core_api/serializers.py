@@ -7,11 +7,19 @@ from core_backend.models import User
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod
-    def get_token(cls, user):
+    def get_token(cls, user: User):
         token = super().get_token(user)
 
         token['username'] = user.username
         token['email'] = user.email
+        token['roles'] = {
+            "operator": user.is_operator,
+            "provider": user.is_provider,
+            "recipient": user.is_recipient,
+            "requester": user.is_requester,
+            "payer": user.is_payer,
+        }
+        token['permissions'] = []  # TODO fetch permissions here
 
         return token
 
