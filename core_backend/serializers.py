@@ -267,9 +267,11 @@ class PayerCreateSerializer(PayerSerializer):
 
     def create(self, validated_data=None):
         data = validated_data or self.validated_data
-        companies = Company.objects.create(**data('companies'))
-        return Payer.objects.create(**data, companies = companies).id
-
+        companies_data = data.pop('companies', None)
+        payer = Payer.objects.create(**data)
+        if companies_data:
+            payer.companies.add(*companies_data)
+        return payer
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)

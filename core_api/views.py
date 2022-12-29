@@ -220,13 +220,11 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
     @transaction.atomic
     @expect_key_error
     @expect_does_not_exist(Payer)
-    def post(request, payer=None):
-        data = request.data
-        data['payer'] = payer
-        serializer = PayerCreateSerializer(data=data)
+    def post(request):
+        serializer = PayerCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        service_id = serializer.create()
-        return Response(service_id, status=status.HTTP_201_CREATED)
+        payer = serializer.create()
+        return Response(payer.id, status=status.HTTP_201_CREATED)
 
 
 
