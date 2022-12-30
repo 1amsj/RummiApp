@@ -1,5 +1,6 @@
 from typing import Type
 
+from django.contrib.auth.password_validation import validate_password
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -189,23 +190,60 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(UserSerializer):
+    password = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, validators=[validate_password])
+    confirmation = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'national_id',
+            'ssn',
+            'contacts',
+            'password',
+            'confirmation',
+        )
+
+    def validate(self, attrs):
+        if (attrs['password'] or attrs['confirmation']) and attrs['password'] != attrs['confirmation']:
+            raise serializers.ValidationError({"confirmation": "Password fields didn't match."})
+        return attrs
+
     def create(self, validated_data=None):
-        data = validated_data or self.validated_data
+        data: dict = validated_data or self.validated_data
+        password = data.pop('password', None)
+        data.pop('confirmation', None)
         contacts_data = data.pop('contacts', None)
+
         user = User.objects.create(**data)
+        if password:
+            user.set_password(password)
+            user.save()
+
         if contacts_data:
             contacts = [Contact(**d) for d in contacts_data]
             contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
             user.contacts.add(*contact_ids)
+
         return user
 
 
-class UserUpdateSerializer(UserSerializer):
+class UserUpdateSerializer(UserCreateSerializer):
     contacts = ContactUnsafeSerializer(many=True)
     username = serializers.ReadOnlyField()
 
     def update(self, instance: User, validated_data=None):
         data: dict = validated_data or self.validated_data
+
+        password = data.pop('password', None)
+        data.pop('confirmation', None)
+        if password:
+            instance.set_password(password)
+            instance.save()
 
         if contacts_data := data.pop('contacts', None):
             created_contacts, updated_contacts = fetch_updated_from_validated_data(Contact, contacts_data)
