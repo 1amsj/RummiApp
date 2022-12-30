@@ -296,7 +296,20 @@ class OperatorSerializer(user_subtype_serializer(Operator)):
 
 class PayerSerializer(user_subtype_serializer(Payer)):
     companies = CompanySerializer(many=True)
+    method = serializers.CharField()
 
+class PayerCreateSerializer(PayerSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all())
+    method = serializers.CharField()
+
+    def create(self, validated_data=None):
+        data = validated_data or self.validated_data
+        companies_data = data.pop('companies', None)
+        payer = Payer.objects.create(**data)
+        if companies_data:
+            payer.companies.add(*companies_data)
+        return payer
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)
