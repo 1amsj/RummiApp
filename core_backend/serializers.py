@@ -288,6 +288,20 @@ def user_subtype_serializer(serializer_model: Type[models.Model]):
 
 class AgentSerializer(user_subtype_serializer(Agent)):
     companies = CompanySerializer(many=True)
+    role = serializers.CharField()
+
+class AgentCreateSerializer(AgentSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many = True, queryset=Company.objects.all())
+    role= serializers.CharField()
+
+    def create(self, validated_data=None):
+        data = validated_data or self.validated_data
+        companies_data = data.pop('companies', None)
+        agent = Agent.objects.create(**data)
+        if companies_data:
+            agent.companies.add(*companies_data)
+        return agent
 
 
 class OperatorSerializer(user_subtype_serializer(Operator)):
