@@ -1,0 +1,67 @@
+name: ci
+on:
+  push:
+    branches:
+      - develop
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout 
+        uses: actions/checkout@v2
+      -
+        name: Set output
+        id: vars
+        run: echo ::set-output name=tag::${GITHUB_REF#refs/*/}_$GITHUB_RUN_NUMBER
+      -
+        name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      -
+        name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      -
+        name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: core-communications-rcore-be
+          IMAGE_TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          mkdir -p logs
+          echo "$GITHUB_SHA" >> logs/latest_commit.txt
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker image tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      -
+        name: Create new ElasticBeanstalk Application Version
+        env:
+          APP_NAME: core-communications-rcore-be
+          S3_RCORE_VERSION_BUCKET: core-communications-rcore-be-versions
+          IMAGE_TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          sed -i "s/latest/$IMAGE_TAG/" Dockerrun.aws.json
+
+          mkdir source-bundle 
+          cp Dockerrun.aws.json source-bundle
+          cp -R .ebextensions source-bundle
+          cp -R .platform source-bundle
+          
+          cd source-bundle && zip -r $IMAGE_TAG.zip .            
+          aws s3 cp $IMAGE_TAG.zip s3://$S3_RCORE_VERSION_BUCKET/$IMAGE_TAG.zip
+          
+          aws elasticbeanstalk create-application-version \
+          --application-name $APP_NAME \
+          --source-bundle S3Bucket=$S3_RCORE_VERSION_BUCKET,S3Key=$IMAGE_TAG.zip \
+          --version-label "$IMAGE_TAG"
+      -
+        name: Deploy new ElasticBeanstalk Application Version
+        env:
+          ENV_NAME: core-communications-rcore-be-env
+          IMAGE_TAG: ${{ steps.vars.outputs.tag }}
+        run: aws elasticbeanstalk update-environment --environment-name "$ENV_NAME" --version-label "$IMAGE_TAG"

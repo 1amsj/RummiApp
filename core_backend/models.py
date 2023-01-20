@@ -79,7 +79,7 @@ class HistoricalModel(models.Model):
 
 # Abstract models
 class AbstractPerson(models.Model):
-    contact = models.OneToOneField("Contact", on_delete=models.SET_NULL, null=True, blank=True)
+    contacts = models.ManyToManyField("Contact", blank=True)
     first_name = models.CharField(_('first name'), max_length=150, blank=True)
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
     national_id = models.CharField(_('national ID'), max_length=50, blank=True)
@@ -107,8 +107,8 @@ class Contact(HistoricalModel):
 
 
 class Company(HistoricalModel):
-    contact = models.OneToOneField(Contact, on_delete=models.SET_NULL, null=True, blank=True)
-    location = models.OneToOneField("Location", on_delete=models.SET_NULL, related_name='owner', null=True, blank=True)
+    contacts = models.ManyToManyField(Contact, blank=True)
+    locations = models.ManyToManyField("Location", related_name='owner', blank=True)
     name = models.CharField(_('name'), max_length=128)
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
@@ -288,7 +288,7 @@ class Category(ExtendableModel):
 
 
 class Service(ExtendableModel):
-    business = models.ForeignKey("Business", on_delete=models.CASCADE, related_name='services')
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
     is_deleted = models.BooleanField(default=False)
@@ -302,18 +302,20 @@ class Service(ExtendableModel):
 
 
 class Booking(ExtendableModel, HistoricalModel):
+    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
+    companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
     is_deleted = models.BooleanField(default=False)
 
     # Constraints
-    categories = models.ManyToManyField(Category, related_name='bookings')
-    agents_companies = models.ManyToManyField(Company, related_name='cstr_booking_agents')
-    operators_companies = models.ManyToManyField(Company, related_name='cstr_booking_operators')
-    payers_companies = models.ManyToManyField(Company, related_name='cstr_booking_payers')
-    providers_companies = models.ManyToManyField(Company, related_name='cstr_booking_providers')
-    recipients_companies = models.ManyToManyField(Company, related_name='cstr_booking_recipients')
-    requesters_companies = models.ManyToManyField(Company, related_name='cstr_booking_requesters')
+    categories = models.ManyToManyField(Category, blank=True, related_name='bookings')
+    agents_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_agents')
+    operators_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_operators')
+    payers_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_payers')
+    providers_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_providers')
+    recipients_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_recipients')
+    requesters_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_requesters')
 
     class Meta:
         verbose_name = _('booking')

@@ -2,6 +2,7 @@ from functools import wraps
 from typing import Type
 
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from core_api.exceptions import BadRequestException, NotFoundException
 
@@ -18,9 +19,9 @@ def raise_instead(exception: Type[Exception], expected: Type[Exception], msg='',
     return decorate
 
 
-expect_key_error = raise_instead(BadRequestException, KeyError, 'Missing argument: ', True)
+expect_key_error = raise_instead(BadRequestException, KeyError, _('Missing argument: '), True)
 
 
 def expect_does_not_exist(model: Type[models.Model]):
     # noinspection PyTypeChecker
-    return raise_instead(NotFoundException, model.DoesNotExist, F'{model._meta.verbose_name} does not exist', False)
+    return raise_instead(NotFoundException, model.DoesNotExist, F'{model._meta.verbose_name} {_("does not exist")}', False)

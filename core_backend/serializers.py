@@ -1,5 +1,6 @@
 from typing import Type
 
+from django.contrib.auth.password_validation import validate_password
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
@@ -7,7 +8,7 @@ from rest_framework import serializers
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
     ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
-    manage_extra_attrs
+    manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m
 
 
 # Extra serializers
@@ -81,7 +82,11 @@ class BusinessField(serializers.RelatedField):
     }
 
     def __init__(self, **kwargs):
-        super(BusinessField, self).__init__(queryset=kwargs.pop('queryset', Business.objects.all()))
+        try:
+            qs = kwargs.pop('queryset', Business.objects.all())
+            super(BusinessField, self).__init__(queryset=qs, **kwargs)
+        except AssertionError:
+            super(BusinessField, self).__init__(**kwargs)
 
     def to_internal_value(self, data):
         try:
@@ -115,9 +120,9 @@ class ContactSerializer(serializers.ModelSerializer):
 
         return super(ContactSerializer, self).validate(data)
 
-    def create(self, validated_data=None) -> int:
-        data: dict = validated_data or self.validated_data
-        return Contact.objects.create(**data).id
+
+class ContactUnsafeSerializer(ContactSerializer):
+    id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -125,47 +130,41 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = '__all__'
 
-    def create(self, validated_data=None) -> int:
-        data: dict = validated_data or self.validated_data
-        return Location.objects.create(**data).id
-
 
 class CompanySerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
-    location = LocationSerializer()
+    contacts = ContactSerializer(many=True)
+    locations = LocationSerializer(many=True)
 
     class Meta:
         model = Company
         fields = '__all__'
 
 
-class CompanyCreateSerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
-    location = LocationSerializer()
-
-    class Meta:
-        model = Company
-        fields = '__all__'
-
+class CompanyCreateSerializer(CompanySerializer):
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
+        contacts_data = data.pop('contacts', None)
+        locations_data = data.pop('locations', None)
 
-        contact = data.pop('contact')
-        contact_id = ContactSerializer().create(validated_data=contact) if contact else None
+        company = Company.objects.create(**data)
 
-        location = data.pop('location')
-        location_id = LocationSerializer().create(validated_data=location) if location else None
+        if contacts_data:
+            contacts = [Contact(**d) for d in contacts_data]
+            contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
+            company.contacts.add(*contact_ids)
 
-        return Company.objects.create(
-            contact_id=contact_id,
-            location_id=location_id,
-            **data
-        ).id
+        if locations_data:
+            locations = [Location(**d) for d in locations_data]
+            location_ids = [c.id for c in Location.objects.bulk_create(locations)]
+            company.locations.add(*location_ids)
+
+        return company.id
 
 
 # User serializers
 class UserSerializer(serializers.ModelSerializer):
-    contact = ContactSerializer()
+    id = serializers.ReadOnlyField()
+    contacts = ContactSerializer(many=True)
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
 
@@ -179,19 +178,86 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'national_id',
             'ssn',
-            'contact',
+            'contacts',
             'operator_id',
             'requester_id',
+            'is_operator',
+            'is_provider',
+            'is_recipient',
+            'is_requester',
+            'is_payer',
         )
 
 
 class UserCreateSerializer(UserSerializer):
-    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
+    password = serializers.CharField(
+        write_only=True, required=False, allow_blank=True, validators=[validate_password])
+    confirmation = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta:
+        model = User
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'national_id',
+            'ssn',
+            'contacts',
+            'password',
+            'confirmation',
+        )
+
+    def validate(self, attrs):
+        if (attrs['password'] or attrs['confirmation']) and attrs['password'] != attrs['confirmation']:
+            raise serializers.ValidationError({"confirmation": "Password fields didn't match."})
+        return attrs
 
     def create(self, validated_data=None):
-        data = validated_data or self.validated_data
-        contact = Contact.objects.create(**data.pop('contact'))
-        return User.objects.create(**data, contact=contact)
+        data: dict = validated_data or self.validated_data
+        password = data.pop('password', None)
+        data.pop('confirmation', None)
+        contacts_data = data.pop('contacts', None)
+
+        user = User.objects.create(**data)
+        if password:
+            user.set_password(password)
+            user.save()
+
+        if contacts_data:
+            contacts = [Contact(**d) for d in contacts_data]
+            contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
+            user.contacts.add(*contact_ids)
+
+        return user
+
+
+class UserUpdateSerializer(UserCreateSerializer):
+    contacts = ContactUnsafeSerializer(many=True)
+    username = serializers.ReadOnlyField()
+
+    def update(self, instance: User, validated_data=None):
+        data: dict = validated_data or self.validated_data
+
+        password = data.pop('password', None)
+        data.pop('confirmation', None)
+        if password:
+            instance.set_password(password)
+            instance.save()
+
+        if contacts_data := data.pop('contacts', None):
+            created_contacts, updated_contacts = fetch_updated_from_validated_data(Contact, contacts_data)
+            # Create
+            if created_contacts:
+                created_contacts = Contact.objects.bulk_create(created_contacts)
+                instance.contacts.add(*created_contacts)
+            # Update
+            if updated_contacts:
+                Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
 
 
 def user_subtype_serializer(serializer_model: Type[models.Model]):
@@ -230,16 +296,20 @@ class OperatorSerializer(user_subtype_serializer(Operator)):
 
 class PayerSerializer(user_subtype_serializer(Payer)):
     companies = CompanySerializer(many=True)
+    method = serializers.CharField()
 
+class PayerCreateSerializer(PayerSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all())
+    method = serializers.CharField()
 
-class ProviderSerializer(user_subtype_serializer(Provider)):
-    companies = CompanySerializer(many=True)
-    services = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
-
-    class Meta:
-        model = Provider
-        fields = '__all__'
-
+    def create(self, validated_data=None):
+        data = validated_data or self.validated_data
+        companies_data = data.pop('companies', None)
+        payer = Payer.objects.create(**data)
+        if companies_data:
+            payer.companies.add(*companies_data)
+        return payer
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)
@@ -247,6 +317,15 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
 
     class Meta:
         model = Service
+        fields = '__all__'
+
+
+class ProviderSerializer(user_subtype_serializer(Provider)):
+    companies = CompanySerializer(many=True)
+    services = ServiceNoProviderSerializer(many=True)
+
+    class Meta:
+        model = Provider
         fields = '__all__'
 
 
@@ -320,8 +399,10 @@ class ServiceSerializer(extendable_serializer(Service)):
         fields = '__all__'
 
 
-class BookingSerializer(extendable_serializer(Booking)):
+class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
+    companies = CompanySerializer(many=True)
+    events_count = serializers.IntegerField(source='events.count', read_only=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
 
@@ -330,9 +411,26 @@ class BookingSerializer(extendable_serializer(Booking)):
         fields = '__all__'
 
 
+class EventNoBookingSerializer(serializers.ModelSerializer):
+    affiliates = AffiliationSerializer(many=True)
+    agents = AgentSerializer(many=True)
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+    payer = PayerSerializer()
+    requester = RequesterSerializer()
+
+    class Meta:
+        model = Event
+        fields = '__all__'
+
+
+class BookingSerializer(BookingNoEventsSerializer):
+    events = EventNoBookingSerializer(many=True)
+
+
 class BookingCreateSerializer(extendable_serializer(Booking)):
-    business = BusinessField()
+    business = BusinessField(required=False)
     categories = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Category.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Company.objects.all())
     operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
 
@@ -341,21 +439,27 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         fields = (
             'business',
             'categories',
+            'companies',
             'operators',
             'services',  # TODO add constraints here for incomplete bookings
         )
 
     def create(self, validated_data=None) -> int:
         data = validated_data or self.validated_data
-        business = BusinessField().to_internal_value(data.pop('business'))
+        business = BusinessField().to_internal_value(data.get('business'))
         extras = data.pop('extra', {})
         categories = data.pop('categories', [])
+        companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
+
+        # TODO add constraints here for incomplete bookings
 
         booking = Booking.objects.create(**data)
         if categories:
             booking.categories.add(*categories)
+        if companies:
+            booking.companies.add(*companies)
         if operators:
             booking.operators.add(*operators)
         if services:
@@ -364,17 +468,32 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
 
         return booking.id
 
+    def update(self, instance: Booking, business, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        data.pop('business', None)  # Ensure business will not be modified accidentally
+        business = BusinessField().to_internal_value(business)
+        extras = data.pop('extra', {})
+        categories = data.pop('categories', [])
+        companies = data.pop('companies', [])
+        operators = data.pop('operators', [])
+        services = data.pop('services', [])
 
-class EventSerializer(serializers.ModelSerializer):
-    affiliates = AffiliationSerializer(many=True)
-    agents = AgentSerializer(many=True)
-    booking = BookingSerializer()
-    payer = PayerSerializer()
-    requester = RequesterSerializer()
+        # TODO add constraints here for incomplete bookings
 
-    class Meta:
-        model = Event
-        fields = '__all__'
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.categories, categories)
+        sync_m2m(instance.companies, companies)
+        sync_m2m(instance.operators, operators)
+        sync_m2m(instance.services, services)
+
+        manage_extra_attrs(business, instance, extras)
+
+
+class EventSerializer(EventNoBookingSerializer):
+    booking = BookingNoEventsSerializer()
 
 
 class EventCreateSerializer(serializers.ModelSerializer):
@@ -406,6 +525,18 @@ class EventCreateSerializer(serializers.ModelSerializer):
             event.agents.add(*agents)
 
         return event.id
+
+    def update(self, instance: Event, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        affiliates = data.pop('affiliates', [])
+        agents = data.pop('agents', [])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.affiliates, affiliates)
+        sync_m2m(instance.agents, agents)
 
 
 InvoiceSerializer = generic_serializer(Invoice)
