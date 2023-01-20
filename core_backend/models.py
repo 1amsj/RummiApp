@@ -98,6 +98,7 @@ class Contact(HistoricalModel):
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
     is_deleted = models.BooleanField(default=False)
+    
     class Meta:
         verbose_name = _('contact')
         verbose_name_plural = _('contacts')
@@ -113,6 +114,7 @@ class Company(HistoricalModel):
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('company')
@@ -129,6 +131,7 @@ class Location(models.Model):
     country = models.CharField(_('country'), max_length=128)
     zip = models.CharField(_('ZIP code'), max_length=10, blank=True)
     is_deleted = models.BooleanField(default=False)
+    
     class Meta:
         verbose_name = _('location')
         verbose_name_plural = _('locations')
@@ -139,6 +142,8 @@ class Location(models.Model):
 
 # User models
 class User(AbstractUser, AbstractPerson, HistoricalModel):
+    is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
@@ -169,6 +174,7 @@ class Agent(ExtendableModel, HistoricalModel):
     companies = models.ManyToManyField(Company, related_name='agents')
     role = models.CharField(_('role'), max_length=64)
     is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = _('agent')
         verbose_name_plural = _('agents')
@@ -184,6 +190,7 @@ class Operator(HistoricalModel):
     companies = models.ManyToManyField(Company, related_name='operators')
     hiring_date = models.DateField(_('hiring date'))
     is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = verbose_name_plural = _('operator data')
 
@@ -197,6 +204,7 @@ class Payer(HistoricalModel):
     companies = models.ManyToManyField(Company, related_name='payers')
     method = models.CharField(_('paying method'), max_length=64)
     is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
 
@@ -209,6 +217,7 @@ class Provider(ExtendableModel, HistoricalModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
     is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
 
@@ -221,6 +230,7 @@ class Recipient(ExtendableModel, HistoricalModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
     companies = models.ManyToManyField(Company, related_name='recipients', through="Affiliation")
     is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = verbose_name_plural = _('recipient data')
 
@@ -232,6 +242,7 @@ class Affiliation(ExtendableModel, HistoricalModel):
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='affiliations')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
     is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = _('affiliation')
         verbose_name_plural = _('affiliations')
@@ -245,6 +256,7 @@ class Requester(HistoricalModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
     companies = models.ManyToManyField(Company, related_name='requesters')
     is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = verbose_name_plural = _('requester data')
 
@@ -263,6 +275,7 @@ class Rule(models.Model):
 
 class Business(models.Model):
     name = models.CharField(_('business'), max_length=128, unique=True)
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('business')
@@ -274,6 +287,7 @@ class Business(models.Model):
 
 class Category(ExtendableModel):
     name = models.CharField(_('name'), max_length=64)
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('category')
@@ -361,6 +375,7 @@ class Ledger(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name='ledgers')
     invoice = models.ForeignKey("Invoice", on_delete=models.PROTECT, related_name='ledgers')
     is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = _('ledger')
         verbose_name_plural = _('ledgers')

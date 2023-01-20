@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core_backend', '0003_historicaluser_historicalrequester_and_more'),
+        ('core_backend', '0007_make_company_location_m2m'),
     ]
 
     operations = [

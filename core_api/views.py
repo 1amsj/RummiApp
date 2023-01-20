@@ -36,13 +36,13 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.filter(is_deleted=False)
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
 
 
 class UserViewSet(generics.ListAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.filter(is_deleted=False)
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
 
@@ -60,7 +60,7 @@ def get_routes(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def manage_users(request):
-    users = User.objects.all()
+    users = User.objects.filter(is_deleted=False)
 
     # Get filters
     email = request.query_params.get('email')
@@ -138,7 +138,7 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
         @classmethod
         def get(cls, request):
             query_params = prepare_query_params(request.GET)
-            queryset = cls.apply_filters(model.objects.all(), query_params)
+            queryset = cls.apply_filters(model.objects.filter(is_deleted=False), query_params)
             serialized = serializer(queryset, many=True)
             return Response(serialized.data)
 
@@ -251,7 +251,7 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
-        queryset = Provider.objects.filtrer(is_deleted=False).prefetch_related('services', 'services__extra')
+        queryset = Provider.objects.filter(is_deleted=False).prefetch_related('services', 'services__extra')
         queryset = cls.apply_filters(queryset, query_params)
         serialized = ProviderServiceSerializer(queryset, many=True)
         return Response(serialized.data)
@@ -302,7 +302,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         query_params = prepare_query_params(request.GET)
         include_events = query_params.pop(INCLUDE_EVENTS_KEY, False)
 
-        queryset = Booking.objects.all()
+        queryset = Booking.objects.filter(is_deleted=False)
         if include_events:
             queryset = queryset.prefetch_related('events')
         queryset = cls.apply_filters(queryset, query_params)
@@ -350,7 +350,7 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     def get(cls, request, business_name=None):
         query_params = prepare_query_params(request.GET)
         include_booking = query_params.pop(INCLUDE_BOOKING_KEY, False)
-        queryset = Event.objects.all()
+        queryset = Event.objects.filter(is_deleted=False)
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
         queryset = cls.apply_filters(queryset, query_params)
@@ -398,7 +398,7 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
             serialized = CompanySerializer(Company.objects.get(id=company_id))
             return Response(serialized.data)
         query_params = prepare_query_params(request.GET)
-        queryset = cls.apply_filters(Company.objects.all(), query_params)
+        queryset = cls.apply_filters(Company.objects.filter(is_deleted=False), query_params)
         serialized = CompanySerializer(queryset, many=True)
         return Response(serialized.data)
 
