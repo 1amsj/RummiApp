@@ -206,7 +206,11 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def delete(request, user_id=None):
-        User.objects.get(id=user_id).delete()
+        data = {"is_deleted": True}
+        user = User.objects.get(id=user_id)
+        serializer = UserUpdateSerializer(data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -341,7 +345,11 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def delete(request, booking_id=None):
-        Booking.objects.get(id=booking_id).delete()
+        data = {"is_deleted": True}
+        booking = Booking.objects.get(id=booking_id)
+        serializer = BookingCreateSerializer(data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(booking)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -386,7 +394,11 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def delete(request, event_id=None):
-        Event.objects.get(id=event_id).delete()
+        data = {"is_deleted": True}
+        event = Event.objects.get(id=event_id)
+        serializer = EventCreateSerializer(data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(event)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
