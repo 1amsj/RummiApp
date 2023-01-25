@@ -41,10 +41,14 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
 
 
-class UserViewSet(generics.ListAPIView):
-    queryset = User.objects.all()
-    permission_classes = (AllowAny,)
-    serializer_class = UserSerializer
+@api_view(['POST'])
+@transaction.atomic
+@permission_classes([AllowAny])
+def register_user(request):
+    serializer = UserCreateSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = serializer.create()
+    return Response(user.id, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])
