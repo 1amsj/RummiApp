@@ -47,6 +47,16 @@ class UserViewSet(generics.ListAPIView):
     serializer_class = UserSerializer
 
 
+@api_view(['POST'])
+@transaction.atomic
+@permission_classes([AllowAny])
+def register_user(request):
+    serializer = UserCreateSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = serializer.create()
+    return Response(user.id, status=status.HTTP_201_CREATED)
+
+
 @api_view(['GET'])
 def get_routes(request):
     routes = [
@@ -229,7 +239,6 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
         return Response(payer.id, status=status.HTTP_201_CREATED)
 
 
-
 class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSerializer)):
     @staticmethod
     def apply_nested_filters(queryset, nested_params):
@@ -262,7 +271,6 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
 ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
 
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
-
 
 class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer)):
     @staticmethod
