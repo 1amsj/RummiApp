@@ -10,7 +10,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
 
-# Generic helpers
+# Generic helpersgent
 class Extra(models.Model):
     parent_id = models.PositiveIntegerField()
     parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -97,7 +97,8 @@ class Contact(HistoricalModel):
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
-
+    is_deleted = models.BooleanField(default=False)
+    
     class Meta:
         verbose_name = _('contact')
         verbose_name_plural = _('contacts')
@@ -113,6 +114,7 @@ class Company(HistoricalModel):
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('company')
@@ -128,7 +130,8 @@ class Location(models.Model):
     state = models.CharField(_('state or province'), max_length=128)
     country = models.CharField(_('country'), max_length=128)
     zip = models.CharField(_('ZIP code'), max_length=10, blank=True)
-
+    is_deleted = models.BooleanField(default=False)
+    
     class Meta:
         verbose_name = _('location')
         verbose_name_plural = _('locations')
@@ -139,6 +142,8 @@ class Location(models.Model):
 
 # User models
 class User(AbstractUser, AbstractPerson, HistoricalModel):
+    is_deleted = models.BooleanField(default=False)
+
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
@@ -168,6 +173,7 @@ class Agent(ExtendableModel, HistoricalModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
     companies = models.ManyToManyField(Company, related_name='agents')
     role = models.CharField(_('role'), max_length=64)
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('agent')
@@ -183,6 +189,7 @@ class Operator(HistoricalModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
     companies = models.ManyToManyField(Company, related_name='operators')
     hiring_date = models.DateField(_('hiring date'))
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('operator data')
@@ -196,6 +203,7 @@ class Payer(HistoricalModel):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
     companies = models.ManyToManyField(Company, related_name='payers')
     method = models.CharField(_('paying method'), max_length=64)
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
@@ -208,6 +216,7 @@ class Provider(ExtendableModel, HistoricalModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
@@ -220,6 +229,7 @@ class Recipient(ExtendableModel, HistoricalModel):
     """Who receives the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
     companies = models.ManyToManyField(Company, related_name='recipients', through="Affiliation")
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('recipient data')
@@ -231,6 +241,7 @@ class Recipient(ExtendableModel, HistoricalModel):
 class Affiliation(ExtendableModel, HistoricalModel):
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='affiliations')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('affiliation')
@@ -244,6 +255,7 @@ class Requester(HistoricalModel):
     """Who requests the service case for the Recipient"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
     companies = models.ManyToManyField(Company, related_name='requesters')
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('requester data')
@@ -263,6 +275,7 @@ class Rule(models.Model):
 
 class Business(models.Model):
     name = models.CharField(_('business'), max_length=128, unique=True)
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('business')
@@ -274,6 +287,7 @@ class Business(models.Model):
 
 class Category(ExtendableModel):
     name = models.CharField(_('name'), max_length=64)
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('category')
@@ -291,6 +305,7 @@ class Service(ExtendableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('service')
@@ -305,6 +320,7 @@ class Booking(ExtendableModel, HistoricalModel):
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
+    is_deleted = models.BooleanField(default=False)
 
     # Constraints
     categories = models.ManyToManyField(Category, blank=True, related_name='bookings')
@@ -325,6 +341,7 @@ class Booking(ExtendableModel, HistoricalModel):
 
 class Event(HistoricalModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
+    is_deleted = models.BooleanField(default=False) 
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
     agents = models.ManyToManyField(Agent, related_name='events')
@@ -357,6 +374,7 @@ class Ledger(models.Model):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='ledgers')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name='ledgers')
     invoice = models.ForeignKey("Invoice", on_delete=models.PROTECT, related_name='ledgers')
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('ledger')
