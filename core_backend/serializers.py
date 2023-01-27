@@ -314,6 +314,9 @@ class PayerCreateSerializer(PayerSerializer):
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)
     categories = generic_serializer(Category)(many=True)
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
+    bill_type = serializers.ChoiceField(choices=Service.BillType.choices)
 
     class Meta:
         model = Service
@@ -329,10 +332,13 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
         fields = '__all__'
 
 
-class ServiceCreateSerializer(extendable_serializer(Service)):
+class ServiceCreateSerializer(ServiceNoProviderSerializer):
     business = BusinessField()
     categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
     provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
+    bill_type = serializers.ChoiceField(choices=Service.BillType.choices)
 
     class Meta:
         model = Service
@@ -393,6 +399,9 @@ class ServiceSerializer(extendable_serializer(Service)):
     business = BusinessSerializer()
     categories = CategorySerializer(many=True)
     provider = ProviderSerializer()
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
+    bill_type = serializers.ChoiceField(choices=Service.BillType.choices)
 
     class Meta:
         model = Service
@@ -405,6 +414,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     events_count = serializers.IntegerField(source='events.count', read_only=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
+    # TODO add expenses
 
     class Meta:
         model = Booking
