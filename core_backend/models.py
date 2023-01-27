@@ -288,9 +288,16 @@ class Category(ExtendableModel):
 
 
 class Service(ExtendableModel):
+    class BillType(models.TextChoices):
+        PER_MINUTE = 'MIN', _('per minute')
+        DAILY = 'DAY', _('daily')
+
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
+    bill_amount = models.DecimalField(_('billing amount'), max_digits=32, decimal_places=2)
+    bill_rate = models.DecimalField(_('billing rate in seconds'), max_digits=32, decimal_places=2)
+    bill_type = models.CharField(max_length=3, choices=BillType.choices, default=BillType.PER_MINUTE)
 
     class Meta:
         verbose_name = _('service')
@@ -351,6 +358,17 @@ class Event(HistoricalModel):
     @property
     def is_online(self):
         return bool(self.meeting_url)
+
+# Billing models
+class Expense(models.Model):
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='expenses')
+    amount = models.DecimalField(_('amount'), max_digits=32, decimal_places=2)
+    description = models.CharField(_('description'), max_length=256)
+    quantity = models.IntegerField(_('quantity'))
+
+    class Meta:
+        verbose_name = _('expense')
+        verbose_name_plural = _('expenses')
 
 
 class Ledger(models.Model):
