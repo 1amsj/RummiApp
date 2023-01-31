@@ -305,6 +305,7 @@ class Service(ExtendableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
+    type = models.CharField(_('type'), max_length=128, default="Type A")
     is_deleted = models.BooleanField(default=False)
 
     class Meta:
