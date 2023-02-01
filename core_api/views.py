@@ -21,14 +21,14 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, \
+from core_backend.serializers import AffiliationSerializer, AffiliationCreateSerializer, AgentSerializer, BookingCreateSerializer, \
     BookingNoEventsSerializer, BookingSerializer, \
     CategoryCreateSerializer, CategorySerializer, CompanyCreateSerializer, \
     CompanySerializer, CompanyUpdateSerializer, \
     EventCreateSerializer, EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
     OperatorSerializer, \
     PayerSerializer, PayerCreateSerializer, \
-    ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
+    ProviderServiceSerializer, RecipientSerializer, RecipientCreateSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
@@ -271,7 +271,17 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
         return Response(serialized.data)
 
 
-ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
+class ManageRecipients(user_subtype_view_manager(Recipient, RecipientSerializer)):
+    permission_classes = []
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Recipient)
+    def post(request):
+        serializer = RecipientCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recipient = serializer.create()
+        return Response(recipient.id, status=status.HTTP_201_CREATED)
 
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
 
