@@ -472,7 +472,7 @@ class RecipientCreateSerializer(extendable_serializer(Recipient)):
         recipient = Recipient.objects.create(**data)
         if companies:
             recipient.categories.add(*companies)
-        manage_extra_attrs(recipient.business, recipient, extras)
+        manage_extra_attrs(recipient.companies, recipient, extras)
 
         return recipient
 
