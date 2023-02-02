@@ -38,9 +38,15 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.filter(is_deleted=False)
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
+
+
+class UserViewSet(generics.ListAPIView):
+    queryset = User.objects.filter(is_deleted=False)
+    permission_classes = (AllowAny,)
+    serializer_class = UserSerializer
 
 
 @api_view(['POST'])
@@ -66,7 +72,7 @@ def get_routes(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def manage_users(request):
-    users = User.objects.all()
+    users = User.objects.filter(is_deleted=False)
 
     # Get filters
     email = request.query_params.get('email')
@@ -144,7 +150,7 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
         @classmethod
         def get(cls, request):
             query_params = prepare_query_params(request.GET)
-            queryset = cls.apply_filters(model.objects.all(), query_params)
+            queryset = cls.apply_filters(model.objects.filter(is_deleted=False), query_params)
             serialized = serializer(queryset, many=True)
             return Response(serialized.data)
 
@@ -212,7 +218,9 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def delete(request, user_id=None):
-        User.objects.get(id=user_id).delete()
+        user = User.objects.get(id=user_id)
+        user.is_deleted = True
+        user.save(['is_deleted'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -231,7 +239,6 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
         serializer.is_valid(raise_exception=True)
         payer = serializer.create()
         return Response(payer.id, status=status.HTTP_201_CREATED)
-
 
 
 class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSerializer)):
@@ -257,7 +264,7 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
-        queryset = Provider.objects.all().prefetch_related('services', 'services__extra')
+        queryset = Provider.objects.filter(is_deleted=False).prefetch_related('services', 'services__extra')
         queryset = cls.apply_filters(queryset, query_params)
         serialized = ProviderServiceSerializer(queryset, many=True)
         return Response(serialized.data)
@@ -266,7 +273,6 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
 ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
 
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
-
 
 class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer)):
     @staticmethod
@@ -308,7 +314,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         query_params = prepare_query_params(request.GET)
         include_events = query_params.pop(INCLUDE_EVENTS_KEY, False)
 
-        queryset = Booking.objects.all()
+        queryset = Booking.objects.filter(is_deleted=False)
         if include_events:
             queryset = queryset.prefetch_related('events')
         queryset = cls.apply_filters(queryset, query_params)
@@ -347,7 +353,9 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def delete(request, booking_id=None):
-        Booking.objects.get(id=booking_id).delete()
+        booking = Booking.objects.get(id=booking_id)
+        booking.is_deleted = True
+        booking.save(['is_deleted'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -356,7 +364,7 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     def get(cls, request, business_name=None):
         query_params = prepare_query_params(request.GET)
         include_booking = query_params.pop(INCLUDE_BOOKING_KEY, False)
-        queryset = Event.objects.all()
+        queryset = Event.objects.filter(is_deleted=False)
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
         queryset = cls.apply_filters(queryset, query_params)
@@ -392,7 +400,9 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def delete(request, event_id=None):
-        Event.objects.get(id=event_id).delete()
+        event = Event.objects.get(id=event_id)
+        event.is_deleted = True
+        event.save(['is_deleted'])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -441,7 +451,7 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
             serialized = CompanySerializer(Company.objects.get(id=company_id))
             return Response(serialized.data)
         query_params = prepare_query_params(request.GET)
-        queryset = cls.apply_filters(Company.objects.all(), query_params)
+        queryset = cls.apply_filters(Company.objects.filter(is_deleted=False), query_params)
         serialized = CompanySerializer(queryset, many=True)
         return Response(serialized.data)
 
