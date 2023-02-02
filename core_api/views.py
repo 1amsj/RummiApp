@@ -10,11 +10,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core_api.constants import INCLUDE_BOOKING_KEY, INCLUDE_EVENTS_KEY
-from core_api.decorators import expect_does_not_exist, expect_key_error
+from core_api.decorators import expect_does_not_exist, expect_key_error, expect_not_implemented
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_backend.datastructures import QueryParams
-from core_backend.models import Affiliation, Agent, Booking, Business, Company, Contact, Event, ExtraQuerySet, Operator, \
+from core_backend.models import Affiliation, Agent, Booking, Business, Company, Contact, Event, Expense, ExtraQuerySet, \
+    Operator, \
     Payer, \
     Provider, \
     Recipient, \
@@ -23,7 +24,8 @@ from core_backend.serializers import AffiliationSerializer, AgentSerializer, Boo
     BookingNoEventsSerializer, BookingSerializer, \
     CompanyCreateSerializer, \
     CompanySerializer, \
-    EventCreateSerializer, EventNoBookingSerializer, EventSerializer, OperatorSerializer, \
+    EventCreateSerializer, EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
+    OperatorSerializer, \
     PayerSerializer, PayerCreateSerializer, \
     ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
@@ -401,6 +403,43 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
         event = Event.objects.get(id=event_id)
         event.is_deleted = True
         event.save(['is_deleted'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
+    @classmethod
+    @expect_not_implemented
+    def get(cls, request, expense_id=None):
+        if expense_id:
+            serialized = ExpenseSerializer(Expense.objects.get(id=expense_id))
+            return Response(serialized.data)
+        raise NotImplementedError('fetching multiple expenses')
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        serializer = ExpenseCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        expense_id = serializer.create()
+        return Response(expense_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def put(request, expense_id=None):
+        expense = Expense.objects.get(id=expense_id)
+        serializer = ExpenseCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(expense)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def delete(request, expense_id=None):
+        Expense.objects.get(id=expense_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

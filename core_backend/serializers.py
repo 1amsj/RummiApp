@@ -6,7 +6,8 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
-    ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
+    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
+    Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
     manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m
 
@@ -314,6 +315,8 @@ class PayerCreateSerializer(PayerSerializer):
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)
     categories = generic_serializer(Category)(many=True)
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
 
     class Meta:
         model = Service
@@ -329,10 +332,12 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
         fields = '__all__'
 
 
-class ServiceCreateSerializer(extendable_serializer(Service)):
+class ServiceCreateSerializer(ServiceNoProviderSerializer):
     business = BusinessField()
     categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
     provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
 
     class Meta:
         model = Service
@@ -393,18 +398,45 @@ class ServiceSerializer(extendable_serializer(Service)):
     business = BusinessSerializer()
     categories = CategorySerializer(many=True)
     provider = ProviderSerializer()
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
 
     class Meta:
         model = Service
         fields = '__all__'
 
 
+class ExpenseSerializer(generic_serializer(Expense)):
+    booking_id = serializers.PrimaryKeyRelatedField(read_only=True, source='booking')
+
+    class Meta:
+        model = Expense
+        fields = '__all__'
+
+
+class ExpenseCreateSerializer(ExpenseSerializer):
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        expense = Expense.objects.create(**data)
+        return expense.id
+
+    def update(self, instance: Event, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
     companies = CompanySerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
+    expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
+    # TODO add expenses
 
     class Meta:
         model = Booking

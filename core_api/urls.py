@@ -54,6 +54,7 @@ urlpatterns = [
     *path_optionals_xor('bookings/', ['<id:booking_id>', '<str:business_name>'], views.ManageBooking.as_view(), name='manage_booking'),
     *path_optional('companies/', '<id:company_id>', views.ManageCompany.as_view(), name='manage_companies'),
     *path_optionals_xor('events/', ['<id:event_id>', '<str:business_name>'], views.ManageEvents.as_view(), name='manage_events'),
+    *path_optional('expenses/', '<id:expense_id>', views.ManageExpenses.as_view(), name='manage_expenses'),
     *path_optional('services/', '<str:business_name>', views.ManageService.as_view(), name='manage_services'),
 
     path('', views.get_routes)
