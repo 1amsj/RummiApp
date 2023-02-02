@@ -407,7 +407,7 @@ class ServiceSerializer(extendable_serializer(Service)):
 
 
 class ExpenseSerializer(generic_serializer(Expense)):
-    booking_id = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all(), source='booking')
+    booking_id = serializers.PrimaryKeyRelatedField(read_only=True, source='booking')
 
     class Meta:
         model = Expense
@@ -415,6 +415,8 @@ class ExpenseSerializer(generic_serializer(Expense)):
 
 
 class ExpenseCreateSerializer(ExpenseSerializer):
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
         expense = Expense.objects.create(**data)

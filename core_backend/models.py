@@ -299,7 +299,7 @@ class Service(ExtendableModel):
         verbose_name_plural = _('services')
 
     def __str__(self):
-        return F"{self.business} by {self.provider}"
+        return F"{self.business} by {self.provider} ({self.id})"
 
 
 class Booking(ExtendableModel, HistoricalModel):
@@ -355,7 +355,7 @@ class Event(HistoricalModel):
         return bool(self.meeting_url)
 
 # Billing models
-class Expense(models.Model):
+class Expense(HistoricalModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='expenses')
     amount = models.DecimalField(_('amount'), max_digits=32, decimal_places=2)
     description = models.CharField(_('description'), max_length=256)

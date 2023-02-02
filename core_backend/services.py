@@ -102,7 +102,7 @@ def filter_params(model: Type[models.Model], params: QueryParams) -> Tuple[Query
     return base_params, extra_params, nested_params
 
 
-def sync_sets(original_set, new_set, add, remove, update):
+def sync_sets(original_set, new_set, add, remove):
     original_set = set(original_set)
     new_set = set(new_set)
 
@@ -113,10 +113,6 @@ def sync_sets(original_set, new_set, add, remove, update):
     created = new_set.difference(original_set)
     if created:
         add(created)
-
-    updated = new_set.intersection(original_set)
-    if updated:
-        update()
 
 
 def sync_m2m(manager, new_set, field='id'):
