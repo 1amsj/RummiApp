@@ -377,6 +377,7 @@ class Expense(HistoricalModel):
     amount = models.DecimalField(_('amount'), max_digits=32, decimal_places=2)
     description = models.CharField(_('description'), max_length=256)
     quantity = models.IntegerField(_('quantity'))
+    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('expense')
