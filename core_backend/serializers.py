@@ -414,6 +414,19 @@ class ExpenseSerializer(generic_serializer(Expense)):
         fields = '__all__'
 
 
+class ExpenseCreateSerializer(ExpenseSerializer):
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        expense = Expense.objects.create(**data)
+        return expense.id
+
+    def update(self, instance: Event, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
     companies = CompanySerializer(many=True)
