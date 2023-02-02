@@ -6,7 +6,8 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
-    ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
+    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
+    Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
     manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m
 
@@ -316,7 +317,6 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
     categories = generic_serializer(Category)(many=True)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()
-    bill_type = serializers.ChoiceField(choices=Service.BillType.choices)
 
     class Meta:
         model = Service
@@ -338,7 +338,6 @@ class ServiceCreateSerializer(ServiceNoProviderSerializer):
     provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()
-    bill_type = serializers.ChoiceField(choices=Service.BillType.choices)
 
     class Meta:
         model = Service
@@ -401,10 +400,17 @@ class ServiceSerializer(extendable_serializer(Service)):
     provider = ProviderSerializer()
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()
-    bill_type = serializers.ChoiceField(choices=Service.BillType.choices)
 
     class Meta:
         model = Service
+        fields = '__all__'
+
+
+class ExpenseSerializer(generic_serializer(Expense)):
+    booking_id = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all(), source='booking')
+
+    class Meta:
+        model = Expense
         fields = '__all__'
 
 
@@ -412,6 +418,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
     companies = CompanySerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
+    expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
     # TODO add expenses

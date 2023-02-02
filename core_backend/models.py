@@ -288,16 +288,11 @@ class Category(ExtendableModel):
 
 
 class Service(ExtendableModel):
-    class BillType(models.TextChoices):
-        PER_MINUTE = 'MIN', _('per minute')
-        DAILY = 'DAY', _('daily')
-
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
     bill_amount = models.DecimalField(_('billing amount'), max_digits=32, decimal_places=2)
     bill_rate = models.IntegerField(_('billing rate in seconds'))
-    bill_type = models.CharField(max_length=3, choices=BillType.choices, default=BillType.PER_MINUTE)
 
     class Meta:
         verbose_name = _('service')
