@@ -10,7 +10,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
 
-# Generic helpersgent
+# Generic helpers
 class Extra(models.Model):
     parent_id = models.PositiveIntegerField()
     parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -98,7 +98,7 @@ class Contact(HistoricalModel):
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
     is_deleted = models.BooleanField(default=False)
-    
+
     class Meta:
         verbose_name = _('contact')
         verbose_name_plural = _('contacts')
@@ -131,7 +131,7 @@ class Location(models.Model):
     country = models.CharField(_('country'), max_length=128)
     zip = models.CharField(_('ZIP code'), max_length=10, blank=True)
     is_deleted = models.BooleanField(default=False)
-    
+
     class Meta:
         verbose_name = _('location')
         verbose_name_plural = _('locations')
@@ -306,6 +306,8 @@ class Service(ExtendableModel):
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
     type = models.CharField(_('type'), max_length=128, default="Type A")
+    bill_amount = models.DecimalField(_('billing amount'), max_digits=32, decimal_places=2)
+    bill_rate = models.IntegerField(_('billing rate in seconds'))
     is_deleted = models.BooleanField(default=False)
 
     class Meta:
@@ -342,7 +344,7 @@ class Booking(ExtendableModel, HistoricalModel):
 
 class Event(HistoricalModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
-    is_deleted = models.BooleanField(default=False) 
+    is_deleted = models.BooleanField(default=False)
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
     agents = models.ManyToManyField(Agent, related_name='events')
@@ -369,6 +371,18 @@ class Event(HistoricalModel):
     @property
     def is_online(self):
         return bool(self.meeting_url)
+
+# Billing models
+class Expense(HistoricalModel):
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='expenses')
+    amount = models.DecimalField(_('amount'), max_digits=32, decimal_places=2)
+    description = models.CharField(_('description'), max_length=256)
+    quantity = models.IntegerField(_('quantity'))
+    is_deleted = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = _('expense')
+        verbose_name_plural = _('expenses')
 
 
 class Ledger(models.Model):
