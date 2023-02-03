@@ -9,7 +9,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
     Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
-    manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m
+    manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
 
 
 # Extra serializers
@@ -210,7 +210,9 @@ class UserCreateSerializer(UserSerializer):
         )
 
     def validate(self, attrs):
-        if (attrs['password'] or attrs['confirmation']) and attrs['password'] != attrs['confirmation']:
+        password = attrs.get('password')
+        confirmation = attrs.get('confirmation')
+        if (password or confirmation) and password != confirmation:
             raise serializers.ValidationError({"confirmation": "Password fields didn't match."})
         return attrs
 
@@ -230,11 +232,13 @@ class UserCreateSerializer(UserSerializer):
             contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
             user.contacts.add(*contact_ids)
 
+        user_sync_email_with_contact(user)
+
         return user
 
 
 class UserUpdateSerializer(UserCreateSerializer):
-    contacts = ContactUnsafeSerializer(many=True)
+    contacts = ContactUnsafeSerializer(many=True, required=False)
     username = serializers.ReadOnlyField()
 
     def update(self, instance: User, validated_data=None):
@@ -256,9 +260,17 @@ class UserUpdateSerializer(UserCreateSerializer):
             if updated_contacts:
                 Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
 
+        if ((new_email := data.get('email'))
+                and new_email != instance.email
+                and (contact := instance.contacts.filter(email=instance.email).first())):
+            contact.email = new_email
+            contact.save()
+
         for (k, v) in data.items():
             setattr(instance, k, v)
         instance.save()
+
+        user_sync_email_with_contact(instance)
 
 
 def user_subtype_serializer(serializer_model: Type[models.Model]):

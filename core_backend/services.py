@@ -141,3 +141,11 @@ def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset):
         updated.append(obj)
 
     return created, updated
+
+
+def user_sync_email_with_contact(user: app_models.User):
+    if (not user.email
+            or (user.contacts and user.contacts.filter(email=user.email).exists())):
+        return
+    contact = app_models.Contact.objects.create(email=user.email)
+    user.contacts.add(contact)
