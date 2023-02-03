@@ -132,6 +132,25 @@ class LocationSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class CategorySerializer(generic_serializer(Category)):
+    class Meta:
+        model = Category
+        fields = '__all__'
+
+
+class CategoryCreateSerializer(CategorySerializer):
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        company = Category.objects.create(**data)
+        return company.id
+
+    def update(self, instance: Category, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+
 class CompanySerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
@@ -314,7 +333,7 @@ class PayerCreateSerializer(PayerSerializer):
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)
-    categories = generic_serializer(Category)(many=True)
+    categories = CategorySerializer(many=True)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()
 
@@ -388,8 +407,6 @@ class RecipientSerializer(RecipientNoAffiliationSerializer):
 
 
 RequesterSerializer = user_subtype_serializer(Requester)
-
-CategorySerializer = generic_serializer(Category)
 
 BusinessSerializer = generic_serializer(Business)
 
