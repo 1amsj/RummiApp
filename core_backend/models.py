@@ -285,7 +285,7 @@ class Business(models.Model):
         return self.name
 
 
-class Category(ExtendableModel):
+class Category(models.Model):
     description = models.CharField(_('description'), max_length=256)
     name = models.CharField(_('name'), max_length=64)
     is_deleted = models.BooleanField(default=False)
