@@ -305,7 +305,6 @@ class Service(ExtendableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
-    type = models.CharField(_('type'), max_length=128, default="Type A")
     bill_amount = models.DecimalField(_('billing amount'), max_digits=32, decimal_places=2)
     bill_rate = models.IntegerField(_('billing rate in seconds'))
     is_deleted = models.BooleanField(default=False)
