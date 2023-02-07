@@ -65,7 +65,7 @@ class QueryParams(Dict[str, QueryParamsValue]):
                 value = (prev.value + [value]) if isinstance(prev.value, list) else [prev.value, value]
             else:
                 value = [value]
-            current[F'{k}__array_contains'] = value
+            current[F'{k}__array_in'] = value
 
     def is_empty(self):
         return len(self) <= 0
