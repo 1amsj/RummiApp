@@ -19,4 +19,6 @@ API_QUERY_LOOKUP_MAP = {
     "lt": "lt",
     "gte": "gte",
     "lte": "lte",
+    "array_in": "in",
+    "array_contains": "in",
 }

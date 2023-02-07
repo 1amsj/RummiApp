@@ -503,6 +503,15 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
 
 
 class ManageService(basic_view_manager(Service, ServiceSerializer)):
+    @classmethod
+    def get(cls, request):
+        print(request.GET)
+        query_params = prepare_query_params(request.GET)
+        print({'params': query_params})
+        queryset = cls.apply_filters(Service.objects.filter(is_deleted=False), query_params)
+        serialized = ServiceSerializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error

@@ -22,7 +22,7 @@ class QueryParams(Dict[str, QueryParamsValue]):
             for (k, v) in params.items():
                 self[k] = v
 
-    def __getitem__(self, key: str) -> QueryParamsValue:
+    def __getitem__(self, key: QueryParamsKey) -> QueryParamsValue:
         ks = key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
         current = self
         for k in ks:
@@ -49,10 +49,23 @@ class QueryParams(Dict[str, QueryParamsValue]):
                 super(QueryParams, current).__setitem__(k, QueryParams())
             current = current[k]
 
-        super(QueryParams, current).__setitem__(ks[-1], Param(
-            value=value,
-            lookup=suffix,
-        ) if not isinstance(value, (Param, QueryParams)) else value)
+        k = ks[-1]
+        is_array = '[' in k
+
+        if not is_array:
+            super(QueryParams, current).__setitem__(k, Param(
+                value=value,
+                lookup=suffix,
+            ) if not isinstance(value, (Param, QueryParams)) else value)
+
+        else:
+            k = k.split('[')[0]
+            prev: Param | None = super(QueryParams, current).get(k)
+            if prev:
+                value = (prev.value + [value]) if isinstance(prev.value, list) else [prev.value, value]
+            else:
+                value = [value]
+            current[F'{k}__array_contains'] = value
 
     def is_empty(self):
         return len(self) <= 0
@@ -75,7 +88,7 @@ class QueryParams(Dict[str, QueryParamsValue]):
             raise TypeError('Illegal QueryParams state')
         return ret
 
-    def pop(self, __key: str, default=None):
+    def pop(self, __key: QueryParamsKey, default=None):
         ks = __key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
         q = self['.'.join(ks[:-1])] if len(ks) > 1 else self
         return super(QueryParams, q).pop(ks[-1], default)
