@@ -131,6 +131,8 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = '__all__'
 
+class LocationUnsafeSerializer(LocationSerializer):
+    id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
 
 class CompanySerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
@@ -160,6 +162,38 @@ class CompanyCreateSerializer(CompanySerializer):
             company.locations.add(*location_ids)
 
         return company.id
+    
+class CompanyUpdateSerializer(CompanyCreateSerializer):
+    contacts = ContactUnsafeSerializer(many=True)
+    locations = LocationUnsafeSerializer(many=True)
+    name = serializers.ReadOnlyField()
+
+    def update(self, instance: Company, validated_data=None):
+        data: dict = validated_data or self.validated_data
+
+        if contacts_data := data.pop('contacts', None):
+            created_contacts, updated_contacts = fetch_updated_from_validated_data(Contact, contacts_data)
+            # Create
+            if created_contacts:
+                created_contacts = Contact.objects.bulk_create(created_contacts)
+                instance.contacts.add(*created_contacts)
+            # Update
+            if updated_contacts:
+                Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+
+        if locations_data := data.pop('locations', None):
+            created_locations, updated_locations = fetch_updated_from_validated_data(Location, locations_data)
+            # Create
+            if created_locations:
+                created_locations = Location.objects.bulk_create(created_locations)
+                instance.locations.add(*created_locations)
+            #Update
+            if updated_locations:
+                Location.objects.bulk_update(updated_locations, ['address', 'city', 'state', 'country', 'zip'])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
 
 
 # User serializers
