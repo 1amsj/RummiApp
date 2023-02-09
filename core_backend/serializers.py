@@ -166,7 +166,7 @@ class CompanyCreateSerializer(CompanySerializer):
 class CompanyUpdateSerializer(CompanyCreateSerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
-    name = serializers.ReadOnlyField()
+    name = serializers.CharField()
 
     def update(self, instance: Company, validated_data=None):
         data: dict = validated_data or self.validated_data
