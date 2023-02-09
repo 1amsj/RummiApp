@@ -49,6 +49,12 @@ class QueryParams(Dict[str, QueryParamsValue]):
                 super(QueryParams, current).__setitem__(k, QueryParams())
             current = current[k]
 
+        if value == "true":
+          value = True
+
+        if value == "false":
+          value = False
+
         super(QueryParams, current).__setitem__(ks[-1], Param(
             value=value,
             lookup=suffix,
