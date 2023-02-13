@@ -49,6 +49,8 @@ class QueryParams(Dict[str, QueryParamsValue]):
                 super(QueryParams, current).__setitem__(k, QueryParams())
             current = current[k]
 
+        value = self.correct_value(value)
+
         k = ks[-1]
         is_array = '[' in k
 
@@ -66,6 +68,15 @@ class QueryParams(Dict[str, QueryParamsValue]):
             else:
                 value = [value]
             current[F'{k}__array_in'] = value
+
+    def correct_value(self, value):
+        if value == "true":
+            return True
+
+        elif value == "false":
+            return False
+
+        return value
 
     def is_empty(self):
         return len(self) <= 0

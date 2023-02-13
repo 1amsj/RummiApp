@@ -24,7 +24,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
 from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, \
     BookingNoEventsSerializer, BookingSerializer, \
     CategoryCreateSerializer, CategorySerializer, CompanyCreateSerializer, \
-    CompanySerializer, \
+    CompanySerializer, CompanyUpdateSerializer, \
     EventCreateSerializer, EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
     OperatorSerializer, \
     PayerSerializer, PayerCreateSerializer, \
@@ -500,6 +500,26 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
         serializer.is_valid(raise_exception=True)
         company_id = serializer.create()
         return Response(company_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Company)
+    @expect_does_not_exist(Contact)
+    def put(request, company_id=None):
+        company = Company.objects.get(id=company_id)
+        serializer = CompanyUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(company)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, company_id=None):
+        company = Company.objects.get(id=company_id)
+        company.is_deleted = True
+        company.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ManageService(basic_view_manager(Service, ServiceSerializer)):
