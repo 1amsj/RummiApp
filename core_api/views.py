@@ -1,7 +1,7 @@
 from typing import Type, Union
 
 from django.db import models, transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from rest_framework import generics, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
@@ -32,6 +32,21 @@ from core_backend.serializers import AffiliationSerializer, AgentSerializer, Boo
     ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
+
+
+def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
+    class CanManageModel(BasePermission):
+        message = 'You do not have permission to perform this operation'
+
+        def has_permission(self, request, view):
+            method = request.method
+            user = request.user
+            return (method == 'GET' and user.has_perm(F'core_api.view_{model_name}')) \
+                or (method == 'POST' and user.has_perm(F'core_api.add_{model_name}')) \
+                or (method == 'PUT' and user.has_perm(F'core_api.change_{model_name}')) \
+                or (method == 'DELETE' and user.has_perm(F'core_api.delete_{model_name}'))
+
+    return CanManageModel
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -111,19 +126,44 @@ def get_version(request):
         return Response(f.readline().strip('\n'))
 
 
-def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
-    class CanManageModel(BasePermission):
-        message = 'You do not have permission to perform this operation'
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, can_manage_model_basic_permissions(Business._meta.model_name)])
+def search_bookings(request):
+    # This view was made for the interpretation business alone and is not meant to be used in a generic application
+    # without making the proper modifications
+    person_query = Q(is_deleted=False)
+    if first_name := request.GET.get('first_name'):
+        person_query = person_query and Q(first_name__icontains=first_name)
+    if last_name := request.GET.get('last_name'):
+        person_query = person_query and Q(last_name__icontains=last_name)
 
-        def has_permission(self, request, view):
-            method = request.method
-            user = request.user
-            return (method == 'GET' and user.has_perm(F'core_api.view_{model_name}')) \
-                or (method == 'POST' and user.has_perm(F'core_api.add_{model_name}')) \
-                or (method == 'PUT' and user.has_perm(F'core_api.change_{model_name}')) \
-                or (method == 'DELETE' and user.has_perm(F'core_api.delete_{model_name}'))
+    eligible_users = User.objects.filter(person_query)
+    eligible_services = Service.objects.filter(
+        is_deleted=False,
+        provider__user__in=eligible_users,
+    )
+    eligible_affiliations = Affiliation.objects.filter(
+        is_deleted=False,
+        recipient__user__in=eligible_users,
+    )
+    eligible_events = Event.objects.filter(
+        is_deleted=False,
+        affiliates__in=eligible_affiliations,
+    )
 
-    return CanManageModel
+    queryset = Booking.objects.filter(
+        is_deleted=False,
+        services__in=eligible_services,
+        events__in=eligible_events,
+    )
+
+    if date := request.GET.get('date'):
+        queryset = queryset.filter_by_extra(
+            date_of_injury__contains=date,
+        )
+
+    serialized = BookingSerializer(queryset, many=True)
+    return Response(serialized.data)
 
 
 def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.ModelSerializer]):
