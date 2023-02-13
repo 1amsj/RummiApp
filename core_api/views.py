@@ -14,7 +14,8 @@ from core_api.decorators import expect_does_not_exist, expect_key_error, expect_
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_backend.datastructures import QueryParams
-from core_backend.models import Affiliation, Agent, Booking, Business, Company, Contact, Event, Expense, ExtraQuerySet, \
+from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
+    ExtraQuerySet, \
     Operator, \
     Payer, \
     Provider, \
@@ -22,7 +23,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Company, 
     Requester, Service, User
 from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, \
     BookingNoEventsSerializer, BookingSerializer, \
-    CompanyCreateSerializer, \
+    CategoryCreateSerializer, CategorySerializer, CompanyCreateSerializer, \
     CompanySerializer, CompanyUpdateSerializer, \
     EventCreateSerializer, EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
     OperatorSerializer, \
@@ -443,6 +444,42 @@ class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ManageCategories(basic_view_manager(Category, CategorySerializer)):
+    @classmethod
+    def get(cls, request, category_id=None):
+        if category_id:
+            serialized = CategorySerializer(Category.objects.get(id=category_id))
+            return Response(serialized.data)
+        return super().get(request)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        serializer = CategoryCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        category_id = serializer.create()
+        return Response(category_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def put(request, category_id=None):
+        category = Category.objects.get(id=category_id)
+        serializer = CategoryCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(category)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def delete(request, category_id=None):
+        Category.objects.get(id=category_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class ManageCompany(basic_view_manager(Company, CompanySerializer)):
     @classmethod
     @expect_does_not_exist(Company)
@@ -463,7 +500,7 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
         serializer.is_valid(raise_exception=True)
         company_id = serializer.create()
         return Response(company_id, status=status.HTTP_201_CREATED)
-    
+
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(Company)
