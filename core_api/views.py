@@ -210,13 +210,14 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ManageAgents( user_subtype_view_manager(Agent, AgentSerializer)):
+class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
     permission_classes = []
     @staticmethod
     @transaction.atomic
     @expect_key_error
     @expect_does_not_exist(Agent)
     def post(request):
+        print(request.data)
         serializer = AgentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         agent = serializer.create()

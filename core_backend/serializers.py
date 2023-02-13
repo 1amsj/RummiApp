@@ -298,10 +298,14 @@ class AgentCreateSerializer(AgentSerializer):
     def create(self, validated_data=None):
         data = validated_data or self.validated_data
         companies_data = data.pop('companies', None)
-        agent = Agent.objects.create(**data)
+        print(companies_data)
+        company = Company.objects.get(companies_data)
+        agent: Agent = Agent.objects.create(**data)
         if companies_data:
-            agent.companies.add(*companies_data)
+            agent.companies.set([company])
         return agent
+
+
 
 
 class OperatorSerializer(user_subtype_serializer(Operator)):
