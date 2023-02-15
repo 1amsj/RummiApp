@@ -263,7 +263,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     def delete(request, user_id=None):
         user = User.objects.get(id=user_id)
         user.is_deleted = True
-        user.save(['is_deleted'])
+        user.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -398,7 +398,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     def delete(request, booking_id=None):
         booking = Booking.objects.get(id=booking_id)
         booking.is_deleted = True
-        booking.save(['is_deleted'])
+        booking.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -450,7 +450,7 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     def delete(request, event_id=None):
         event = Event.objects.get(id=event_id)
         event.is_deleted = True
-        event.save(['is_deleted'])
+        event.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
