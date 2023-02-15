@@ -162,6 +162,8 @@ def search_bookings(request):
             date_of_injury__contains=date,
         )
 
+    queryset = queryset.distinct('id')
+
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.data)
 
