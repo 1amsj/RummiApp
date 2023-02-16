@@ -319,12 +319,11 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
     @transaction.atomic
     @expect_key_error
     @expect_does_not_exist(Affiliation)
-    def post(request):
+    def post(request, business_name=None):
         data = request.data
-        data['business'] = 'interpretation'
         serializer = AffiliationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        affiliation = serializer.create()
+        affiliation = serializer.create(business_name)
         return Response(affiliation.id, status=status.HTTP_201_CREATED)
 
 

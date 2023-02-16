@@ -450,13 +450,13 @@ class AffiliationCreateSerializer(AffiliationSerializer):
     company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all())
     recipient = serializers.PrimaryKeyRelatedField(queryset=Recipient.objects.all())
 
-    def create(self, validated_data=None):
+    def create(self, business_name, validated_data=None):
+
         data = validated_data or self.validated_data
-        business = data.pop('business')
         extras = data.pop('extra', {})
         affiliation = Affiliation.objects.create(**data)
 
-        manage_extra_attrs(business, affiliation, extras)
+        manage_extra_attrs(business_name, affiliation, extras)
 
         return affiliation
 
