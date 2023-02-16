@@ -313,6 +313,19 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
                 queryset = queryset.filter_by_extra(**extra_params.to_dict('company__'))
 
         return queryset
+    
+    permission_classes = []
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Affiliation)
+    def post(request):
+        data = request.data
+        data['business'] = 'interpretation'
+        serializer = AffiliationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        affiliation = serializer.create()
+        return Response(affiliation.id, status=status.HTTP_201_CREATED)
 
 
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
