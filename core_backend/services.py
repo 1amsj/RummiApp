@@ -102,7 +102,7 @@ def filter_params(model: Type[models.Model], params: QueryParams) -> Tuple[Query
     return base_params, extra_params, nested_params
 
 
-def sync_sets(original_set, new_set, add, remove, update):
+def sync_sets(original_set, new_set, add, remove):
     original_set = set(original_set)
     new_set = set(new_set)
 
@@ -113,10 +113,6 @@ def sync_sets(original_set, new_set, add, remove, update):
     created = new_set.difference(original_set)
     if created:
         add(created)
-
-    updated = new_set.intersection(original_set)
-    if updated:
-        update()
 
 
 def sync_m2m(manager, new_set, field='id'):
@@ -145,3 +141,11 @@ def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset):
         updated.append(obj)
 
     return created, updated
+
+
+def user_sync_email_with_contact(user: app_models.User):
+    if (not user.email
+            or (user.contacts and user.contacts.filter(email=user.email).exists())):
+        return
+    contact = app_models.Contact.objects.create(email=user.email)
+    user.contacts.add(contact)

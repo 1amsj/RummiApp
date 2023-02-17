@@ -6,9 +6,10 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
-    ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, Service, User
+    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
+    Service, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
-    manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m
+    manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
 
 
 # Extra serializers
@@ -130,6 +131,27 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = '__all__'
 
+class LocationUnsafeSerializer(LocationSerializer):
+    id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
+
+class CategorySerializer(generic_serializer(Category)):
+    class Meta:
+        model = Category
+        fields = '__all__'
+
+
+class CategoryCreateSerializer(CategorySerializer):
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        company = Category.objects.create(**data)
+        return company.id
+
+    def update(self, instance: Category, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
 
 class CompanySerializer(serializers.ModelSerializer):
     contacts = ContactSerializer(many=True)
@@ -159,6 +181,38 @@ class CompanyCreateSerializer(CompanySerializer):
             company.locations.add(*location_ids)
 
         return company.id
+    
+class CompanyUpdateSerializer(CompanyCreateSerializer):
+    contacts = ContactUnsafeSerializer(many=True)
+    locations = LocationUnsafeSerializer(many=True)
+    name = serializers.CharField()
+
+    def update(self, instance: Company, validated_data=None):
+        data: dict = validated_data or self.validated_data
+
+        if contacts_data := data.pop('contacts', None):
+            created_contacts, updated_contacts = fetch_updated_from_validated_data(Contact, contacts_data)
+            # Create
+            if created_contacts:
+                created_contacts = Contact.objects.bulk_create(created_contacts)
+                instance.contacts.add(*created_contacts)
+            # Update
+            if updated_contacts:
+                Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+
+        if locations_data := data.pop('locations', None):
+            created_locations, updated_locations = fetch_updated_from_validated_data(Location, locations_data)
+            # Create
+            if created_locations:
+                created_locations = Location.objects.bulk_create(created_locations)
+                instance.locations.add(*created_locations)
+            #Update
+            if updated_locations:
+                Location.objects.bulk_update(updated_locations, ['address', 'city', 'state', 'country', 'zip'])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
 
 
 # User serializers
@@ -209,7 +263,9 @@ class UserCreateSerializer(UserSerializer):
         )
 
     def validate(self, attrs):
-        if (attrs['password'] or attrs['confirmation']) and attrs['password'] != attrs['confirmation']:
+        password = attrs.get('password')
+        confirmation = attrs.get('confirmation')
+        if (password or confirmation) and password != confirmation:
             raise serializers.ValidationError({"confirmation": "Password fields didn't match."})
         return attrs
 
@@ -229,11 +285,13 @@ class UserCreateSerializer(UserSerializer):
             contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
             user.contacts.add(*contact_ids)
 
+        user_sync_email_with_contact(user)
+
         return user
 
 
 class UserUpdateSerializer(UserCreateSerializer):
-    contacts = ContactUnsafeSerializer(many=True)
+    contacts = ContactUnsafeSerializer(many=True, required=False)
     username = serializers.ReadOnlyField()
 
     def update(self, instance: User, validated_data=None):
@@ -255,9 +313,17 @@ class UserUpdateSerializer(UserCreateSerializer):
             if updated_contacts:
                 Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
 
+        if ((new_email := data.get('email'))
+                and new_email != instance.email
+                and (contact := instance.contacts.filter(email=instance.email).first())):
+            contact.email = new_email
+            contact.save()
+
         for (k, v) in data.items():
             setattr(instance, k, v)
         instance.save()
+
+        user_sync_email_with_contact(instance)
 
 
 def user_subtype_serializer(serializer_model: Type[models.Model]):
@@ -293,19 +359,17 @@ class AgentSerializer(user_subtype_serializer(Agent)):
 class AgentCreateSerializer(AgentSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     companies = serializers.PrimaryKeyRelatedField(many = True, queryset=Company.objects.all())
-    role= serializers.CharField()
+    role = serializers.CharField()
 
-    def create(self, validated_data=None):
+    def create(self, business_name, validated_data=None):
         data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
         companies_data = data.pop('companies', None)
-        print(companies_data)
-        company = Company.objects.get(companies_data)
-        agent: Agent = Agent.objects.create(**data)
+        agent = Agent.objects.create(**data)
         if companies_data:
-            agent.companies.set([company])
+            agent.companies.add(*companies_data)
+        manage_extra_attrs(business_name, agent, extras)
         return agent
-
-
 
 
 class OperatorSerializer(user_subtype_serializer(Operator)):
@@ -331,7 +395,9 @@ class PayerCreateSerializer(PayerSerializer):
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     business = generic_serializer(Business)
-    categories = generic_serializer(Category)(many=True)
+    categories = CategorySerializer(many=True)
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
 
     class Meta:
         model = Service
@@ -347,10 +413,12 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
         fields = '__all__'
 
 
-class ServiceCreateSerializer(extendable_serializer(Service)):
+class ServiceCreateSerializer(ServiceNoProviderSerializer):
     business = BusinessField()
     categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
     provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
 
     class Meta:
         model = Service
@@ -402,8 +470,6 @@ class RecipientSerializer(RecipientNoAffiliationSerializer):
 
 RequesterSerializer = user_subtype_serializer(Requester)
 
-CategorySerializer = generic_serializer(Category)
-
 BusinessSerializer = generic_serializer(Business)
 
 
@@ -411,18 +477,45 @@ class ServiceSerializer(extendable_serializer(Service)):
     business = BusinessSerializer()
     categories = CategorySerializer(many=True)
     provider = ProviderSerializer()
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
 
     class Meta:
         model = Service
         fields = '__all__'
 
 
+class ExpenseSerializer(generic_serializer(Expense)):
+    booking_id = serializers.PrimaryKeyRelatedField(read_only=True, source='booking')
+
+    class Meta:
+        model = Expense
+        fields = '__all__'
+
+
+class ExpenseCreateSerializer(ExpenseSerializer):
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        expense = Expense.objects.create(**data)
+        return expense.id
+
+    def update(self, instance: Event, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
     companies = CompanySerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
+    expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
+    # TODO add expenses
 
     class Meta:
         model = Booking
