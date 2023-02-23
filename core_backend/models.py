@@ -3,8 +3,9 @@ from typing import Optional
 from django.contrib.auth.models import AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
+from django.db.models.deletion import get_candidate_relations_to_delete
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
@@ -75,6 +76,37 @@ class HistoricalModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class SoftDeletionQuerySet(models.QuerySet):
+    def not_deleted(self):
+        return self.filter(is_deleted=False)
+
+    def delete(self):
+        for obj in self:
+            obj.delete()
+
+    def hard_delete(self):
+        return super().delete()
+
+
+class SoftDeletableModel(models.Model):
+    is_deleted = models.BooleanField(default=False)
+
+    class Meta:
+        abstract = True
+
+    def delete_related(self):
+        pass
+
+    @transaction.atomic
+    def delete(self, using=None, keep_parents=False):
+        self.is_deleted = True
+        self.save()
+        self.delete_related()
+
+    def hard_delete(self, using=None, keep_parents=False):
+        super().delete(using, keep_parents)
 
 
 # Abstract models
@@ -318,7 +350,7 @@ class Service(ExtendableModel):
         return F"{self.business} by {self.provider}"
 
 
-class Booking(ExtendableModel, HistoricalModel):
+class Booking(SoftDeletableModel, ExtendableModel, HistoricalModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
@@ -334,6 +366,9 @@ class Booking(ExtendableModel, HistoricalModel):
     recipients_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_recipients')
     requesters_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_requesters')
 
+    def delete_related(self):
+        self.events.delete()
+
     class Meta:
         verbose_name = _('booking')
         verbose_name_plural = _('bookings')
@@ -342,7 +377,7 @@ class Booking(ExtendableModel, HistoricalModel):
         return super(Booking, self).__str__()
 
 
-class Event(HistoricalModel):
+class Event(SoftDeletableModel, HistoricalModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
     is_deleted = models.BooleanField(default=False)
 

@@ -15,6 +15,11 @@ def is_extendable(model: Type[models.Model]) -> bool:
     return issubclass(model, app_models.ExtendableModel)
 
 
+def is_soft_deletable(model: Type[models.Model]) -> bool:
+    """Checks if a model is a subtype of SoftDeletableModel"""
+    return issubclass(model, app_models.SoftDeletableModel)
+
+
 def assert_extendable(model: Type[models.Model]):
     """
     Raises an exception if the type is not a subtype of Extendable Model
