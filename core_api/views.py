@@ -226,7 +226,6 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
 
 class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
-    permission_classes = []
 
     @staticmethod
     @transaction.atomic
