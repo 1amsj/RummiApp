@@ -21,7 +21,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, \
+from core_backend.serializers import AffiliationSerializer, AgentSerializer, AgentCreateSerializer, BookingCreateSerializer, \
     BookingNoEventsSerializer, BookingSerializer, \
     CategoryCreateSerializer, CategorySerializer, CompanyCreateSerializer, \
     CompanySerializer, CompanyUpdateSerializer, \
@@ -267,7 +267,17 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-ManageAgents = user_subtype_view_manager(Agent, AgentSerializer)
+class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Agent)
+    def post(request, business_name=None):
+        serializer = AgentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        agent = serializer.create(business_name)
+        return Response(agent.id, status=status.HTTP_201_CREATED)
 
 ManageOperators = user_subtype_view_manager(Operator, OperatorSerializer)
 

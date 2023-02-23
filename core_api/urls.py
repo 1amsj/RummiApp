@@ -43,10 +43,10 @@ urlpatterns = [
     path('version/', views.get_version, name='test'),
 
     *path_optional('users/', '<id:user_id>', views.ManageUsers.as_view(), name='manage_users'),
-    path('agents/', views.ManageAgents.as_view(), name='manage_agents'),
     path('operators/', views.ManageOperators.as_view(), name='manage_operators'),
     path('payers/', views.ManagePayers.as_view(), name='manage_payers'),
     *path_optionals_xor('providers/', ['<id:provider_id>', '<str:business_name>'], views.ManageProviders.as_view(), name='manage_providers'),
+    *path_optionals_xor('agents/', ['<id:agent_id>', '<str:business_name>'], views.ManageAgents.as_view(), name='manage_agents'),
     path('recipients/', views.ManageRecipients.as_view(), name='manage_recipients'),
     path('requesters/', views.ManageRequesters.as_view(), name='manage_requesters'),
     path('affiliations/', views.ManageAffiliations.as_view(), name='manage_affiliations'),
