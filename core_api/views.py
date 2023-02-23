@@ -272,7 +272,6 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
 
 
 class ManageRecipients(user_subtype_view_manager(Recipient, RecipientSerializer)):
-    permission_classes = []
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -314,7 +313,6 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
 
         return queryset
     
-    permission_classes = []
     @staticmethod
     @transaction.atomic
     @expect_key_error
