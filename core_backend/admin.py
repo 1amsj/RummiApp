@@ -34,7 +34,7 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin, SimpleHistoryAdmin):
         (
             _('Information'),
             {
-                'fields': ('national_id', 'ssn', 'is_operator', 'is_payer', 'is_provider', 'is_recipient', 'is_requester', 'is_deleted')
+                'fields': ('national_id', 'ssn', 'date_of_birth', 'is_operator', 'is_payer', 'is_provider', 'is_recipient', 'is_requester', 'is_deleted')
             }
         ),
         *BaseUserAdmin.fieldsets[2:],
