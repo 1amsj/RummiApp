@@ -182,27 +182,47 @@ class User(SoftDeletableModel, AbstractUser, AbstractPerson, HistoricalModel):
         verbose_name_plural = _("users")
 
     @property
+    def is_agent(self):
+        return getattr(self, 'as_agents', None) is not None
+
+    @property
     def is_operator(self):
-        return hasattr(self, 'as_operator') and self.as_operator is not None
+        return getattr(self, 'as_operator', None) is not None
 
     @property
     def is_provider(self):
-        return hasattr(self, 'as_provider') and self.as_provider is not None
+        return getattr(self, 'as_provider', None) is not None
 
     @property
     def is_recipient(self):
-        return hasattr(self, 'as_recipient') and self.as_recipient is not None
+        return getattr(self, 'as_recipient', None) is not None
 
     @property
     def is_requester(self):
-        return hasattr(self, 'as_requester') and self.as_requester is not None
+        return getattr(self, 'as_requester', None) is not None
 
     @property
     def is_payer(self):
-        return hasattr(self, 'as_payer') and self.as_payer is not None
+        return getattr(self, 'as_payer', None) is not None
 
     def delete_related(self):
-        pass
+        if self.is_agent:
+            self.as_agents.all().delete()
+
+        if self.is_operator:
+            self.as_operator.delete()
+
+        if self.is_provider:
+            self.as_provider.delete()
+
+        if self.is_recipient:
+            self.as_recipient.delete()
+
+        if self.is_requester:
+            self.as_requester.delete()
+
+        if self.is_payer:
+            self.as_payer.delete()
 
 
 class Agent(SoftDeletableModel, ExtendableModel, HistoricalModel):
