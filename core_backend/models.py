@@ -355,7 +355,8 @@ class Business(SoftDeletableModel):
         return self.name
 
     def delete_related(self):
-        pass
+        self.bookings.all().delete()
+        self.services.all().delete()
 
 
 class Category(SoftDeletableModel):
@@ -377,13 +378,12 @@ class Category(SoftDeletableModel):
         pass
 
 
-class Service(ExtendableModel):
+class Service(SoftDeletableModel, ExtendableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
     bill_amount = models.DecimalField(_('billing amount'), max_digits=32, decimal_places=2)
     bill_rate = models.IntegerField(_('billing rate in seconds'))
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('service')
@@ -392,13 +392,16 @@ class Service(ExtendableModel):
     def __str__(self):
         return F"{self.business} by {self.provider}"
 
+    def delete_related(self):
+        # TODO review since this is a m2m
+        self.bookings.all().delete()
+
 
 class Booking(SoftDeletableModel, ExtendableModel, HistoricalModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
-    is_deleted = models.BooleanField(default=False)
 
     # Constraints
     categories = models.ManyToManyField(Category, blank=True, related_name='bookings')
@@ -409,15 +412,15 @@ class Booking(SoftDeletableModel, ExtendableModel, HistoricalModel):
     recipients_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_recipients')
     requesters_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_requesters')
 
-    def delete_related(self):
-        self.events.delete()
-
     class Meta:
         verbose_name = _('booking')
         verbose_name_plural = _('bookings')
 
     def __str__(self):
         return super(Booking, self).__str__()
+
+    def delete_related(self):
+        self.events.delete()
 
 
 class Event(SoftDeletableModel, HistoricalModel):
