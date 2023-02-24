@@ -157,6 +157,7 @@ class Company(SoftDeletableModel, HistoricalModel):
         # TODO review
         # self.contacts.all().delete()
         # self.locations.all().delete()
+        self.affiliations.all().delete()
         pass
 
 
@@ -301,7 +302,7 @@ class Recipient(SoftDeletableModel, ExtendableModel, HistoricalModel):
         return F"[Recipient] {self.user}"
 
     def delete_related(self):
-        pass
+        self.affiliations.all().delete()
 
 
 class Affiliation(SoftDeletableModel, ExtendableModel, HistoricalModel):
