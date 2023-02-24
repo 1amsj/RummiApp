@@ -344,9 +344,8 @@ class Rule(models.Model):
         verbose_name_plural = _('rules')
 
 
-class Business(models.Model):
+class Business(SoftDeletableModel):
     name = models.CharField(_('business'), max_length=128, unique=True)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('business')
@@ -355,11 +354,13 @@ class Business(models.Model):
     def __str__(self):
         return self.name
 
+    def delete_related(self):
+        pass
 
-class Category(models.Model):
+
+class Category(SoftDeletableModel):
     description = models.CharField(_('description'), max_length=256)
     name = models.CharField(_('name'), max_length=64)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('category')
@@ -371,6 +372,9 @@ class Category(models.Model):
     @property
     def has_services(self):
         return hasattr(self, 'services') and self.services is not None
+
+    def delete_related(self):
+        pass
 
 
 class Service(ExtendableModel):
