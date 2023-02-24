@@ -460,14 +460,42 @@ class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
         model = Recipient
         exclude = ('companies',)
 
-
 class AffiliationSerializer(generic_serializer(Affiliation)):
     company = CompanySerializer()
     recipient = RecipientNoAffiliationSerializer()
 
+class AffiliationCreateSerializer(AffiliationSerializer):
+    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all())
+    recipient = serializers.PrimaryKeyRelatedField(queryset=Recipient.objects.all())
+
+    def create(self, business_name, validated_data=None):
+
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        affiliation = Affiliation.objects.create(**data)
+
+        manage_extra_attrs(business_name, affiliation, extras)
+
+        return affiliation
+
 
 class RecipientSerializer(RecipientNoAffiliationSerializer):
     affiliations = AffiliationNoRecipientSerializer(many=True, read_only=True)
+
+class RecipientCreateSerializer(extendable_serializer(Recipient)):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    
+    def create(self, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        companies = data.pop('companies', [])
+
+        recipient = Recipient.objects.create(**data)
+        if companies:
+            recipient.categories.add(*companies)
+        manage_extra_attrs(recipient.companies, recipient, extras)
+
+        return recipient
 
 
 RequesterSerializer = user_subtype_serializer(Requester)
