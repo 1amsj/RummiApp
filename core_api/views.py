@@ -1,7 +1,7 @@
 from typing import Type, Union
 
 from django.db import models, transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from rest_framework import generics, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
@@ -21,7 +21,8 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Provider, \
     Recipient, \
     Requester, Service, User
-from core_backend.serializers import AffiliationSerializer, AffiliationCreateSerializer, AgentSerializer, BookingCreateSerializer, \
+
+from core_backend.serializers import AffiliationSerializer, AgentSerializer, AgentCreateSerializer, BookingCreateSerializer, \
     BookingNoEventsSerializer, BookingSerializer, \
     CategoryCreateSerializer, CategorySerializer, CompanyCreateSerializer, \
     CompanySerializer, CompanyUpdateSerializer, \
@@ -32,6 +33,21 @@ from core_backend.serializers import AffiliationSerializer, AffiliationCreateSer
     ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
+
+
+def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
+    class CanManageModel(BasePermission):
+        message = 'You do not have permission to perform this operation'
+
+        def has_permission(self, request, view):
+            method = request.method
+            user = request.user
+            return (method == 'GET' and user.has_perm(F'core_api.view_{model_name}')) \
+                or (method == 'POST' and user.has_perm(F'core_api.add_{model_name}')) \
+                or (method == 'PUT' and user.has_perm(F'core_api.change_{model_name}')) \
+                or (method == 'DELETE' and user.has_perm(F'core_api.delete_{model_name}'))
+
+    return CanManageModel
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -111,19 +127,46 @@ def get_version(request):
         return Response(f.readline().strip('\n'))
 
 
-def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
-    class CanManageModel(BasePermission):
-        message = 'You do not have permission to perform this operation'
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, can_manage_model_basic_permissions(Business._meta.model_name)])
+def search_bookings(request):
+    # This view was made for the interpretation business alone and is not meant to be used in a generic application
+    # without making the proper modifications
+    person_query = Q(is_deleted=False)
+    if first_name := request.GET.get('first_name'):
+        person_query = person_query and Q(first_name__icontains=first_name)
+    if last_name := request.GET.get('last_name'):
+        person_query = person_query and Q(last_name__icontains=last_name)
 
-        def has_permission(self, request, view):
-            method = request.method
-            user = request.user
-            return (method == 'GET' and user.has_perm(F'core_api.view_{model_name}')) \
-                or (method == 'POST' and user.has_perm(F'core_api.add_{model_name}')) \
-                or (method == 'PUT' and user.has_perm(F'core_api.change_{model_name}')) \
-                or (method == 'DELETE' and user.has_perm(F'core_api.delete_{model_name}'))
+    eligible_users = User.objects.filter(person_query)
+    eligible_services = Service.objects.filter(
+        is_deleted=False,
+        provider__user__in=eligible_users,
+    )
+    eligible_affiliations = Affiliation.objects.filter(
+        is_deleted=False,
+        recipient__user__in=eligible_users,
+    )
+    eligible_events = Event.objects.filter(
+        is_deleted=False,
+        affiliates__in=eligible_affiliations,
+    )
 
-    return CanManageModel
+    queryset = Booking.objects.filter(
+        is_deleted=False,
+        services__in=eligible_services,
+        events__in=eligible_events,
+    )
+
+    if date := request.GET.get('date'):
+        queryset = queryset.filter_by_extra(
+            date_of_injury__contains=date,
+        )
+
+    queryset = queryset.distinct('id')
+
+    serialized = BookingSerializer(queryset, many=True)
+    return Response(serialized.data)
 
 
 def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.ModelSerializer]):
@@ -221,11 +264,21 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     def delete(request, user_id=None):
         user = User.objects.get(id=user_id)
         user.is_deleted = True
-        user.save(['is_deleted'])
+        user.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-ManageAgents = user_subtype_view_manager(Agent, AgentSerializer)
+class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Agent)
+    def post(request, business_name=None):
+        serializer = AgentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        agent = serializer.create(business_name)
+        return Response(agent.id, status=status.HTTP_201_CREATED)
 
 ManageOperators = user_subtype_view_manager(Operator, OperatorSerializer)
 
@@ -376,13 +429,18 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     def delete(request, booking_id=None):
         booking = Booking.objects.get(id=booking_id)
         booking.is_deleted = True
-        booking.save(['is_deleted'])
+        booking.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     @classmethod
-    def get(cls, request, business_name=None):
+    @expect_does_not_exist(Event)
+    def get(cls, request, business_name=None, event_id=None):
+        if event_id:
+            serialized = EventSerializer(Event.objects.get(id=event_id))
+            return Response(serialized.data)
+
         query_params = prepare_query_params(request.GET)
         include_booking = query_params.pop(INCLUDE_BOOKING_KEY, False)
         queryset = Event.objects.filter(is_deleted=False)
@@ -423,7 +481,7 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
     def delete(request, event_id=None):
         event = Event.objects.get(id=event_id)
         event.is_deleted = True
-        event.save(['is_deleted'])
+        event.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

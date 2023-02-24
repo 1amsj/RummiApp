@@ -84,7 +84,7 @@ class AbstractPerson(models.Model):
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
     national_id = models.CharField(_('national ID'), max_length=50, blank=True)
     ssn = models.CharField(_('social security number'), max_length=50, blank=True)
-
+    date_of_birth = models.DateField(_('date of birth'), null=True, blank=True)
     class Meta:
         abstract = True
         ordering = ['last_name', 'first_name']
