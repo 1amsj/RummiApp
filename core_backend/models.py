@@ -125,11 +125,10 @@ class AbstractPerson(models.Model):
 
 
 # General data models
-class Contact(HistoricalModel):
+class Contact(SoftDeletableModel, HistoricalModel):
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('contact')
@@ -156,13 +155,12 @@ class Company(HistoricalModel):
         return F"{self.name} ({self.type})"
 
 
-class Location(models.Model):
+class Location(SoftDeletableModel):
     address = models.CharField(_('address'), max_length=128)
     city = models.CharField(_('city'), max_length=128)
     state = models.CharField(_('state or province'), max_length=128)
     country = models.CharField(_('country'), max_length=128)
     zip = models.CharField(_('ZIP code'), max_length=10, blank=True)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('location')
