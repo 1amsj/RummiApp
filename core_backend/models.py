@@ -138,14 +138,13 @@ class Contact(SoftDeletableModel, HistoricalModel):
         return F"{self.email}, {self.phone}, {self.fax}"
 
 
-class Company(HistoricalModel):
+class Company(SoftDeletableModel, HistoricalModel):
     contacts = models.ManyToManyField(Contact, blank=True)
     locations = models.ManyToManyField("Location", related_name='owner', blank=True)
     name = models.CharField(_('name'), max_length=128)
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('company')
@@ -153,6 +152,12 @@ class Company(HistoricalModel):
 
     def __str__(self):
         return F"{self.name} ({self.type})"
+
+    def delete_related(self):
+        # TODO review
+        # self.contacts.all().delete()
+        # self.locations.all().delete()
+        pass
 
 
 class Location(SoftDeletableModel):
@@ -171,9 +176,7 @@ class Location(SoftDeletableModel):
 
 
 # User models
-class User(AbstractUser, AbstractPerson, HistoricalModel):
-    is_deleted = models.BooleanField(default=False)
-
+class User(SoftDeletableModel, AbstractUser, AbstractPerson, HistoricalModel):
     class Meta:
         verbose_name = _("user")
         verbose_name_plural = _("users")
@@ -198,12 +201,14 @@ class User(AbstractUser, AbstractPerson, HistoricalModel):
     def is_payer(self):
         return hasattr(self, 'as_payer') and self.as_payer is not None
 
+    def delete_related(self):
+        pass
 
-class Agent(ExtendableModel, HistoricalModel):
+
+class Agent(SoftDeletableModel, ExtendableModel, HistoricalModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
     companies = models.ManyToManyField(Company, related_name='agents')
     role = models.CharField(_('role'), max_length=64)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('agent')
@@ -213,13 +218,15 @@ class Agent(ExtendableModel, HistoricalModel):
     def __str__(self):
         return F"[{self.role} (agent)] {self.user}"
 
+    def delete_related(self):
+        pass
 
-class Operator(HistoricalModel):
+
+class Operator(SoftDeletableModel, HistoricalModel):
     """Staff who maintain the platform"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
     companies = models.ManyToManyField(Company, related_name='operators')
     hiring_date = models.DateField(_('hiring date'))
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('operator data')
@@ -227,13 +234,15 @@ class Operator(HistoricalModel):
     def __str__(self):
         return F"[Operator] {self.user}"
 
+    def delete_related(self):
+        pass
 
-class Payer(HistoricalModel):
+
+class Payer(SoftDeletableModel, HistoricalModel):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
     companies = models.ManyToManyField(Company, related_name='payers')
     method = models.CharField(_('paying method'), max_length=64)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
@@ -241,12 +250,14 @@ class Payer(HistoricalModel):
     def __str__(self):
         return F"[Payer] {self.user}"
 
+    def delete_related(self):
+        pass
 
-class Provider(ExtendableModel, HistoricalModel):
+
+class Provider(SoftDeletableModel, ExtendableModel, HistoricalModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
@@ -254,12 +265,14 @@ class Provider(ExtendableModel, HistoricalModel):
     def __str__(self):
         return F"[Provider] {self.user}"
 
+    def delete_related(self):
+        pass
 
-class Recipient(ExtendableModel, HistoricalModel):
+
+class Recipient(SoftDeletableModel, ExtendableModel, HistoricalModel):
     """Who receives the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
     companies = models.ManyToManyField(Company, related_name='recipients', through="Affiliation")
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('recipient data')
@@ -267,11 +280,13 @@ class Recipient(ExtendableModel, HistoricalModel):
     def __str__(self):
         return F"[Recipient] {self.user}"
 
+    def delete_related(self):
+        pass
 
-class Affiliation(ExtendableModel, HistoricalModel):
+
+class Affiliation(SoftDeletableModel, ExtendableModel, HistoricalModel):
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='affiliations')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('affiliation')
@@ -280,18 +295,23 @@ class Affiliation(ExtendableModel, HistoricalModel):
     def __str__(self):
         return F"[Affiliation] {self.recipient.user} with {self.company or 'no company'}"
 
+    def delete_related(self):
+        pass
 
-class Requester(HistoricalModel):
+
+class Requester(SoftDeletableModel, HistoricalModel):
     """Who requests the service case for the Recipient"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
     companies = models.ManyToManyField(Company, related_name='requesters')
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('requester data')
 
     def __str__(self):
         return F"[Requester] {self.user}"
+
+    def delete_related(self):
+        pass
 
 
 # Service models
