@@ -11,27 +11,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
 
-# Generic helpers
-class Extra(models.Model):
-    parent_id = models.PositiveIntegerField()
-    parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    parent = GenericForeignKey('parent_ct', 'parent_id')
-    business = models.ForeignKey("Business", on_delete=models.CASCADE)
-    key = models.CharField(_('key'), max_length=256)
-    value = models.CharField(_('value'), max_length=512)
-
-    class Meta:
-        verbose_name = verbose_name_plural = _('extra data')
-        indexes = [
-            models.Index(fields=["parent_ct", "business", "key"]),
-            models.Index(fields=["parent_id", "key"]),
-        ]
-        unique_together = ["parent_ct", "parent_id", "business", "key"]
-
-    def __str__(self):
-        return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.value}"
-
-
+# Query sets
 class ExtraQuerySet(models.QuerySet):
     def prefetch_extra(self, business: Optional["Business"] = None):
         ct = ContentType.objects.get_for_model(self.model)
@@ -53,8 +33,21 @@ class ExtraQuerySet(models.QuerySet):
         return queryset
 
 
+class SoftDeletionQuerySet(models.QuerySet):
+    def not_deleted(self):
+        return self.filter(is_deleted=False)
+
+    def delete(self):
+        for obj in self:
+            obj.delete()
+
+    def hard_delete(self):
+        return super().delete()
+
+
+# Abstract models
 class ExtendableModel(models.Model):
-    extra = GenericRelation(Extra, 'parent_id', 'parent_ct', verbose_name=_('extra data'))
+    extra = GenericRelation("Extra", 'parent_id', 'parent_ct', verbose_name=_('extra data'))
 
     objects = ExtraQuerySet.as_manager()
 
@@ -78,18 +71,6 @@ class HistoricalModel(models.Model):
         abstract = True
 
 
-class SoftDeletionQuerySet(models.QuerySet):
-    def not_deleted(self):
-        return self.filter(is_deleted=False)
-
-    def delete(self):
-        for obj in self:
-            obj.delete()
-
-    def hard_delete(self):
-        return super().delete()
-
-
 class SoftDeletableModel(models.Model):
     is_deleted = models.BooleanField(default=False)
 
@@ -107,6 +88,27 @@ class SoftDeletableModel(models.Model):
 
     def hard_delete(self, using=None, keep_parents=False):
         super().delete(using, keep_parents)
+
+
+# Generic helpers
+class Extra(models.Model):
+    parent_id = models.PositiveIntegerField()
+    parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    parent = GenericForeignKey('parent_ct', 'parent_id')
+    business = models.ForeignKey("Business", on_delete=models.CASCADE)
+    key = models.CharField(_('key'), max_length=256)
+    value = models.CharField(_('value'), max_length=512)
+
+    class Meta:
+        verbose_name = verbose_name_plural = _('extra data')
+        indexes = [
+            models.Index(fields=["parent_ct", "business", "key"]),
+            models.Index(fields=["parent_id", "key"]),
+        ]
+        unique_together = ["parent_ct", "parent_id", "business", "key"]
+
+    def __str__(self):
+        return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.value}"
 
 
 # Abstract models
