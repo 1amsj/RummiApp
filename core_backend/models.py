@@ -45,7 +45,26 @@ class ExtraQuerySet(SoftDeletionQuerySet):
 
 
 # Abstract models
-class ExtendableModel(models.Model):
+class SoftDeletableModel(models.Model):
+    is_deleted = models.BooleanField(default=False)
+
+    class Meta:
+        abstract = True
+
+    def delete_related(self):
+        pass
+
+    @transaction.atomic
+    def delete(self, using=None, keep_parents=False):
+        self.is_deleted = True
+        self.save()
+        self.delete_related()
+
+    def hard_delete(self, using=None, keep_parents=False):
+        super().delete(using, keep_parents)
+
+
+class ExtendableModel(SoftDeletableModel):
     extra = GenericRelation("Extra", 'parent_id', 'parent_ct', verbose_name=_('extra data'))
 
     objects = ExtraQuerySet.as_manager()
@@ -68,25 +87,6 @@ class HistoricalModel(models.Model):
 
     class Meta:
         abstract = True
-
-
-class SoftDeletableModel(models.Model):
-    is_deleted = models.BooleanField(default=False)
-
-    class Meta:
-        abstract = True
-
-    def delete_related(self):
-        pass
-
-    @transaction.atomic
-    def delete(self, using=None, keep_parents=False):
-        self.is_deleted = True
-        self.save()
-        self.delete_related()
-
-    def hard_delete(self, using=None, keep_parents=False):
-        super().delete(using, keep_parents)
 
 
 # General data models
