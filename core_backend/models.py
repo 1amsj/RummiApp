@@ -1,6 +1,6 @@
 from typing import Optional
 
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
@@ -12,6 +12,9 @@ from simple_history.models import HistoricalRecords
 
 # Query sets
 class SoftDeletionQuerySet(models.QuerySet):
+    def deleted(self):
+        return self.filter(is_deleted=True)
+
     def not_deleted(self):
         return self.filter(is_deleted=False)
 
@@ -44,9 +47,45 @@ class ExtraQuerySet(SoftDeletionQuerySet):
         return queryset
 
 
+# Managers
+ExtraManager = ExtraQuerySet.as_manager
+
+
+class SoftDeletionManager(models.Manager.from_queryset(SoftDeletionQuerySet)):
+    def get_queryset(self):
+        return SoftDeletionQuerySet(
+            model=self.model,
+            using=self._db,
+            hints=self._hints
+        )
+
+    def deleted(self):
+        return self.get_queryset().deleted()
+
+    def not_deleted(self):
+        return self.get_queryset().not_deleted()
+
+
+class CoreUserManager(UserManager):
+    def get_queryset(self):
+        return SoftDeletionQuerySet(
+            model=self.model,
+            using=self._db,
+            hints=self._hints
+        )
+
+    def deleted(self):
+        return self.get_queryset().deleted()
+
+    def not_deleted(self):
+        return self.get_queryset().not_deleted()
+
+
 # Abstract models
 class SoftDeletableModel(models.Model):
     is_deleted = models.BooleanField(default=False)
+
+    objects = SoftDeletionManager()
 
     class Meta:
         abstract = True
@@ -67,7 +106,7 @@ class SoftDeletableModel(models.Model):
 class ExtendableModel(SoftDeletableModel):
     extra = GenericRelation("Extra", 'parent_id', 'parent_ct', verbose_name=_('extra data'))
 
-    objects = ExtraQuerySet.as_manager()
+    objects = ExtraManager()
 
     class Meta:
         abstract = True
@@ -169,6 +208,8 @@ class User(HistoricalModel, SoftDeletableModel, AbstractUser):
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
     national_id = models.CharField(_('national ID'), max_length=50, blank=True)
     ssn = models.CharField(_('social security number'), max_length=50, blank=True)
+
+    objects = CoreUserManager()
 
     class Meta:
         ordering = ['last_name', 'first_name']
