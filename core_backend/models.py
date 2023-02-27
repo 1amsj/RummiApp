@@ -5,14 +5,25 @@ from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelatio
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
 from django.db.models import Q
-from django.db.models.deletion import get_candidate_relations_to_delete
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
 
 # Query sets
-class ExtraQuerySet(models.QuerySet):
+class SoftDeletionQuerySet(models.QuerySet):
+    def not_deleted(self):
+        return self.filter(is_deleted=False)
+
+    def delete(self):
+        for obj in self:
+            obj.delete()
+
+    def hard_delete(self):
+        return super().delete()
+
+
+class ExtraQuerySet(SoftDeletionQuerySet):
     def prefetch_extra(self, business: Optional["Business"] = None):
         ct = ContentType.objects.get_for_model(self.model)
         query = Q(extra__parent_ct=ct)
@@ -31,18 +42,6 @@ class ExtraQuerySet(models.QuerySet):
                 query_value += F'__{params[1]}'
             queryset = queryset.filter(**{query_key: params[0], query_value: v})
         return queryset
-
-
-class SoftDeletionQuerySet(models.QuerySet):
-    def not_deleted(self):
-        return self.filter(is_deleted=False)
-
-    def delete(self):
-        for obj in self:
-            obj.delete()
-
-    def hard_delete(self):
-        return super().delete()
 
 
 # Abstract models
@@ -124,7 +123,7 @@ class Contact(SoftDeletableModel, HistoricalModel):
         return F"{self.email}, {self.phone}, {self.fax}"
 
 
-class Company(SoftDeletableModel, HistoricalModel):
+class Company(HistoricalModel, SoftDeletableModel):
     contacts = models.ManyToManyField(Contact, blank=True)
     locations = models.ManyToManyField("Location", related_name='owner', blank=True)
     name = models.CharField(_('name'), max_length=128)
@@ -163,7 +162,7 @@ class Location(SoftDeletableModel):
 
 
 # User models
-class User(SoftDeletableModel, AbstractUser, HistoricalModel):
+class User(HistoricalModel, SoftDeletableModel, AbstractUser):
     contacts = models.ManyToManyField(Contact, blank=True)
     first_name = models.CharField(_('first name'), max_length=150, blank=True)
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
@@ -219,7 +218,7 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
             self.as_payer.delete()
 
 
-class Agent(SoftDeletableModel, ExtendableModel, HistoricalModel):
+class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
     companies = models.ManyToManyField(Company, related_name='agents')
     role = models.CharField(_('role'), max_length=64)
@@ -236,7 +235,7 @@ class Agent(SoftDeletableModel, ExtendableModel, HistoricalModel):
         pass
 
 
-class Operator(SoftDeletableModel, HistoricalModel):
+class Operator(HistoricalModel, SoftDeletableModel):
     """Staff who maintain the platform"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
     companies = models.ManyToManyField(Company, related_name='operators')
@@ -252,7 +251,7 @@ class Operator(SoftDeletableModel, HistoricalModel):
         pass
 
 
-class Payer(SoftDeletableModel, HistoricalModel):
+class Payer(HistoricalModel, SoftDeletableModel):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
     companies = models.ManyToManyField(Company, related_name='payers')
@@ -268,7 +267,7 @@ class Payer(SoftDeletableModel, HistoricalModel):
         pass
 
 
-class Provider(SoftDeletableModel, ExtendableModel, HistoricalModel):
+class Provider(ExtendableModel, HistoricalModel, SoftDeletableModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
@@ -283,7 +282,7 @@ class Provider(SoftDeletableModel, ExtendableModel, HistoricalModel):
         self.services.all().delete()
 
 
-class Recipient(SoftDeletableModel, ExtendableModel, HistoricalModel):
+class Recipient(ExtendableModel, HistoricalModel, SoftDeletableModel):
     """Who receives the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
     companies = models.ManyToManyField(Company, related_name='recipients', through="Affiliation")
@@ -298,7 +297,7 @@ class Recipient(SoftDeletableModel, ExtendableModel, HistoricalModel):
         self.affiliations.all().delete()
 
 
-class Affiliation(SoftDeletableModel, ExtendableModel, HistoricalModel):
+class Affiliation(ExtendableModel, HistoricalModel, SoftDeletableModel):
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='affiliations')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
 
@@ -313,7 +312,7 @@ class Affiliation(SoftDeletableModel, ExtendableModel, HistoricalModel):
         pass
 
 
-class Requester(SoftDeletableModel, HistoricalModel):
+class Requester(HistoricalModel, SoftDeletableModel):
     """Who requests the service case for the Recipient"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
     companies = models.ManyToManyField(Company, related_name='requesters')
@@ -363,7 +362,7 @@ class Category(SoftDeletableModel):
         pass
 
 
-class Service(SoftDeletableModel, ExtendableModel):
+class Service(ExtendableModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
@@ -382,7 +381,7 @@ class Service(SoftDeletableModel, ExtendableModel):
         self.bookings.all().delete()
 
 
-class Booking(SoftDeletableModel, ExtendableModel, HistoricalModel):
+class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
@@ -409,7 +408,7 @@ class Booking(SoftDeletableModel, ExtendableModel, HistoricalModel):
         self.expenses.all().delete()
 
 
-class Event(SoftDeletableModel, HistoricalModel):
+class Event(HistoricalModel, SoftDeletableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
@@ -442,7 +441,7 @@ class Event(SoftDeletableModel, HistoricalModel):
         self.location.delete()
 
 # Billing models
-class Expense(SoftDeletableModel, HistoricalModel):
+class Expense(HistoricalModel, SoftDeletableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='expenses')
     amount = models.DecimalField(_('amount'), max_digits=32, decimal_places=2)
     description = models.CharField(_('description'), max_length=256)
