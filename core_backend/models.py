@@ -336,14 +336,6 @@ class Requester(SoftDeletableModel, HistoricalModel):
 
 
 # Service models
-class Rule(models.Model):
-    # TODO many to many to all
-
-    class Meta:
-        verbose_name = _('rule')
-        verbose_name_plural = _('rules')
-
-
 class Business(SoftDeletableModel):
     name = models.CharField(_('business'), max_length=128, unique=True)
 
@@ -420,12 +412,12 @@ class Booking(SoftDeletableModel, ExtendableModel, HistoricalModel):
         return super(Booking, self).__str__()
 
     def delete_related(self):
-        self.events.delete()
+        self.events.all().delete()
+        self.expenses.all().delete()
 
 
 class Event(SoftDeletableModel, HistoricalModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
-    is_deleted = models.BooleanField(default=False)
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
     agents = models.ManyToManyField(Agent, related_name='events')
@@ -453,28 +445,44 @@ class Event(SoftDeletableModel, HistoricalModel):
     def is_online(self):
         return bool(self.meeting_url)
 
+    def delete_related(self):
+        self.location.delete()
+
 # Billing models
-class Expense(HistoricalModel):
+class Expense(SoftDeletableModel, HistoricalModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='expenses')
     amount = models.DecimalField(_('amount'), max_digits=32, decimal_places=2)
     description = models.CharField(_('description'), max_length=256)
     quantity = models.IntegerField(_('quantity'))
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('expense')
         verbose_name_plural = _('expenses')
 
+    def delete_related(self):
+        pass
 
-class Ledger(models.Model):
+
+# PLACEHOLDER MODELS, review inheritance and functionality
+class Rule(models.Model):
+    # TODO many to many to all
+
+    class Meta:
+        verbose_name = _('rule')
+        verbose_name_plural = _('rules')
+
+
+class Ledger(SoftDeletableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='ledgers')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name='ledgers')
     invoice = models.ForeignKey("Invoice", on_delete=models.PROTECT, related_name='ledgers')
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('ledger')
         verbose_name_plural = _('ledgers')
+
+    def delete_related(self):
+        raise NotImplementedError()
 
 
 class Invoice(models.Model):
