@@ -192,6 +192,10 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
             return queryset
 
         @classmethod
+        def filter_related_per_deleted(cls, queryset: QuerySet[model]):
+            pass
+
+        @classmethod
         def get(cls, request):
             query_params = prepare_query_params(request.GET)
             queryset = cls.apply_filters(model.objects.filter(is_deleted=False), query_params)
@@ -225,6 +229,12 @@ def user_subtype_view_manager(model: Type[models.Model], serializer: Type[serial
             queryset = cls.apply_nested_filters(queryset, nested_params)
 
             return queryset
+
+        @classmethod
+        def filter_related_per_deleted(cls, queryset: QuerySet[model]):
+            return queryset.filter(
+                user__in=User.objects.not_deleted(),
+            )
 
     return ManageUserSubtypeModel
 
