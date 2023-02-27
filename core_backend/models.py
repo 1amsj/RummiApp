@@ -287,7 +287,7 @@ class Provider(SoftDeletableModel, ExtendableModel, HistoricalModel):
         return F"[Provider] {self.user}"
 
     def delete_related(self):
-        pass
+        self.services.all().delete()
 
 
 class Recipient(SoftDeletableModel, ExtendableModel, HistoricalModel):
