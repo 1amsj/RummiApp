@@ -90,7 +90,7 @@ class SoftDeletableModel(models.Model):
         super().delete(using, keep_parents)
 
 
-# Generic helpers
+# General data models
 class Extra(models.Model):
     parent_id = models.PositiveIntegerField()
     parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -111,22 +111,6 @@ class Extra(models.Model):
         return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.value}"
 
 
-# Abstract models
-class AbstractPerson(models.Model):
-    contacts = models.ManyToManyField("Contact", blank=True)
-    first_name = models.CharField(_('first name'), max_length=150, blank=True)
-    last_name = models.CharField(_('last name'), max_length=150, blank=True)
-    national_id = models.CharField(_('national ID'), max_length=50, blank=True)
-    ssn = models.CharField(_('social security number'), max_length=50, blank=True)
-
-    class Meta:
-        abstract = True
-        ordering = ['last_name', 'first_name']
-        verbose_name = _('person')
-        verbose_name_plural = _('people')
-
-
-# General data models
 class Contact(SoftDeletableModel, HistoricalModel):
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
@@ -179,8 +163,15 @@ class Location(SoftDeletableModel):
 
 
 # User models
-class User(SoftDeletableModel, AbstractUser, AbstractPerson, HistoricalModel):
+class User(SoftDeletableModel, AbstractUser, HistoricalModel):
+    contacts = models.ManyToManyField(Contact, blank=True)
+    first_name = models.CharField(_('first name'), max_length=150, blank=True)
+    last_name = models.CharField(_('last name'), max_length=150, blank=True)
+    national_id = models.CharField(_('national ID'), max_length=50, blank=True)
+    ssn = models.CharField(_('social security number'), max_length=50, blank=True)
+
     class Meta:
+        ordering = ['last_name', 'first_name']
         verbose_name = _("user")
         verbose_name_plural = _("users")
 
