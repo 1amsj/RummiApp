@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
@@ -12,11 +12,23 @@ from simple_history.models import HistoricalRecords
 
 # Query sets
 class SoftDeletionQuerySet(models.QuerySet):
-    def deleted(self):
-        return self.filter(is_deleted=True)
+    def deleted(self, *fields: Tuple[str, ...]):
+        return self.filter(
+            is_deleted=True,
+            **{
+                F'{field}__is_deleted': True
+                for field in fields
+            }
+        )
 
-    def not_deleted(self):
-        return self.filter(is_deleted=False)
+    def not_deleted(self, *fields: Tuple[str, ...]):
+        return self.filter(
+            is_deleted=False,
+            **{
+                F'{field}__is_deleted': False
+                for field in fields
+            }
+        )
 
     def delete(self):
         for obj in self:
@@ -48,23 +60,16 @@ class ExtraQuerySet(SoftDeletionQuerySet):
 
 
 # Managers
-ExtraManager = ExtraQuerySet.as_manager
+class SoftDeletionManager(
+    models.Manager.from_queryset(SoftDeletionQuerySet)
+):
+    pass
 
 
-class SoftDeletionManager(models.Manager.from_queryset(SoftDeletionQuerySet)):
-    def get_queryset(self):
-        return SoftDeletionQuerySet(
-            model=self.model,
-            using=self._db,
-            hints=self._hints
-        )
-
-    def deleted(self):
-        return self.get_queryset().deleted()
-
-    def not_deleted(self):
-        return self.get_queryset().not_deleted()
-
+class ExtraManager(
+    models.Manager.from_queryset(ExtraQuerySet),
+):
+    pass
 
 class CoreUserManager(UserManager):
     def get_queryset(self):
@@ -73,12 +78,6 @@ class CoreUserManager(UserManager):
             using=self._db,
             hints=self._hints
         )
-
-    def deleted(self):
-        return self.get_queryset().deleted()
-
-    def not_deleted(self):
-        return self.get_queryset().not_deleted()
 
 
 # Abstract models
@@ -129,7 +128,7 @@ class HistoricalModel(models.Model):
 
 
 # General data models
-class Extra(models.Model):
+class Extra(SoftDeletableModel):
     parent_id = models.PositiveIntegerField()
     parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     parent = GenericForeignKey('parent_ct', 'parent_id')
@@ -162,7 +161,7 @@ class Contact(SoftDeletableModel, HistoricalModel):
         return F"{self.email}, {self.phone}, {self.fax}"
 
 
-class Company(HistoricalModel, SoftDeletableModel):
+class Company(SoftDeletableModel, HistoricalModel):
     contacts = models.ManyToManyField(Contact, blank=True)
     locations = models.ManyToManyField("Location", related_name='owner', blank=True)
     name = models.CharField(_('name'), max_length=128)
@@ -201,7 +200,7 @@ class Location(SoftDeletableModel):
 
 
 # User models
-class User(HistoricalModel, SoftDeletableModel, AbstractUser):
+class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     contacts = models.ManyToManyField(Contact, blank=True)
     date_of_birth = models.DateField(_('date of birth'), null=True, blank=True)
     first_name = models.CharField(_('first name'), max_length=150, blank=True)
@@ -309,7 +308,7 @@ class Payer(HistoricalModel, SoftDeletableModel):
         pass
 
 
-class Provider(ExtendableModel, HistoricalModel, SoftDeletableModel):
+class Provider(ExtendableModel, SoftDeletableModel, HistoricalModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
