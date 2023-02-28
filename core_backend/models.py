@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
@@ -48,26 +48,57 @@ class ExtraQuerySet(SoftDeletionQuerySet):
 
 
 # Managers
-ExtraManager = ExtraQuerySet.as_manager
+def build_soft_manager(
+    exclude_all_deleted: Callable[["SoftDeletionManager"], SoftDeletionQuerySet],
+):
+    parent = models.Manager.from_queryset(SoftDeletionQuerySet)
+
+    class FactorySoftDeletionManager(parent):
+        def get_queryset(self):
+            return SoftDeletionQuerySet(
+                model=self.model,
+                using=self._db,
+                hints=self._hints
+            )
+
+        def deleted(self):
+            return self.get_queryset().deleted()
+
+        def not_deleted(self):
+            return self.get_queryset().not_deleted()
+
+        def exclude_all_deleted(self):
+            return exclude_all_deleted(self)
+
+    return FactorySoftDeletionManager
 
 
-class SoftDeletionManager(models.Manager.from_queryset(SoftDeletionQuerySet)):
-    def get_queryset(self):
-        return SoftDeletionQuerySet(
-            model=self.model,
-            using=self._db,
-            hints=self._hints
-        )
+SoftDeletionManager = build_soft_manager(
+    lambda self: self.get_queryset(),
+)
 
-    def deleted(self):
-        return self.get_queryset().deleted()
 
-    def not_deleted(self):
-        return self.get_queryset().not_deleted()
+def build_extra_manager(
+    exclude_all_deleted: Callable[["SoftDeletionManager"], SoftDeletionQuerySet],
+):
+    parent = [
+        models.Manager.from_queryset(ExtraQuerySet),
+        build_soft_manager(exclude_all_deleted),
+    ]
+
+    class FactoryExtraDeletionManager(*parent):
+        pass
+
+    return FactoryExtraDeletionManager
+
+
+ExtraManager = build_extra_manager(
+    lambda self: self.get_queryset(),
+)
 
 
 class CoreUserManager(UserManager):
-    def get_queryset(self):
+    def get_queryset(self) -> SoftDeletionQuerySet:
         return SoftDeletionQuerySet(
             model=self.model,
             using=self._db,
@@ -79,6 +110,17 @@ class CoreUserManager(UserManager):
 
     def not_deleted(self):
         return self.get_queryset().not_deleted()
+
+    def exclude_all_deleted(self):
+        return self.get_queryset().filter(
+            is_deleted=False,
+            as_agents__in=Agent.objects.exclude_all_deleted(),
+            as_operator__in=Operator.objects.exclude_all_deleted(),
+            as_provider__in=Provider.objects.exclude_all_deleted(),
+            as_recipient__in=Recipient.objects.exclude_all_deleted(),
+            as_requester__in=Requester.objects.exclude_all_deleted(),
+            as_payer__in=Payer.objects.exclude_all_deleted(),
+        )
 
 
 # Abstract models
