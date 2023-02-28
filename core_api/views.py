@@ -453,9 +453,86 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         query_params = prepare_query_params(request.GET)
         include_events = query_params.pop(INCLUDE_EVENTS_KEY, False)
 
+        queryset = (
+            Booking.objects
+            .all()
+            .not_deleted('business')
+            .prefetch_related(
+                Prefetch(
+                    'categories',
+                    queryset=Category.objects.all().not_deleted(),
+                ),
+                Prefetch(
+                    'companies',
+                    queryset=Company.objects
+                    .all()
+                    .not_deleted()
+                    .prefetch_related(
+                        Prefetch(
+                            'contacts',
+                            queryset=Contact.objects.all().not_deleted(),
+                        ),
+                        Prefetch(
+                            'locations',
+                            queryset=Location.objects.all().not_deleted(),
+                        ),
+                    ),
+                ),
+                Prefetch(
+                    'events',
+                    queryset=Event.objects.all().not_deleted(),
+                ),
+                Prefetch(
+                    'expenses',
+                    queryset=Expense.objects.all().not_deleted(),
+                ),
+                Prefetch(
+                    'extra',
+                    queryset=Extra.objects.all().not_deleted('business'),
+                ),
+                Prefetch(
+                    'operators',
+                    queryset=Operator.objects.all().not_deleted('user'),
+                ),
+                Prefetch(
+                    'operators__companies',
+                    queryset=Company.objects
+                        .all()
+                        .not_deleted()
+                        .prefetch_related(
+                            Prefetch(
+                                'contacts',
+                                queryset=Contact.objects.all().not_deleted(),
+                            ),
+                            Prefetch(
+                                'locations',
+                                queryset=Location.objects.all().not_deleted(),
+                            ),
+                        ),
+                ),
+                Prefetch(
+                    'services',
+                    queryset=Service.objects.all().not_deleted('business'),
+                ),
+                Prefetch(
+                    'services__categories',
+                    queryset=Category.objects.all().not_deleted(),
+                ),
+                Prefetch(
+                    'services__extra',
+                    queryset=Extra.objects.all().not_deleted(),
+                ),
+            )
+        )
+
         queryset = Booking.objects.filter(is_deleted=False)
         if include_events:
-            queryset = queryset.prefetch_related('events')
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    'events',
+                    queryset=Event.objects.all().not_deleted()
+                ),  # TODO Events related prefetches
+            )
         queryset = cls.apply_filters(queryset, query_params)
 
         serializer = BookingSerializer if include_events else BookingNoEventsSerializer
