@@ -1,7 +1,7 @@
 from typing import Type, Union
 
 from django.db import models, transaction
-from django.db.models import Q, QuerySet
+from django.db.models import Prefetch, Q, QuerySet
 from rest_framework import generics, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
@@ -15,21 +15,23 @@ from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerial
 from core_api.services import prepare_query_params
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
-    ExtraQuerySet, \
-    Operator, \
+    Extra, ExtraQuerySet, \
+    Location, Operator, \
     Payer, \
     Provider, \
     Recipient, \
     Requester, Service, User
 
-from core_backend.serializers import AffiliationSerializer, AgentSerializer, AgentCreateSerializer, BookingCreateSerializer, \
+from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentSerializer, \
+    AgentCreateSerializer, BookingCreateSerializer, \
     BookingNoEventsSerializer, BookingSerializer, \
     CategoryCreateSerializer, CategorySerializer, CompanyCreateSerializer, \
     CompanySerializer, CompanyUpdateSerializer, \
     EventCreateSerializer, EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
     OperatorSerializer, \
     PayerSerializer, PayerCreateSerializer, \
-    ProviderServiceSerializer, RecipientSerializer, RecipientCreateSerializer, RequesterSerializer, ServiceCreateSerializer, \
+    ProviderServiceSerializer, RecipientSerializer, RecipientCreateSerializer, RequesterSerializer, \
+    ServiceCreateSerializer, \
     ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
@@ -306,6 +308,8 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
 
 
 class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSerializer)):
+    permission_classes = []
+
     @staticmethod
     def apply_nested_filters(queryset, nested_params):
         if nested_params.is_empty():
@@ -328,7 +332,59 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
-        queryset = Provider.objects.filter(is_deleted=False).prefetch_related('services', 'services__extra')
+
+        queryset = (
+            Provider.objects
+                .all()
+                .not_deleted('user')
+                .prefetch_related(
+                    Prefetch(
+                        'companies',
+                        queryset=Company.objects
+                            .all()
+                            .not_deleted()
+                            .prefetch_related(
+                                Prefetch(
+                                    'contacts',
+                                    queryset=Contact.objects.all().not_deleted(),
+                                ),
+                                Prefetch(
+                                    'locations',
+                                    queryset=Location.objects.all().not_deleted(),
+                                ),
+                            ),
+                    ),
+                    Prefetch(
+                        'extra',
+                        queryset=Extra.objects.all().not_deleted('business'),
+                    ),
+                    Prefetch(
+                        'services',
+                        queryset=Service.objects.all().not_deleted('business'),
+                    ),
+                    Prefetch(
+                        'services__categories',
+                        queryset=Category.objects.all().not_deleted(),
+                    ),
+                    Prefetch(
+                        'services__extra',
+                        queryset=Extra.objects.all().not_deleted(),
+                    ),
+                    Prefetch(
+                        'user',
+                        queryset=User.objects
+                            .all()
+                            .not_deleted()
+                            .prefetch_related(
+                                Prefetch(
+                                    'contacts',
+                                    queryset=Contact.objects.not_deleted(),
+                                ),
+                            ),
+                    ),
+                )
+        )
+
         queryset = cls.apply_filters(queryset, query_params)
         serialized = ProviderServiceSerializer(queryset, many=True)
         return Response(serialized.data)
@@ -381,7 +437,6 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
     @expect_key_error
     @expect_does_not_exist(Affiliation)
     def post(request, business_name=None):
-        data = request.data
         serializer = AffiliationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         affiliation = serializer.create(business_name)
