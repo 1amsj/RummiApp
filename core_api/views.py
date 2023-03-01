@@ -320,7 +320,8 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     @expect_does_not_exist(Provider)
     def get(cls, request, business_name=None, provider_id=None):
         if provider_id:
-            serialized = ProviderSerializer(Provider.objects.get(id=provider_id))
+            provider = Provider.objects.all().not_deleted('user').get(id=provider_id)
+            serialized = ProviderSerializer(provider)
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
@@ -390,7 +391,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None, booking_id=None):
         if booking_id:
-            serialized = BookingSerializer(Booking.objects.get(id=booking_id))
+            booking = Booking.objects.all().not_deleted('business').get(id=booking_id)
+            serialized = BookingSerializer(booking)
             return Response(serialized.data)
 
         include_events = request.GET.get(INCLUDE_EVENTS_KEY, False)
