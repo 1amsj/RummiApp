@@ -124,8 +124,10 @@ def sync_m2m(manager, new_set, field='id'):
     )
 
 
-def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset):
-    created, updated = [], []
+def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset, current_ids: set = set()):
+    created, updated, deleted = [], [], []
+    ids_list = set()
+
     for data in dataset:
         obj_id = data.get('id', None)
         if not obj_id:
@@ -133,14 +135,19 @@ def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset):
             obj = obj_type(**data)
             created.append(obj)
             continue
-
+        
         # Updated
         obj = obj_type.objects.get(id=obj_id)
         for (k, v) in data.items():
             setattr(obj, k, v)
         updated.append(obj)
 
-    return created, updated
+        ids_list.add(obj_id)
+
+    # Deleted
+    deleted = current_ids.difference(ids_list)
+
+    return created, updated, deleted
 
 
 def user_sync_email_with_contact(user: app_models.User):
