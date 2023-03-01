@@ -30,7 +30,7 @@ from core_backend.serializers import AffiliationCreateSerializer, AffiliationSer
     EventCreateSerializer, EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
     ExtraAttrSerializer, OperatorSerializer, \
     PayerSerializer, PayerCreateSerializer, \
-    ProviderServiceSerializer, RecipientSerializer, RecipientCreateSerializer, RequesterSerializer, \
+    ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RecipientCreateSerializer, RequesterSerializer, \
     ServiceCreateSerializer, \
     ServiceNoProviderSerializer, ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
@@ -307,7 +307,7 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
         return Response(payer.id, status=status.HTTP_201_CREATED)
 
 
-class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSerializer)):
+class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     permission_classes = []
 
     @staticmethod
@@ -328,16 +328,16 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
     @expect_does_not_exist(Provider)
     def get(cls, request, business_name=None, provider_id=None):
         if provider_id:
-            serialized = ProviderServiceSerializer(Provider.objects.get(id=provider_id))
+            serialized = ProviderSerializer(Provider.objects.get(id=provider_id))
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
 
-        queryset = ProviderServiceSerializer.get_default_queryset()
+        queryset = ProviderSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
 
-        serialized = ProviderServiceSerializer(queryset, many=True)
+        serialized = ProviderSerializer(queryset, many=True)
         return Response(serialized.data)
 
 
