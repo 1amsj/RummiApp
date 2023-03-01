@@ -28,11 +28,11 @@ from core_backend.serializers import AffiliationCreateSerializer, AffiliationSer
     CategoryCreateSerializer, CategorySerializer, CompanyCreateSerializer, \
     CompanySerializer, CompanyUpdateSerializer, \
     EventCreateSerializer, EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
-    OperatorSerializer, \
+    ExtraAttrSerializer, OperatorSerializer, \
     PayerSerializer, PayerCreateSerializer, \
     ProviderServiceSerializer, RecipientSerializer, RecipientCreateSerializer, RequesterSerializer, \
     ServiceCreateSerializer, \
-    ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
+    ServiceNoProviderSerializer, ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
 
@@ -333,59 +333,10 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
 
         query_params = prepare_query_params(request.GET)
 
-        queryset = (
-            Provider.objects
-                .all()
-                .not_deleted('user')
-                .prefetch_related(
-                    Prefetch(
-                        'companies',
-                        queryset=Company.objects
-                            .all()
-                            .not_deleted()
-                            .prefetch_related(
-                                Prefetch(
-                                    'contacts',
-                                    queryset=Contact.objects.all().not_deleted(),
-                                ),
-                                Prefetch(
-                                    'locations',
-                                    queryset=Location.objects.all().not_deleted(),
-                                ),
-                            ),
-                    ),
-                    Prefetch(
-                        'extra',
-                        queryset=Extra.objects.all().not_deleted('business'),
-                    ),
-                    Prefetch(
-                        'services',
-                        queryset=Service.objects.all().not_deleted('business'),
-                    ),
-                    Prefetch(
-                        'services__categories',
-                        queryset=Category.objects.all().not_deleted(),
-                    ),
-                    Prefetch(
-                        'services__extra',
-                        queryset=Extra.objects.all().not_deleted(),
-                    ),
-                    Prefetch(
-                        'user',
-                        queryset=User.objects
-                            .all()
-                            .not_deleted()
-                            .prefetch_related(
-                                Prefetch(
-                                    'contacts',
-                                    queryset=Contact.objects.not_deleted(),
-                                ),
-                            ),
-                    ),
-                )
-        )
+        queryset = ProviderServiceSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
+
         serialized = ProviderServiceSerializer(queryset, many=True)
         return Response(serialized.data)
 
