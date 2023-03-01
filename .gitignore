@@ -36,3 +36,5 @@ coverage.xml
 env/
 venv/
 ENV/
+.vscode
+package.json
