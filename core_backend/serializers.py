@@ -2,19 +2,20 @@ from typing import Type
 
 from django.contrib.auth.password_validation import validate_password
 from django.db import models
+from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
     Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
-    Service, User
+    Service, SoftDeletionQuerySet, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
     manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
 
 
 class BaseSerializer(serializers.ModelSerializer):
     @staticmethod
-    def get_default_queryset():
+    def get_default_queryset() -> SoftDeletionQuerySet:
         pass  # This is to avoid the error in children: Class X must implement all abstract methods
         raise NotImplementedError
 
@@ -24,6 +25,10 @@ class ExtraAttrSerializer(BaseSerializer):
     class Meta:
         model = Extra
         fields = ('key', 'value')
+
+    @staticmethod
+    def get_default_queryset():
+        return Extra.objects.all().not_deleted()
 
 
 def extendable_serializer(serializer_model: Type[models.Model], serializer_fields='__all__'):
@@ -128,6 +133,10 @@ class ContactSerializer(BaseSerializer):
 
         return super(ContactSerializer, self).validate(data)
 
+    @staticmethod
+    def get_default_queryset():
+        return Contact.objects.all().not_deleted()
+
 
 class ContactUnsafeSerializer(ContactSerializer):
     id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
@@ -138,13 +147,23 @@ class LocationSerializer(BaseSerializer):
         model = Location
         fields = '__all__'
 
+    @staticmethod
+    def get_default_queryset():
+        return Location.objects.all().not_deleted()
+
+
 class LocationUnsafeSerializer(LocationSerializer):
     id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
+
 
 class CategorySerializer(generic_serializer(Category)):
     class Meta:
         model = Category
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return Category.objects.all().not_deleted()
 
 
 class CategoryCreateSerializer(CategorySerializer):
@@ -167,6 +186,24 @@ class CompanySerializer(BaseSerializer):
     class Meta:
         model = Company
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Company.objects
+                .all()
+                .not_deleted()
+                .prefetch_related(
+                    Prefetch(
+                        'contacts',
+                        queryset=Contact.objects.all().not_deleted(),
+                    ),
+                    Prefetch(
+                        'locations',
+                        queryset=Location.objects.all().not_deleted(),
+                    ),
+                )
+        )
 
 
 class CompanyCreateSerializer(CompanySerializer):
