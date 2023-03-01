@@ -201,7 +201,6 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
                 Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
             # Delete
             for id in deleted_contacts:
-                print(id)
                 Contact.objects.filter(id=id).delete()
 
         if locations_data := data.pop('locations', None):
