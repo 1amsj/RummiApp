@@ -12,8 +12,15 @@ from core_backend.services import assert_extendable, get_model_field_names, is_e
     manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
 
 
+class BaseSerializer(serializers.ModelSerializer):
+    @staticmethod
+    def get_default_queryset():
+        pass  # This is to avoid the error in children: Class X must implement all abstract methods
+        raise NotImplementedError
+
+
 # Extra serializers
-class ExtraAttrSerializer(serializers.ModelSerializer):
+class ExtraAttrSerializer(BaseSerializer):
     class Meta:
         model = Extra
         fields = ('key', 'value')
@@ -22,7 +29,7 @@ class ExtraAttrSerializer(serializers.ModelSerializer):
 def extendable_serializer(serializer_model: Type[models.Model], serializer_fields='__all__'):
     assert_extendable(serializer_model)
 
-    class ExtendableSerializer(serializers.ModelSerializer):
+    class ExtendableSerializer(BaseSerializer):
         extra = serializers.SerializerMethodField('get_extra_attrs')
 
         class Meta:
@@ -59,11 +66,11 @@ def extendable_serializer(serializer_model: Type[models.Model], serializer_field
 
 
 # Helper
-def generic_serializer(serializer_model: Type[models.Model], serializer_fields='__all__'):
+def generic_serializer(serializer_model: Type[models.Model], serializer_fields='__all__') -> Type[BaseSerializer]:
     parent_serializer = (
         extendable_serializer(serializer_model)
         if is_extendable(serializer_model)
-        else serializers.ModelSerializer
+        else BaseSerializer
     )
 
     class GenericSerializer(parent_serializer):
@@ -110,7 +117,7 @@ class BusinessField(serializers.RelatedField):
 
 
 # General serializers
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(BaseSerializer):
     class Meta:
         model = Contact
         fields = '__all__'
@@ -126,7 +133,7 @@ class ContactUnsafeSerializer(ContactSerializer):
     id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
 
 
-class LocationSerializer(serializers.ModelSerializer):
+class LocationSerializer(BaseSerializer):
     class Meta:
         model = Location
         fields = '__all__'
@@ -153,7 +160,7 @@ class CategoryCreateSerializer(CategorySerializer):
         instance.save()
 
 
-class CompanySerializer(serializers.ModelSerializer):
+class CompanySerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
 
@@ -216,7 +223,7 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
 
 
 # User serializers
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(BaseSerializer):
     id = serializers.ReadOnlyField()
     contacts = ContactSerializer(many=True)
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
@@ -328,11 +335,11 @@ class UserUpdateSerializer(UserCreateSerializer):
         user_sync_email_with_contact(instance)
 
 
-def user_subtype_serializer(serializer_model: Type[models.Model]):
+def user_subtype_serializer(serializer_model: Type[models.Model]) -> Type[BaseSerializer]:
     serializer_parent = (
         extendable_serializer(serializer_model)
         if is_extendable(serializer_model)
-        else serializers.ModelSerializer
+        else BaseSerializer
     )
 
     class UserSubTypeSerializer(serializer_parent):
@@ -552,7 +559,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
         fields = '__all__'
 
 
-class EventNoBookingSerializer(serializers.ModelSerializer):
+class EventNoBookingSerializer(BaseSerializer):
     affiliates = AffiliationSerializer(many=True)
     agents = AgentSerializer(many=True)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
@@ -637,7 +644,7 @@ class EventSerializer(EventNoBookingSerializer):
     booking = BookingNoEventsSerializer()
 
 
-class EventCreateSerializer(serializers.ModelSerializer):
+class EventCreateSerializer(BaseSerializer):
     affiliates = serializers.PrimaryKeyRelatedField(many=True, queryset=Affiliation.objects.all(), required=False)
     agents = serializers.PrimaryKeyRelatedField(many=True, queryset=Agent.objects.all(), required=False)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
@@ -683,7 +690,7 @@ class EventCreateSerializer(serializers.ModelSerializer):
 InvoiceSerializer = generic_serializer(Invoice)
 
 
-class LedgerSerializer(serializers.ModelSerializer):
+class LedgerSerializer(BaseSerializer):
     booking = BookingSerializer()
     event = EventSerializer()
     invoice = InvoiceSerializer()
