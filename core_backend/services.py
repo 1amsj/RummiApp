@@ -147,8 +147,8 @@ def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset, cur
     # Deleted
     usable_current_ids = set()
 
-    for id in current_ids:
-        usable_current_ids.add(id[0])
+    for (id, ) in current_ids:
+        usable_current_ids.add(id)
 
     deleted = usable_current_ids.difference(ids_list)
 
