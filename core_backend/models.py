@@ -1,37 +1,44 @@
-from typing import Optional
+from typing import Optional, Tuple
 
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
 
-# Generic helpers
-class Extra(models.Model):
-    parent_id = models.PositiveIntegerField()
-    parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    parent = GenericForeignKey('parent_ct', 'parent_id')
-    business = models.ForeignKey("Business", on_delete=models.CASCADE)
-    key = models.CharField(_('key'), max_length=256)
-    value = models.CharField(_('value'), max_length=512)
+# Query sets
+class SoftDeletionQuerySet(models.QuerySet):
+    def deleted(self, *fields: Tuple[str, ...]):
+        return self.filter(
+            is_deleted=True,
+            **{
+                F'{field}__is_deleted': True
+                for field in fields
+            }
+        )
 
-    class Meta:
-        verbose_name = verbose_name_plural = _('extra data')
-        indexes = [
-            models.Index(fields=["parent_ct", "business", "key"]),
-            models.Index(fields=["parent_id", "key"]),
-        ]
-        unique_together = ["parent_ct", "parent_id", "business", "key"]
+    def not_deleted(self, *fields: Tuple[str, ...]):
+        return self.filter(
+            is_deleted=False,
+            **{
+                F'{field}__is_deleted': False
+                for field in fields
+            }
+        )
 
-    def __str__(self):
-        return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.value}"
+    def delete(self):
+        for obj in self:
+            obj.delete()
+
+    def hard_delete(self):
+        return super().delete()
 
 
-class ExtraQuerySet(models.QuerySet):
+class ExtraQuerySet(SoftDeletionQuerySet):
     def prefetch_extra(self, business: Optional["Business"] = None):
         ct = ContentType.objects.get_for_model(self.model)
         query = Q(extra__parent_ct=ct)
@@ -52,10 +59,53 @@ class ExtraQuerySet(models.QuerySet):
         return queryset
 
 
-class ExtendableModel(models.Model):
-    extra = GenericRelation(Extra, 'parent_id', 'parent_ct', verbose_name=_('extra data'))
+# Managers
+class SoftDeletionManager(
+    models.Manager.from_queryset(SoftDeletionQuerySet)
+):
+    pass
 
-    objects = ExtraQuerySet.as_manager()
+
+class ExtraManager(
+    models.Manager.from_queryset(ExtraQuerySet),
+):
+    pass
+
+class CoreUserManager(UserManager):
+    def get_queryset(self):
+        return SoftDeletionQuerySet(
+            model=self.model,
+            using=self._db,
+            hints=self._hints
+        )
+
+
+# Abstract models
+class SoftDeletableModel(models.Model):
+    is_deleted = models.BooleanField(default=False)
+
+    objects = SoftDeletionManager()
+
+    class Meta:
+        abstract = True
+
+    def delete_related(self):
+        pass
+
+    @transaction.atomic
+    def delete(self, using=None, keep_parents=False):
+        self.is_deleted = True
+        self.save()
+        self.delete_related()
+
+    def hard_delete(self, using=None, keep_parents=False):
+        super().delete(using, keep_parents)
+
+
+class ExtendableModel(SoftDeletableModel):
+    extra = GenericRelation("Extra", 'parent_id', 'parent_ct', verbose_name=_('extra data'))
+
+    objects = ExtraManager()
 
     class Meta:
         abstract = True
@@ -77,27 +127,31 @@ class HistoricalModel(models.Model):
         abstract = True
 
 
-# Abstract models
-class AbstractPerson(models.Model):
-    contacts = models.ManyToManyField("Contact", blank=True)
-    first_name = models.CharField(_('first name'), max_length=150, blank=True)
-    last_name = models.CharField(_('last name'), max_length=150, blank=True)
-    national_id = models.CharField(_('national ID'), max_length=50, blank=True)
-    ssn = models.CharField(_('social security number'), max_length=50, blank=True)
-    date_of_birth = models.DateField(_('date of birth'), null=True, blank=True)
-    class Meta:
-        abstract = True
-        ordering = ['last_name', 'first_name']
-        verbose_name = _('person')
-        verbose_name_plural = _('people')
-
-
 # General data models
-class Contact(HistoricalModel):
+class Extra(SoftDeletableModel):
+    parent_id = models.PositiveIntegerField()
+    parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    parent = GenericForeignKey('parent_ct', 'parent_id')
+    business = models.ForeignKey("Business", on_delete=models.CASCADE)
+    key = models.CharField(_('key'), max_length=256)
+    value = models.CharField(_('value'), max_length=512)
+
+    class Meta:
+        verbose_name = verbose_name_plural = _('extra data')
+        indexes = [
+            models.Index(fields=["parent_ct", "business", "key"]),
+            models.Index(fields=["parent_id", "key"]),
+        ]
+        unique_together = ["parent_ct", "parent_id", "business", "key"]
+
+    def __str__(self):
+        return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.value}"
+
+
+class Contact(SoftDeletableModel, HistoricalModel):
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('contact')
@@ -107,14 +161,13 @@ class Contact(HistoricalModel):
         return F"{self.email}, {self.phone}, {self.fax}"
 
 
-class Company(HistoricalModel):
+class Company(SoftDeletableModel, HistoricalModel):
     contacts = models.ManyToManyField(Contact, blank=True)
     locations = models.ManyToManyField("Location", related_name='owner', blank=True)
     name = models.CharField(_('name'), max_length=128)
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('company')
@@ -123,14 +176,20 @@ class Company(HistoricalModel):
     def __str__(self):
         return F"{self.name} ({self.type})"
 
+    def delete_related(self):
+        # TODO review
+        # self.contacts.all().delete()
+        # self.locations.all().delete()
+        self.affiliations.all().delete()
+        pass
 
-class Location(models.Model):
+
+class Location(SoftDeletableModel):
     address = models.CharField(_('address'), max_length=128)
     city = models.CharField(_('city'), max_length=128)
     state = models.CharField(_('state or province'), max_length=128)
     country = models.CharField(_('country'), max_length=128)
     zip = models.CharField(_('ZIP code'), max_length=10, blank=True)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('location')
@@ -141,39 +200,69 @@ class Location(models.Model):
 
 
 # User models
-class User(AbstractUser, AbstractPerson, HistoricalModel):
-    is_deleted = models.BooleanField(default=False)
+class User(SoftDeletableModel, AbstractUser, HistoricalModel):
+    contacts = models.ManyToManyField(Contact, blank=True)
+    date_of_birth = models.DateField(_('date of birth'), null=True, blank=True)
+    first_name = models.CharField(_('first name'), max_length=150, blank=True)
+    last_name = models.CharField(_('last name'), max_length=150, blank=True)
+    national_id = models.CharField(_('national ID'), max_length=50, blank=True)
+    ssn = models.CharField(_('social security number'), max_length=50, blank=True)
+
+    objects = CoreUserManager()
 
     class Meta:
+        ordering = ['last_name', 'first_name']
         verbose_name = _("user")
         verbose_name_plural = _("users")
 
     @property
+    def is_agent(self):
+        return getattr(self, 'as_agents', None) is not None
+
+    @property
     def is_operator(self):
-        return hasattr(self, 'as_operator') and self.as_operator is not None
+        return getattr(self, 'as_operator', None) is not None
 
     @property
     def is_provider(self):
-        return hasattr(self, 'as_provider') and self.as_provider is not None
+        return getattr(self, 'as_provider', None) is not None
 
     @property
     def is_recipient(self):
-        return hasattr(self, 'as_recipient') and self.as_recipient is not None
+        return getattr(self, 'as_recipient', None) is not None
 
     @property
     def is_requester(self):
-        return hasattr(self, 'as_requester') and self.as_requester is not None
+        return getattr(self, 'as_requester', None) is not None
 
     @property
     def is_payer(self):
-        return hasattr(self, 'as_payer') and self.as_payer is not None
+        return getattr(self, 'as_payer', None) is not None
+
+    def delete_related(self):
+        if self.is_agent:
+            self.as_agents.all().delete()
+
+        if self.is_operator:
+            self.as_operator.delete()
+
+        if self.is_provider:
+            self.as_provider.delete()
+
+        if self.is_recipient:
+            self.as_recipient.delete()
+
+        if self.is_requester:
+            self.as_requester.delete()
+
+        if self.is_payer:
+            self.as_payer.delete()
 
 
-class Agent(ExtendableModel, HistoricalModel):
+class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
     companies = models.ManyToManyField(Company, related_name='agents')
     role = models.CharField(_('role'), max_length=64)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('agent')
@@ -183,13 +272,15 @@ class Agent(ExtendableModel, HistoricalModel):
     def __str__(self):
         return F"[{self.role} (agent)] {self.user}"
 
+    def delete_related(self):
+        pass
 
-class Operator(HistoricalModel):
+
+class Operator(HistoricalModel, SoftDeletableModel):
     """Staff who maintain the platform"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
     companies = models.ManyToManyField(Company, related_name='operators')
     hiring_date = models.DateField(_('hiring date'))
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('operator data')
@@ -197,13 +288,15 @@ class Operator(HistoricalModel):
     def __str__(self):
         return F"[Operator] {self.user}"
 
+    def delete_related(self):
+        pass
 
-class Payer(HistoricalModel):
+
+class Payer(HistoricalModel, SoftDeletableModel):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
     companies = models.ManyToManyField(Company, related_name='payers')
     method = models.CharField(_('paying method'), max_length=64)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
@@ -211,12 +304,14 @@ class Payer(HistoricalModel):
     def __str__(self):
         return F"[Payer] {self.user}"
 
+    def delete_related(self):
+        pass
 
-class Provider(ExtendableModel, HistoricalModel):
+
+class Provider(ExtendableModel, SoftDeletableModel, HistoricalModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
@@ -224,12 +319,14 @@ class Provider(ExtendableModel, HistoricalModel):
     def __str__(self):
         return F"[Provider] {self.user}"
 
+    def delete_related(self):
+        self.services.all().delete()
 
-class Recipient(ExtendableModel, HistoricalModel):
+
+class Recipient(ExtendableModel, HistoricalModel, SoftDeletableModel):
     """Who receives the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_recipient')
     companies = models.ManyToManyField(Company, related_name='recipients', through="Affiliation")
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('recipient data')
@@ -237,11 +334,13 @@ class Recipient(ExtendableModel, HistoricalModel):
     def __str__(self):
         return F"[Recipient] {self.user}"
 
+    def delete_related(self):
+        self.affiliations.all().delete()
 
-class Affiliation(ExtendableModel, HistoricalModel):
+
+class Affiliation(ExtendableModel, HistoricalModel, SoftDeletableModel):
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='affiliations')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('affiliation')
@@ -250,12 +349,14 @@ class Affiliation(ExtendableModel, HistoricalModel):
     def __str__(self):
         return F"[Affiliation] {self.recipient.user} with {self.company or 'no company'}"
 
+    def delete_related(self):
+        pass
 
-class Requester(HistoricalModel):
+
+class Requester(HistoricalModel, SoftDeletableModel):
     """Who requests the service case for the Recipient"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_requester')
     companies = models.ManyToManyField(Company, related_name='requesters')
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = verbose_name_plural = _('requester data')
@@ -263,19 +364,13 @@ class Requester(HistoricalModel):
     def __str__(self):
         return F"[Requester] {self.user}"
 
+    def delete_related(self):
+        pass
+
 
 # Service models
-class Rule(models.Model):
-    # TODO many to many to all
-
-    class Meta:
-        verbose_name = _('rule')
-        verbose_name_plural = _('rules')
-
-
-class Business(models.Model):
+class Business(SoftDeletableModel):
     name = models.CharField(_('business'), max_length=128, unique=True)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('business')
@@ -284,11 +379,14 @@ class Business(models.Model):
     def __str__(self):
         return self.name
 
+    def delete_related(self):
+        self.bookings.all().delete()
+        self.services.all().delete()
 
-class Category(models.Model):
+
+class Category(SoftDeletableModel):
     description = models.CharField(_('description'), max_length=256)
     name = models.CharField(_('name'), max_length=64)
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('category')
@@ -301,14 +399,16 @@ class Category(models.Model):
     def has_services(self):
         return hasattr(self, 'services') and self.services is not None
 
+    def delete_related(self):
+        pass
 
-class Service(ExtendableModel):
+
+class Service(ExtendableModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
     bill_amount = models.DecimalField(_('billing amount'), max_digits=32, decimal_places=2)
     bill_rate = models.IntegerField(_('billing rate in seconds'))
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('service')
@@ -317,13 +417,16 @@ class Service(ExtendableModel):
     def __str__(self):
         return F"{self.business} by {self.provider}"
 
+    def delete_related(self):
+        # TODO review since this is a m2m
+        self.bookings.all().delete()
 
-class Booking(ExtendableModel, HistoricalModel):
+
+class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
-    is_deleted = models.BooleanField(default=False)
 
     # Constraints
     categories = models.ManyToManyField(Category, blank=True, related_name='bookings')
@@ -341,10 +444,13 @@ class Booking(ExtendableModel, HistoricalModel):
     def __str__(self):
         return super(Booking, self).__str__()
 
+    def delete_related(self):
+        self.events.all().delete()
+        self.expenses.all().delete()
 
-class Event(HistoricalModel):
+
+class Event(HistoricalModel, SoftDeletableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
-    is_deleted = models.BooleanField(default=False)
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
     agents = models.ManyToManyField(Agent, related_name='events')
@@ -372,28 +478,44 @@ class Event(HistoricalModel):
     def is_online(self):
         return bool(self.meeting_url)
 
+    def delete_related(self):
+        self.location.delete()
+
 # Billing models
-class Expense(HistoricalModel):
+class Expense(HistoricalModel, SoftDeletableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='expenses')
     amount = models.DecimalField(_('amount'), max_digits=32, decimal_places=2)
     description = models.CharField(_('description'), max_length=256)
     quantity = models.IntegerField(_('quantity'))
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('expense')
         verbose_name_plural = _('expenses')
 
+    def delete_related(self):
+        pass
 
-class Ledger(models.Model):
+
+# PLACEHOLDER MODELS, review inheritance and functionality
+class Rule(models.Model):
+    # TODO many to many to all
+
+    class Meta:
+        verbose_name = _('rule')
+        verbose_name_plural = _('rules')
+
+
+class Ledger(SoftDeletableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='ledgers')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, null=True, blank=True, related_name='ledgers')
     invoice = models.ForeignKey("Invoice", on_delete=models.PROTECT, related_name='ledgers')
-    is_deleted = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = _('ledger')
         verbose_name_plural = _('ledgers')
+
+    def delete_related(self):
+        raise NotImplementedError()
 
 
 class Invoice(models.Model):

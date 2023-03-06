@@ -2,27 +2,39 @@ from typing import Type
 
 from django.contrib.auth.password_validation import validate_password
 from django.db import models
+from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
     Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
-    Service, User
+    Service, SoftDeletableModel, SoftDeletionQuerySet, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
     manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
 
 
+class BaseSerializer(serializers.ModelSerializer):
+    @staticmethod
+    def get_default_queryset() -> SoftDeletionQuerySet:
+        pass  # This is to avoid the warning in children: Class X must implement all abstract methods
+        raise NotImplementedError
+
+
 # Extra serializers
-class ExtraAttrSerializer(serializers.ModelSerializer):
+class ExtraAttrSerializer(BaseSerializer):
     class Meta:
         model = Extra
         fields = ('key', 'value')
+
+    @staticmethod
+    def get_default_queryset():
+        return Extra.objects.all().not_deleted()
 
 
 def extendable_serializer(serializer_model: Type[models.Model], serializer_fields='__all__'):
     assert_extendable(serializer_model)
 
-    class ExtendableSerializer(serializers.ModelSerializer):
+    class ExtendableSerializer(BaseSerializer):
         extra = serializers.SerializerMethodField('get_extra_attrs')
 
         class Meta:
@@ -59,11 +71,11 @@ def extendable_serializer(serializer_model: Type[models.Model], serializer_field
 
 
 # Helper
-def generic_serializer(serializer_model: Type[models.Model], serializer_fields='__all__'):
+def generic_serializer(serializer_model: Type[models.Model], serializer_fields='__all__') -> Type[BaseSerializer]:
     parent_serializer = (
         extendable_serializer(serializer_model)
         if is_extendable(serializer_model)
-        else serializers.ModelSerializer
+        else BaseSerializer
     )
 
     class GenericSerializer(parent_serializer):
@@ -110,7 +122,7 @@ class BusinessField(serializers.RelatedField):
 
 
 # General serializers
-class ContactSerializer(serializers.ModelSerializer):
+class ContactSerializer(BaseSerializer):
     class Meta:
         model = Contact
         fields = '__all__'
@@ -121,23 +133,37 @@ class ContactSerializer(serializers.ModelSerializer):
 
         return super(ContactSerializer, self).validate(data)
 
+    @staticmethod
+    def get_default_queryset():
+        return Contact.objects.all().not_deleted()
+
 
 class ContactUnsafeSerializer(ContactSerializer):
     id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
 
 
-class LocationSerializer(serializers.ModelSerializer):
+class LocationSerializer(BaseSerializer):
     class Meta:
         model = Location
         fields = '__all__'
 
+    @staticmethod
+    def get_default_queryset():
+        return Location.objects.all().not_deleted()
+
+
 class LocationUnsafeSerializer(LocationSerializer):
     id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
+
 
 class CategorySerializer(generic_serializer(Category)):
     class Meta:
         model = Category
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return Category.objects.all().not_deleted()
 
 
 class CategoryCreateSerializer(CategorySerializer):
@@ -153,13 +179,31 @@ class CategoryCreateSerializer(CategorySerializer):
         instance.save()
 
 
-class CompanySerializer(serializers.ModelSerializer):
+class CompanySerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
 
     class Meta:
         model = Company
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Company.objects
+                .all()
+                .not_deleted()
+                .prefetch_related(
+                    Prefetch(
+                        'contacts',
+                        queryset=Contact.objects.all().not_deleted(),
+                    ),
+                    Prefetch(
+                        'locations',
+                        queryset=Location.objects.all().not_deleted(),
+                    ),
+                )
+        )
 
 
 class CompanyCreateSerializer(CompanySerializer):
@@ -216,7 +260,7 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
 
 
 # User serializers
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(BaseSerializer):
     id = serializers.ReadOnlyField()
     contacts = ContactSerializer(many=True)
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
@@ -241,6 +285,20 @@ class UserSerializer(serializers.ModelSerializer):
             'is_recipient',
             'is_requester',
             'is_payer',
+        )
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            User.objects
+                .all()
+                .not_deleted()
+                .prefetch_related(
+                    Prefetch(
+                        'contacts',
+                        queryset=ContactSerializer.get_default_queryset(),
+                    ),
+                )
         )
 
 
@@ -328,11 +386,11 @@ class UserUpdateSerializer(UserCreateSerializer):
         user_sync_email_with_contact(instance)
 
 
-def user_subtype_serializer(serializer_model: Type[models.Model]):
+def user_subtype_serializer(serializer_model: Type[SoftDeletableModel]) -> Type[BaseSerializer]:
     serializer_parent = (
         extendable_serializer(serializer_model)
         if is_extendable(serializer_model)
-        else serializers.ModelSerializer
+        else BaseSerializer
     )
 
     class UserSubTypeSerializer(serializer_parent):
@@ -358,6 +416,28 @@ class AgentSerializer(user_subtype_serializer(Agent)):
     companies = CompanySerializer(many=True)
     role = serializers.CharField()
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Agent.objects
+                .all()
+                .not_deleted('user')
+                .prefetch_related(
+                    Prefetch(
+                        'companies',
+                        queryset=CompanySerializer.get_default_queryset()
+                    ),
+                    Prefetch(
+                        'extra',
+                        queryset=ExtraAttrSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'user',
+                        queryset=UserSerializer.get_default_queryset(),
+                    ),
+                )
+        )
+
 class AgentCreateSerializer(AgentSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     companies = serializers.PrimaryKeyRelatedField(many = True, queryset=Company.objects.all())
@@ -377,10 +457,46 @@ class AgentCreateSerializer(AgentSerializer):
 class OperatorSerializer(user_subtype_serializer(Operator)):
     companies = CompanySerializer(many=True)
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Operator.objects
+                .all()
+                .not_deleted('user')
+                .prefetch_related(
+                    Prefetch(
+                        'companies',
+                        queryset=CompanySerializer.get_default_queryset()
+                    ),
+                    Prefetch(
+                        'user',
+                        queryset=UserSerializer.get_default_queryset(),
+                    ),
+                )
+        )
+
 
 class PayerSerializer(user_subtype_serializer(Payer)):
     companies = CompanySerializer(many=True)
     method = serializers.CharField()
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Payer.objects
+                .all()
+                .not_deleted('user')
+                .prefetch_related(
+                    Prefetch(
+                        'companies',
+                        queryset=CompanySerializer.get_default_queryset()
+                    ),
+                    Prefetch(
+                        'user',
+                        queryset=UserSerializer.get_default_queryset(),
+                    ),
+                )
+        )
 
 class PayerCreateSerializer(PayerSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
@@ -396,7 +512,6 @@ class PayerCreateSerializer(PayerSerializer):
         return payer
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
-    business = generic_serializer(Business)
     categories = CategorySerializer(many=True)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()
@@ -404,6 +519,24 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
     class Meta:
         model = Service
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Service.objects
+                .all()
+                .not_deleted('business')
+                .prefetch_related(
+                    Prefetch(
+                        'categories',
+                        queryset=CategorySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'extra',
+                        queryset=ExtraAttrSerializer.get_default_queryset(),
+                    ),
+                )
+        )
 
 
 class ProviderSerializer(user_subtype_serializer(Provider)):
@@ -413,6 +546,32 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
     class Meta:
         model = Provider
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Provider.objects
+            .all()
+            .not_deleted('user')
+            .prefetch_related(
+                Prefetch(
+                    'companies',
+                    queryset=CompanySerializer.get_default_queryset()
+                ),
+                Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'services',
+                    queryset=ServiceNoProviderSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'user',
+                    queryset=UserSerializer.get_default_queryset(),
+                ),
+            )
+        )
 
 
 class ServiceCreateSerializer(ServiceNoProviderSerializer):
@@ -439,14 +598,6 @@ class ServiceCreateSerializer(ServiceNoProviderSerializer):
         return service.id
 
 
-class ProviderServiceSerializer(user_subtype_serializer(Provider)):
-    services = ServiceNoProviderSerializer(many=True)
-
-    class Meta:
-        model = Provider
-        fields = '__all__'
-
-
 class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
     company = CompanySerializer()
 
@@ -460,9 +611,51 @@ class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
         model = Recipient
         exclude = ('companies',)
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Recipient.objects
+                .all()
+                .not_deleted('user')
+                .prefetch_related(
+                    Prefetch(
+                        'extra',
+                        queryset=ExtraAttrSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'user',
+                        queryset=UserSerializer.get_default_queryset(),
+                    ),
+                )
+        )
+
+
 class AffiliationSerializer(generic_serializer(Affiliation)):
     company = CompanySerializer()
     recipient = RecipientNoAffiliationSerializer()
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Affiliation.objects
+                .all()
+                .not_deleted()
+                .prefetch_related(
+                    Prefetch(
+                        'company',
+                        queryset=CompanySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'extra',
+                        queryset=ExtraAttrSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'recipient',
+                        queryset=RecipientNoAffiliationSerializer.get_default_queryset(),
+                    ),
+                )
+        )
+
 
 class AffiliationCreateSerializer(AffiliationSerializer):
     company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all())
@@ -498,21 +691,50 @@ class RecipientCreateSerializer(extendable_serializer(Recipient)):
         return recipient
 
 
-RequesterSerializer = user_subtype_serializer(Requester)
+class RequesterSerializer(user_subtype_serializer(Requester)):
+    companies = CompanySerializer(many=True)
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Requester.objects
+                .all()
+                .not_deleted('user')
+                .prefetch_related(
+                    Prefetch(
+                        'companies',
+                        queryset=CompanySerializer.get_default_queryset()
+                    ),
+                    Prefetch(
+                        'user',
+                        queryset=UserSerializer.get_default_queryset(),
+                    ),
+                )
+        )
+
 
 BusinessSerializer = generic_serializer(Business)
 
 
-class ServiceSerializer(extendable_serializer(Service)):
-    business = BusinessSerializer()
-    categories = CategorySerializer(many=True)
+class ServiceSerializer(ServiceNoProviderSerializer):
     provider = ProviderSerializer()
-    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
-    bill_rate = serializers.IntegerField()
 
     class Meta:
         model = Service
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            super(ServiceSerializer, ServiceSerializer)
+                .get_default_queryset()
+                .prefetch_related(
+                    Prefetch(
+                        'provider',
+                        queryset=ProviderSerializer.get_default_queryset(),
+                    ),
+                )
+        )
 
 
 class ExpenseSerializer(generic_serializer(Expense)):
@@ -521,6 +743,10 @@ class ExpenseSerializer(generic_serializer(Expense)):
     class Meta:
         model = Expense
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return Expense.objects.all().not_deleted()
 
 
 class ExpenseCreateSerializer(ExpenseSerializer):
@@ -545,17 +771,50 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
-    # TODO add expenses
 
     class Meta:
         model = Booking
         fields = '__all__'
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Booking.objects
+                .all()
+                .not_deleted('business')
+                .prefetch_related(
+                    Prefetch(
+                        'categories',
+                        queryset=CategorySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'companies',
+                        queryset=CompanySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'expenses',
+                        queryset=ExpenseSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'extra',
+                        queryset=ExtraAttrSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'operators',
+                        queryset=OperatorSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'services',
+                        queryset=ServiceSerializer.get_default_queryset(),
+                    ),
+                )
+        )
 
-class EventNoBookingSerializer(serializers.ModelSerializer):
+
+class EventNoBookingSerializer(BaseSerializer):
     affiliates = AffiliationSerializer(many=True)
     agents = AgentSerializer(many=True)
-    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
     payer = PayerSerializer()
     requester = RequesterSerializer()
 
@@ -563,9 +822,48 @@ class EventNoBookingSerializer(serializers.ModelSerializer):
         model = Event
         fields = '__all__'
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Event.objects
+                .all()
+                .not_deleted()
+                .prefetch_related(
+                    Prefetch(
+                        'affiliates',
+                        queryset=AffiliationSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'agents',
+                        queryset=AgentSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'payer',
+                        queryset=PayerSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'requester',
+                        queryset=RequesterSerializer.get_default_queryset(),
+                    ),
+                )
+        )
+
 
 class BookingSerializer(BookingNoEventsSerializer):
     events = EventNoBookingSerializer(many=True)
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            super(BookingSerializer, BookingSerializer)
+                .get_default_queryset()
+                .prefetch_related(
+                    Prefetch(
+                        'events',
+                        queryset=EventNoBookingSerializer.get_default_queryset(),
+                    )
+                )
+        )
 
 
 class BookingCreateSerializer(extendable_serializer(Booking)):
@@ -637,7 +935,7 @@ class EventSerializer(EventNoBookingSerializer):
     booking = BookingNoEventsSerializer()
 
 
-class EventCreateSerializer(serializers.ModelSerializer):
+class EventCreateSerializer(BaseSerializer):
     affiliates = serializers.PrimaryKeyRelatedField(many=True, queryset=Affiliation.objects.all(), required=False)
     agents = serializers.PrimaryKeyRelatedField(many=True, queryset=Agent.objects.all(), required=False)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
@@ -683,7 +981,7 @@ class EventCreateSerializer(serializers.ModelSerializer):
 InvoiceSerializer = generic_serializer(Invoice)
 
 
-class LedgerSerializer(serializers.ModelSerializer):
+class LedgerSerializer(BaseSerializer):
     booking = BookingSerializer()
     event = EventSerializer()
     invoice = InvoiceSerializer()

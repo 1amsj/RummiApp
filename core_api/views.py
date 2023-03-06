@@ -21,16 +21,13 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Provider, \
     Recipient, \
     Requester, Service, User
-
-from core_backend.serializers import AffiliationSerializer, AgentSerializer, AgentCreateSerializer, BookingCreateSerializer, \
-    BookingNoEventsSerializer, BookingSerializer, \
-    CategoryCreateSerializer, CategorySerializer, CompanyCreateSerializer, \
-    CompanySerializer, CompanyUpdateSerializer, \
-    EventCreateSerializer, EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
-    OperatorSerializer, \
-    PayerSerializer, PayerCreateSerializer, \
-    ProviderServiceSerializer, RecipientSerializer, RecipientCreateSerializer, RequesterSerializer, ServiceCreateSerializer, \
-    ServiceSerializer, UserCreateSerializer, UserSerializer, UserUpdateSerializer
+from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
+    AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
+    CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanyUpdateSerializer, EventCreateSerializer, \
+    EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, OperatorSerializer, \
+    PayerCreateSerializer, PayerSerializer, ProviderSerializer, RecipientCreateSerializer, RecipientSerializer, \
+    RequesterSerializer, ServiceCreateSerializer, ServiceSerializer, UserCreateSerializer, UserSerializer, \
+    UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
 
@@ -192,6 +189,10 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
             return queryset
 
         @classmethod
+        def filter_related_per_deleted(cls, queryset: QuerySet[model]):
+            pass
+
+        @classmethod
         def get(cls, request):
             query_params = prepare_query_params(request.GET)
             queryset = cls.apply_filters(model.objects.filter(is_deleted=False), query_params)
@@ -225,6 +226,12 @@ def user_subtype_view_manager(model: Type[models.Model], serializer: Type[serial
             queryset = cls.apply_nested_filters(queryset, nested_params)
 
             return queryset
+
+        @classmethod
+        def filter_related_per_deleted(cls, queryset: QuerySet[model]):
+            return queryset.filter(
+                user__in=User.objects.not_deleted(),
+            )
 
     return ManageUserSubtypeModel
 
@@ -283,7 +290,6 @@ class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
 ManageOperators = user_subtype_view_manager(Operator, OperatorSerializer)
 
 class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
-    permission_classes = []
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -295,7 +301,7 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
         return Response(payer.id, status=status.HTTP_201_CREATED)
 
 
-class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSerializer)):
+class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     @staticmethod
     def apply_nested_filters(queryset, nested_params):
         if nested_params.is_empty():
@@ -314,13 +320,17 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
     @expect_does_not_exist(Provider)
     def get(cls, request, business_name=None, provider_id=None):
         if provider_id:
-            serialized = ProviderServiceSerializer(Provider.objects.get(id=provider_id))
+            provider = Provider.objects.all().not_deleted('user').get(id=provider_id)
+            serialized = ProviderSerializer(provider)
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
-        queryset = Provider.objects.filter(is_deleted=False).prefetch_related('services', 'services__extra')
+
+        queryset = ProviderSerializer.get_default_queryset()
+
         queryset = cls.apply_filters(queryset, query_params)
-        serialized = ProviderServiceSerializer(queryset, many=True)
+
+        serialized = ProviderSerializer(queryset, many=True)
         return Response(serialized.data)
 
 
@@ -371,7 +381,6 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
     @expect_key_error
     @expect_does_not_exist(Affiliation)
     def post(request, business_name=None):
-        data = request.data
         serializer = AffiliationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         affiliation = serializer.create(business_name)
@@ -382,18 +391,19 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None, booking_id=None):
         if booking_id:
-            serialized = BookingSerializer(Booking.objects.get(id=booking_id))
+            booking = Booking.objects.all().not_deleted('business').get(id=booking_id)
+            serialized = BookingSerializer(booking)
             return Response(serialized.data)
 
+        include_events = request.GET.get(INCLUDE_EVENTS_KEY, False)
         query_params = prepare_query_params(request.GET)
-        include_events = query_params.pop(INCLUDE_EVENTS_KEY, False)
-
-        queryset = Booking.objects.filter(is_deleted=False)
-        if include_events:
-            queryset = queryset.prefetch_related('events')
-        queryset = cls.apply_filters(queryset, query_params)
 
         serializer = BookingSerializer if include_events else BookingNoEventsSerializer
+
+        queryset = serializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
         serialized = serializer(queryset, many=True)
         return Response(serialized.data)
 
