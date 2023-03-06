@@ -265,7 +265,7 @@ class UserSerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
-
+    date_of_birth = serializers.DateTimeField()
     class Meta:
         model = User
         fields = (
