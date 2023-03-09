@@ -881,13 +881,15 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
     created_at = serializers.DateTimeField(required=False)
 
     class Meta:
+        # TODO add constraints here for incomplete bookings
         model = Booking
         fields = (
             'business',
             'categories',
             'companies',
             'operators',
-            'services',  # TODO add constraints here for incomplete bookings
+            'services'
+            'created_at',
         )
 
     def create(self, validated_data=None) -> int:
