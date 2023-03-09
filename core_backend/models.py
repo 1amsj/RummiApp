@@ -427,6 +427,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
+    created_at = models.DateTimeField(auto_now_add=True)
 
     # Constraints
     categories = models.ManyToManyField(Category, blank=True, related_name='bookings')

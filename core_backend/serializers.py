@@ -878,6 +878,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
     companies = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Company.objects.all())
     operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
+    created_at = serializers.DateTimeField(required=False)
 
     class Meta:
         model = Booking
