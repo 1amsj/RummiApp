@@ -952,12 +952,6 @@ class EventCreateSerializer(BaseSerializer):
         model = Event
         fields = '__all__'
 
-    def validate(self, data: dict):
-        if not data.get('location') and not data.get('meeting_url'):
-            raise serializers.ValidationError(_('Either location or meeting URL must be specified'))
-
-        return super(EventCreateSerializer, self).validate(data)
-
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
         affiliates = data.pop('affiliates', [])
