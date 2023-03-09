@@ -454,7 +454,7 @@ class Event(HistoricalModel, SoftDeletableModel):
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
     agents = models.ManyToManyField(Agent, related_name='events')
-    payer = models.ForeignKey(Payer, on_delete=models.PROTECT, related_name='events')
+    payer = models.ForeignKey(Payer, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
     requester = models.ForeignKey(Requester, on_delete=models.PROTECT, related_name='events')
 
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
