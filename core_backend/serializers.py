@@ -821,7 +821,7 @@ class EventNoBookingSerializer(BaseSerializer):
     affiliates = AffiliationSerializer(many=True)
     agents = AgentSerializer(many=True)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
-    payer = PayerSerializer()
+    payer = PayerSerializer(required=False)
     requester = RequesterSerializer()
 
     class Meta:
@@ -878,15 +878,18 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
     companies = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Company.objects.all())
     operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
+    created_at = serializers.DateTimeField(required=False)
 
     class Meta:
+        # TODO add constraints here for incomplete bookings
         model = Booking
         fields = (
             'business',
             'categories',
             'companies',
             'operators',
-            'services',  # TODO add constraints here for incomplete bookings
+            'services'
+            'created_at',
         )
 
     def create(self, validated_data=None) -> int:
@@ -945,18 +948,12 @@ class EventCreateSerializer(BaseSerializer):
     affiliates = serializers.PrimaryKeyRelatedField(many=True, queryset=Affiliation.objects.all(), required=False)
     agents = serializers.PrimaryKeyRelatedField(many=True, queryset=Agent.objects.all(), required=False)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
-    payer = serializers.PrimaryKeyRelatedField(queryset=Payer.objects.all())
+    payer = serializers.PrimaryKeyRelatedField(queryset=Payer.objects.all(), required=False)
     requester = serializers.PrimaryKeyRelatedField(queryset=Requester.objects.all())
 
     class Meta:
         model = Event
         fields = '__all__'
-
-    def validate(self, data: dict):
-        if not data.get('location') and not data.get('meeting_url'):
-            raise serializers.ValidationError(_('Either location or meeting URL must be specified'))
-
-        return super(EventCreateSerializer, self).validate(data)
 
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
