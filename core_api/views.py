@@ -286,6 +286,22 @@ class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
         serializer.is_valid(raise_exception=True)
         agent = serializer.create(business_name)
         return Response(agent.id, status=status.HTTP_201_CREATED)
+    
+    @classmethod
+    def get(cls, request, buisiness_name=None, agent_id=None):
+        if agent_id:
+            agent = Agent.objects.all().not_deleted('user').get(id=agent_id)
+            serialized = AgentSerializer(agent)
+            return Response(serialized.data)
+        
+        query_params = prepare_query_params(request.GET)
+
+        queryset = AgentSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = AgentSerializer(queryset, many=True)
+        return Response(serialized.data)
 
 ManageOperators = user_subtype_view_manager(Operator, OperatorSerializer)
 
@@ -300,6 +316,21 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
         payer = serializer.create()
         return Response(payer.id, status=status.HTTP_201_CREATED)
 
+    @classmethod
+    def get(cls, request, buisiness_name=None, payer_id=None):
+        if payer_id:
+            payer = Payer.objects.all().not_deleted('user').get(id=payer_id)
+            serialized = PayerSerializer(payer)
+            return Response(serialized.data)
+        
+        query_params = prepare_query_params(request.GET)
+
+        queryset = PayerSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = PayerSerializer(queryset, many=True)
+        return Response(serialized.data)
 
 class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     @staticmethod
