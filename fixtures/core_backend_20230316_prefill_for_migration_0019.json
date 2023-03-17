@@ -1,0 +1,834 @@
+[
+{
+    "model": "core_backend.extra",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "parent_id": 1,
+        "parent_ct": 1,
+        "business": 1,
+        "key": "source_language",
+        "value": "en"
+    }
+},
+{
+    "model": "core_backend.extra",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "parent_id": 1,
+        "parent_ct": 1,
+        "business": 1,
+        "key": "target_language",
+        "value": "es"
+    }
+},
+{
+    "model": "core_backend.extra",
+    "pk": 3,
+    "fields": {
+        "is_deleted": false,
+        "parent_id": 2,
+        "parent_ct": 1,
+        "business": 1,
+        "key": "source_language",
+        "value": "en"
+    }
+},
+{
+    "model": "core_backend.extra",
+    "pk": 4,
+    "fields": {
+        "is_deleted": false,
+        "parent_id": 2,
+        "parent_ct": 1,
+        "business": 1,
+        "key": "target_language",
+        "value": "es"
+    }
+},
+{
+    "model": "core_backend.extra",
+    "pk": 5,
+    "fields": {
+        "is_deleted": false,
+        "parent_id": 3,
+        "parent_ct": 1,
+        "business": 1,
+        "key": "source_language",
+        "value": "en"
+    }
+},
+{
+    "model": "core_backend.extra",
+    "pk": 6,
+    "fields": {
+        "is_deleted": false,
+        "parent_id": 3,
+        "parent_ct": 1,
+        "business": 1,
+        "key": "target_language",
+        "value": "fr"
+    }
+},
+{
+    "model": "core_backend.extra",
+    "pk": 7,
+    "fields": {
+        "is_deleted": false,
+        "parent_id": 4,
+        "parent_ct": 1,
+        "business": 1,
+        "key": "source_language",
+        "value": "en"
+    }
+},
+{
+    "model": "core_backend.extra",
+    "pk": 8,
+    "fields": {
+        "is_deleted": false,
+        "parent_id": 4,
+        "parent_ct": 1,
+        "business": 1,
+        "key": "target_language",
+        "value": "es"
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "email": "example@core.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "email": "smily.face@insurance.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 3,
+    "fields": {
+        "is_deleted": false,
+        "email": "",
+        "phone": "+54 9 813 5250",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 4,
+    "fields": {
+        "is_deleted": false,
+        "email": "admin@core.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 5,
+    "fields": {
+        "is_deleted": false,
+        "email": "fulanito@example.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 6,
+    "fields": {
+        "is_deleted": false,
+        "email": "fulanito.othermail@example.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 7,
+    "fields": {
+        "is_deleted": false,
+        "email": "maxi@example.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 8,
+    "fields": {
+        "is_deleted": false,
+        "email": "stephany@example.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 9,
+    "fields": {
+        "is_deleted": false,
+        "email": "mario@example.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 10,
+    "fields": {
+        "is_deleted": false,
+        "email": "mayka@example.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.contact",
+    "pk": 11,
+    "fields": {
+        "is_deleted": false,
+        "email": "santiago@example.com",
+        "phone": "",
+        "fax": ""
+    }
+},
+{
+    "model": "core_backend.company",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "name": "CORE Communications",
+        "type": "owner",
+        "send_method": "email",
+        "on_hold": false,
+        "contacts": [
+            1
+        ],
+        "locations": [
+            1
+        ]
+    }
+},
+{
+    "model": "core_backend.company",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "name": "Smily-face Insurance",
+        "type": "insurance",
+        "send_method": "email",
+        "on_hold": false,
+        "contacts": [
+            2
+        ],
+        "locations": []
+    }
+},
+{
+    "model": "core_backend.company",
+    "pk": 3,
+    "fields": {
+        "is_deleted": false,
+        "name": "Clinic Happiness",
+        "type": "clinic",
+        "send_method": "email",
+        "on_hold": false,
+        "contacts": [
+            3
+        ],
+        "locations": [
+            2
+        ]
+    }
+},
+{
+    "model": "core_backend.location",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "address": "Some address",
+        "city": "Some city",
+        "state": "Some state",
+        "country": "Some country",
+        "zip": "1000"
+    }
+},
+{
+    "model": "core_backend.location",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "address": "Clinicaddress",
+        "city": "Cliniccity",
+        "state": "Clinicstate",
+        "country": "Cliniccountry",
+        "zip": "1001"
+    }
+},
+{
+    "model": "core_backend.user",
+    "pk": 1,
+    "fields": {
+        "password": "pbkdf2_sha256$320000$R7DuEeY5NUnW1K6ntWUBZz$O/l/2T/b/WCJLhimoDmUnUP+WpE2bYKBdTDkmfkah14=",
+        "last_login": null,
+        "is_superuser": true,
+        "username": "core_admin",
+        "email": "admin@core.com",
+        "is_staff": true,
+        "is_active": true,
+        "date_joined": "2023-03-16T19:18:47.030Z",
+        "is_deleted": false,
+        "date_of_birth": "1990-01-01",
+        "first_name": "Admin",
+        "last_name": "CORE",
+        "national_id": "",
+        "ssn": "",
+        "groups": [],
+        "user_permissions": [],
+        "contacts": [
+            4
+        ]
+    }
+},
+{
+    "model": "core_backend.user",
+    "pk": 2,
+    "fields": {
+        "password": "",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "fulanito",
+        "email": "fulanito@example.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2023-03-16T19:18:47.152Z",
+        "is_deleted": false,
+        "date_of_birth": "1998-09-17",
+        "first_name": "Fulano",
+        "last_name": "D'Tal",
+        "national_id": "123",
+        "ssn": "123456",
+        "groups": [],
+        "user_permissions": [],
+        "contacts": [
+            5,
+            6
+        ]
+    }
+},
+{
+    "model": "core_backend.user",
+    "pk": 3,
+    "fields": {
+        "password": "",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "maxi",
+        "email": "maxi@example.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2023-03-16T19:18:47.155Z",
+        "is_deleted": false,
+        "date_of_birth": "2001-02-21",
+        "first_name": "Maxinombre",
+        "last_name": "Maxiapellido",
+        "national_id": "136",
+        "ssn": "1834561",
+        "groups": [],
+        "user_permissions": [],
+        "contacts": [
+            7
+        ]
+    }
+},
+{
+    "model": "core_backend.user",
+    "pk": 4,
+    "fields": {
+        "password": "",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "stephany",
+        "email": "stephany@example.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2023-03-16T19:18:47.157Z",
+        "is_deleted": false,
+        "date_of_birth": "1999-11-10",
+        "first_name": "Stephany",
+        "last_name": "Perez",
+        "national_id": "190",
+        "ssn": "7294567",
+        "groups": [],
+        "user_permissions": [],
+        "contacts": [
+            8
+        ]
+    }
+},
+{
+    "model": "core_backend.user",
+    "pk": 5,
+    "fields": {
+        "password": "",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "mario",
+        "email": "mario@example.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2023-03-16T19:18:47.159Z",
+        "is_deleted": false,
+        "date_of_birth": "1980-01-30",
+        "first_name": "Mario",
+        "last_name": "Verde",
+        "national_id": "678",
+        "ssn": "7931753",
+        "groups": [],
+        "user_permissions": [],
+        "contacts": [
+            9
+        ]
+    }
+},
+{
+    "model": "core_backend.user",
+    "pk": 6,
+    "fields": {
+        "password": "",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "mayka",
+        "email": "mayka@example.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2023-03-16T19:18:47.163Z",
+        "is_deleted": false,
+        "date_of_birth": "2002-12-13",
+        "first_name": "Mayka",
+        "last_name": "Malbela",
+        "national_id": "468",
+        "ssn": "753951",
+        "groups": [],
+        "user_permissions": [],
+        "contacts": [
+            10
+        ]
+    }
+},
+{
+    "model": "core_backend.user",
+    "pk": 7,
+    "fields": {
+        "password": "",
+        "last_login": null,
+        "is_superuser": false,
+        "username": "santiago",
+        "email": "santiago@example.com",
+        "is_staff": false,
+        "is_active": true,
+        "date_joined": "2023-03-16T19:18:47.165Z",
+        "is_deleted": false,
+        "date_of_birth": "1996-02-29",
+        "first_name": "Santiago",
+        "last_name": "Ñandú",
+        "national_id": "951",
+        "ssn": "852456",
+        "groups": [],
+        "user_permissions": [],
+        "contacts": [
+            11
+        ]
+    }
+},
+{
+    "model": "core_backend.agent",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "user": 5,
+        "role": "doctor",
+        "companies": [
+            3
+        ]
+    }
+},
+{
+    "model": "core_backend.agent",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "user": 5,
+        "role": "medicalprovider",
+        "companies": [
+            3
+        ]
+    }
+},
+{
+    "model": "core_backend.operator",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "user": 1,
+        "hiring_date": "2023-03-16",
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.operator",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "user": 4,
+        "hiring_date": "2022-08-17",
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.payer",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "user": 2,
+        "method": "cash",
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.payer",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "user": 3,
+        "method": "cash",
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.payer",
+    "pk": 3,
+    "fields": {
+        "is_deleted": false,
+        "user": 4,
+        "method": "cash",
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.payer",
+    "pk": 4,
+    "fields": {
+        "is_deleted": false,
+        "user": 5,
+        "method": "cash",
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.payer",
+    "pk": 5,
+    "fields": {
+        "is_deleted": false,
+        "user": 6,
+        "method": "cash",
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.payer",
+    "pk": 6,
+    "fields": {
+        "is_deleted": false,
+        "user": 7,
+        "method": "cash",
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.provider",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "user": 6,
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.provider",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "user": 7,
+        "companies": []
+    }
+},
+{
+    "model": "core_backend.recipient",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "user": 2
+    }
+},
+{
+    "model": "core_backend.recipient",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "user": 3
+    }
+},
+{
+    "model": "core_backend.recipient",
+    "pk": 3,
+    "fields": {
+        "is_deleted": false,
+        "user": 4
+    }
+},
+{
+    "model": "core_backend.recipient",
+    "pk": 4,
+    "fields": {
+        "is_deleted": false,
+        "user": 5
+    }
+},
+{
+    "model": "core_backend.recipient",
+    "pk": 5,
+    "fields": {
+        "is_deleted": false,
+        "user": 6
+    }
+},
+{
+    "model": "core_backend.recipient",
+    "pk": 6,
+    "fields": {
+        "is_deleted": false,
+        "user": 7
+    }
+},
+{
+    "model": "core_backend.affiliation",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "recipient": 1,
+        "company": null
+    }
+},
+{
+    "model": "core_backend.affiliation",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "recipient": 1,
+        "company": 2
+    }
+},
+{
+    "model": "core_backend.affiliation",
+    "pk": 3,
+    "fields": {
+        "is_deleted": false,
+        "recipient": 2,
+        "company": null
+    }
+},
+{
+    "model": "core_backend.affiliation",
+    "pk": 4,
+    "fields": {
+        "is_deleted": false,
+        "recipient": 2,
+        "company": 2
+    }
+},
+{
+    "model": "core_backend.affiliation",
+    "pk": 5,
+    "fields": {
+        "is_deleted": false,
+        "recipient": 3,
+        "company": null
+    }
+},
+{
+    "model": "core_backend.affiliation",
+    "pk": 6,
+    "fields": {
+        "is_deleted": false,
+        "recipient": 4,
+        "company": null
+    }
+},
+{
+    "model": "core_backend.affiliation",
+    "pk": 7,
+    "fields": {
+        "is_deleted": false,
+        "recipient": 5,
+        "company": null
+    }
+},
+{
+    "model": "core_backend.affiliation",
+    "pk": 8,
+    "fields": {
+        "is_deleted": false,
+        "recipient": 6,
+        "company": null
+    }
+},
+{
+    "model": "core_backend.requester",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "user": 5,
+        "companies": [
+            3
+        ]
+    }
+},
+{
+    "model": "core_backend.business",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "name": "interpretation"
+    }
+},
+{
+    "model": "core_backend.category",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "description": "Onsite",
+        "name": "appointment-onsite"
+    }
+},
+{
+    "model": "core_backend.category",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "description": "Telephonic",
+        "name": "appointment-telephonic"
+    }
+},
+{
+    "model": "core_backend.category",
+    "pk": 3,
+    "fields": {
+        "is_deleted": false,
+        "description": "Video call",
+        "name": "appointment-videocall"
+    }
+},
+{
+    "model": "core_backend.category",
+    "pk": 4,
+    "fields": {
+        "is_deleted": false,
+        "description": "Med-legal certified",
+        "name": "certification-medlegal"
+    }
+},
+{
+    "model": "core_backend.category",
+    "pk": 5,
+    "fields": {
+        "is_deleted": false,
+        "description": "Not certified",
+        "name": "certification-none"
+    }
+},
+{
+    "model": "core_backend.category",
+    "pk": 6,
+    "fields": {
+        "is_deleted": false,
+        "description": "Non-med-legal-standard certified",
+        "name": "certification-standard"
+    }
+},
+{
+    "model": "core_backend.service",
+    "pk": 1,
+    "fields": {
+        "is_deleted": false,
+        "business": 1,
+        "provider": 1,
+        "bill_amount": "5.00",
+        "bill_rate": 60,
+        "categories": [
+            2,
+            4
+        ]
+    }
+},
+{
+    "model": "core_backend.service",
+    "pk": 2,
+    "fields": {
+        "is_deleted": false,
+        "business": 1,
+        "provider": 1,
+        "bill_amount": "7.00",
+        "bill_rate": 60,
+        "categories": [
+            3,
+            5
+        ]
+    }
+},
+{
+    "model": "core_backend.service",
+    "pk": 3,
+    "fields": {
+        "is_deleted": false,
+        "business": 1,
+        "provider": 2,
+        "bill_amount": "12.00",
+        "bill_rate": 60,
+        "categories": [
+            1,
+            5,
+            6
+        ]
+    }
+},
+{
+    "model": "core_backend.service",
+    "pk": 4,
+    "fields": {
+        "is_deleted": false,
+        "business": 1,
+        "provider": 2,
+        "bill_amount": "11.00",
+        "bill_rate": 60,
+        "categories": [
+            1,
+            5,
+            6
+        ]
+    }
+}
+]
