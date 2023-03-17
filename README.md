@@ -17,6 +17,11 @@ First of all install:
 
 Also, install the dependencies with the command `pip install -r requirements.txt`. If a new package was added to `requirements.txt`, run the same command previously mentioned.
 
+To preload data for testing, run:\
+`python manage.py migrate core_backend 0019`\
+`python manage.py loaddata fixtures/core_backend_20230316_prefill_for_migration_0019.json --app core_backend`\
+You can update your migrations after that.
+
 ### Disclaimer
 
 This README file was originally written for a Linux installation on a Virtual Machine running on Windows. Scroll down for the Mac OS version. 
