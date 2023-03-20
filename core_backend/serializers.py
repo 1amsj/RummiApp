@@ -518,7 +518,7 @@ class PayerCreateSerializer(PayerSerializer):
         return payer
 
 
-class ServiceRootSerializer(generic_serializer(ServiceRoot)):
+class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
     bookings = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all(), many=True)
     services = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all(), many=True)
 
@@ -547,7 +547,7 @@ class ServiceRootSerializer(generic_serializer(ServiceRoot)):
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     categories = CategorySerializer(many=True)
-    root = ServiceRootSerializer(many=True, required=False)
+    root = ServiceRootBaseSerializer(many=True, required=False)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()
 
@@ -606,6 +606,40 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
                     queryset=UserSerializer.get_default_queryset(),
                 ),
             )
+        )
+
+
+class ServiceSerializer(ServiceNoProviderSerializer):
+    provider = ProviderSerializer()
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            super().get_default_queryset()
+                .prefetch_related(
+                    Prefetch(
+                        'provider',
+                        queryset=ProviderSerializer.get_default_queryset(),
+                    )
+                )
+        )
+
+
+class ServiceRootNoBookingSerializer(ServiceRootBaseSerializer):
+    services = ServiceSerializer(many=True)
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            ServiceRoot.objects
+                .all()
+                .not_deleted('business')
+                .prefetch_related(
+                    Prefetch(
+                        'services',
+                        queryset=ServiceSerializer.get_default_queryset(),
+                    ),
+                )
         )
 
 
@@ -806,7 +840,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     events_count = serializers.IntegerField(source='events.count', read_only=True)
     expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
-    service_root = ServiceRootSerializer(allow_null=True)
+    service_root = ServiceRootBaseSerializer(allow_null=True)
     services = ServiceSerializer(many=True)
 
     class Meta:
