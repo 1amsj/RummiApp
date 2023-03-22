@@ -235,33 +235,42 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
         data: dict = validated_data or self.validated_data
 
         contacts_data = data.pop('contacts')
+        
         created_contacts, updated_contacts, deleted_contacts = fetch_updated_from_validated_data(Contact, contacts_data, set(instance.contacts.all().values_list('id')))
+        
         # Create
         if created_contacts:
             created_contacts = Contact.objects.bulk_create(created_contacts)
             instance.contacts.add(*created_contacts)
+
         # Update
         if updated_contacts:
             Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+
         # Delete
         for id in deleted_contacts:
             Contact.objects.filter(id=id).delete()
 
         locations_data = data.pop('locations')
+        
         created_locations, updated_locations, deleted_locations = fetch_updated_from_validated_data(Location, locations_data, set(instance.locations.all().values_list('id')))
+        
         # Create
         if created_locations:
             created_locations = Location.objects.bulk_create(created_locations)
             instance.locations.add(*created_locations)
+        
         # Update
         if updated_locations:
             Location.objects.bulk_update(updated_locations, ['address', 'city', 'state', 'country', 'zip'])
+        
         # Delete
         for id in deleted_locations:
             Location.objects.filter(id=id).delete()
 
         for (k, v) in data.items():
             setattr(instance, k, v)
+        
         instance.save()
 
 
@@ -365,28 +374,39 @@ class UserUpdateSerializer(UserCreateSerializer):
 
         password = data.pop('password', None)
         data.pop('confirmation', None)
+        
         if password:
             instance.set_password(password)
             instance.save()
 
-        if contacts_data := data.pop('contacts', None):
-            created_contacts, updated_contacts = fetch_updated_from_validated_data(Contact, contacts_data)
-            # Create
-            if created_contacts:
-                created_contacts = Contact.objects.bulk_create(created_contacts)
-                instance.contacts.add(*created_contacts)
-            # Update
-            if updated_contacts:
-                Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+        contacts_data = data.pop('contacts', None)
 
-        if ((new_email := data.get('email'))
-                and new_email != instance.email
-                and (contact := instance.contacts.filter(email=instance.email).first())):
+        created_contacts, updated_contacts, deleted_contacts = fetch_updated_from_validated_data(Contact, contacts_data, set(instance.contacts.all().values_list('id')))
+
+        # Create
+        if created_contacts:
+            created_contacts = Contact.objects.bulk_create(created_contacts)
+            instance.contacts.add(*created_contacts)
+
+        # Update
+        if updated_contacts:
+            Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+
+        # Delete
+        for id in deleted_contacts:
+            Contact.objects.filter(id=id).delete()
+
+        if (
+            (new_email := data.get('email'))
+            and new_email != instance.email
+            and (contact := instance.contacts.filter(email=instance.email).first())
+        ):
             contact.email = new_email
             contact.save()
 
         for (k, v) in data.items():
             setattr(instance, k, v)
+        
         instance.save()
 
         user_sync_email_with_contact(instance)
