@@ -519,12 +519,16 @@ class PayerCreateSerializer(PayerSerializer):
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     categories = CategorySerializer(many=True)
-    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
-    bill_rate = serializers.IntegerField()
 
     class Meta:
         model = Service
         fields = '__all__'
+
+    def validate(self, data: dict):
+        if (data.get('bill_amount') < 0):
+            raise serializers.ValidationError(_('Bill amount could not be negative'))
+
+        return super(ServiceNoProviderSerializer, self).validate(data)
 
     @staticmethod
     def get_default_queryset():
@@ -888,7 +892,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             'categories',
             'companies',
             'operators',
-            'services'
+            'services',
             'created_at',
         )
 

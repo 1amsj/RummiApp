@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import ArrayField
 from django.db import models, transaction
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
@@ -309,9 +310,21 @@ class Payer(HistoricalModel, SoftDeletableModel):
 
 
 class Provider(ExtendableModel, SoftDeletableModel, HistoricalModel):
+    class ContractType(models.TextChoices):
+        CONTRACTOR = 'CR', _('Contractor')
+        SALARIED = 'SR', _('Salaried')
+    
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
+    contract_type = models.CharField(max_length=2, choices=ContractType.choices, default=ContractType.CONTRACTOR)
+    salary = models.DecimalField(max_digits=32, decimal_places=2, blank=True, null=True)
+    payment_via = models.CharField(max_length=128, blank=True, null=True)
+    payment_account = models.CharField(max_length=128, blank=True, null=True)
+    payment_routing = models.CharField(max_length=128, blank=True, null=True)
+    payment_account_type = models.CharField(max_length=128, blank=True, null=True)
+    minimum_bookings = models.PositiveIntegerField(default=0)
+    certifications = ArrayField(models.CharField(max_length=128, blank=True), default=list, blank=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
@@ -404,11 +417,21 @@ class Category(SoftDeletableModel):
 
 
 class Service(ExtendableModel, SoftDeletableModel):
+    class RateType(models.TextChoices):
+        FLAT = 'FT', _('Flat')
+        PER_ASSIGNATION = 'PA', _('Per Assignation')
+        PER_HOURS = 'PH', _('Per Hours')
+        PER_MINUTES = 'PM', _('Per Minutes')
+        QUANTITY = 'QT', _('Quantity')
+
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
-    categories = models.ManyToManyField(Category, related_name='services')
+    categories = models.ManyToManyField(Category, related_name='services', blank=True)
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
-    bill_amount = models.DecimalField(_('billing amount'), max_digits=32, decimal_places=2)
-    bill_rate = models.IntegerField(_('billing rate in seconds'))
+    bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
+    bill_rate_type = models.CharField(_('billing rate type'), max_length=2, choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
+    bill_min_payment = models.DecimalField(_('billing minimum payment'), max_digits=32, decimal_places=2, default=0, help_text='Defines the minimum that the provider will charge for this service')
+    bill_rate = models.DecimalField(_('billing rate'), max_digits=32, decimal_places=2, default=0, help_text='Is how much the provider charges per `bill_rate_type`')
+    # TODO review if the bill's fields are optional or not
 
     class Meta:
         verbose_name = _('service')
