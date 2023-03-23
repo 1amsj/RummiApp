@@ -636,16 +636,3 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSeri
 
         serialized = ServiceRootNoBookingSerializer(queryset, many=True)
         return Response(serialized.data)
-
-
-    @staticmethod
-    @transaction.atomic
-    @expect_key_error
-    @expect_does_not_exist(Business)
-    def post(request, business_name=None):
-        data = request.data
-        data['business'] = business_name
-        serializer = ServiceCreateSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        service_id = serializer.create()
-        return Response(service_id, status=status.HTTP_201_CREATED)

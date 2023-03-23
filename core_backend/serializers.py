@@ -531,7 +531,7 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
         return (
             ServiceRoot.objects
                 .all()
-                .not_deleted('business')
+                .not_deleted()
                 .prefetch_related(
                     Prefetch(
                         'bookings',
@@ -570,6 +570,10 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
                         'extra',
                         queryset=ExtraAttrSerializer.get_default_queryset(),
                     ),
+                    Prefetch(
+                        'root',
+                        queryset=ServiceRootBaseSerializer.get_default_queryset(),
+                    )
                 )
         )
 
@@ -612,15 +616,20 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
 class ServiceSerializer(ServiceNoProviderSerializer):
     provider = ProviderSerializer()
 
+    class Meta:
+        model = Service
+        fields = '__all__'
+
     @staticmethod
     def get_default_queryset():
         return (
-            super().get_default_queryset()
+            super(ServiceSerializer, ServiceSerializer)
+                .get_default_queryset()
                 .prefetch_related(
                     Prefetch(
                         'provider',
                         queryset=ProviderSerializer.get_default_queryset(),
-                    )
+                    ),
                 )
         )
 
@@ -633,7 +642,7 @@ class ServiceRootNoBookingSerializer(ServiceRootBaseSerializer):
         return (
             ServiceRoot.objects
                 .all()
-                .not_deleted('business')
+                .not_deleted()
                 .prefetch_related(
                     Prefetch(
                         'services',
@@ -786,27 +795,6 @@ class RequesterSerializer(user_subtype_serializer(Requester)):
 BusinessSerializer = generic_serializer(Business)
 
 
-class ServiceSerializer(ServiceNoProviderSerializer):
-    provider = ProviderSerializer()
-
-    class Meta:
-        model = Service
-        fields = '__all__'
-
-    @staticmethod
-    def get_default_queryset():
-        return (
-            super(ServiceSerializer, ServiceSerializer)
-                .get_default_queryset()
-                .prefetch_related(
-                    Prefetch(
-                        'provider',
-                        queryset=ProviderSerializer.get_default_queryset(),
-                    ),
-                )
-        )
-
-
 class ExpenseSerializer(generic_serializer(Expense)):
     booking_id = serializers.PrimaryKeyRelatedField(read_only=True, source='booking')
 
@@ -840,8 +828,8 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     events_count = serializers.IntegerField(source='events.count', read_only=True)
     expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
-    service_root = ServiceRootBaseSerializer(allow_null=True)
     services = ServiceSerializer(many=True)
+    service_root = ServiceRootBaseSerializer(allow_null=True)
 
     class Meta:
         model = Booking
@@ -877,6 +865,10 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
                     Prefetch(
                         'services',
                         queryset=ServiceSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'service_root',
+                        queryset=ServiceRootBaseSerializer.get_default_queryset(),
                     ),
                 )
         )
