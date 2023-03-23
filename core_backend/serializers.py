@@ -547,7 +547,7 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     categories = CategorySerializer(many=True)
-    root = ServiceRootBaseSerializer(many=True, required=False)
+    root = ServiceRootBaseSerializer(required=False)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()
 
