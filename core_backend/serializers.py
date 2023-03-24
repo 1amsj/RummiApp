@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
-    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
+    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Note, Operator, Payer, Provider, Recipient, Requester, \
     Service, SoftDeletableModel, SoftDeletionQuerySet, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
     manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
@@ -179,9 +179,29 @@ class CategoryCreateSerializer(CategorySerializer):
         instance.save()
 
 
+class NoteSerializer(BaseSerializer):
+    created_at = serializers.DateTimeField(required=True)
+    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all(), source='owner')
+    text = serializers.CharField(required=True, allow_blank=True)
+
+    class Meta:
+        model = Note
+        fields = ('created_at', 'created_by', 'text')
+
+
+class NoteCreateSerializer(NoteSerializer):
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+
+        note = Note.objects.create(**data)
+
+        return note.id
+
+
 class CompanySerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
+    notes = NoteSerializer(many=True, default=[])
 
     class Meta:
         model = Company
@@ -505,6 +525,7 @@ class OperatorSerializer(user_subtype_serializer(Operator)):
 class PayerSerializer(user_subtype_serializer(Payer)):
     companies = CompanySerializer(many=True)
     method = serializers.CharField()
+    notes = NoteSerializer(many=True, default=[])
 
     @staticmethod
     def get_default_queryset():
@@ -568,6 +589,7 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
 class ProviderSerializer(user_subtype_serializer(Provider)):
     companies = CompanySerializer(many=True)
     services = ServiceNoProviderSerializer(many=True)
+    notes = NoteSerializer(many=True, default=[])
 
     class Meta:
         model = Provider
@@ -633,6 +655,8 @@ class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
 
 
 class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
+    notes = NoteSerializer(many=True, default=[])
+    
     class Meta:
         model = Recipient
         exclude = ('companies',)
@@ -797,6 +821,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
+    notes = NoteSerializer(many=True, default=[])
 
     class Meta:
         model = Booking

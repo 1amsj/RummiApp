@@ -15,7 +15,7 @@ from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerial
 from core_api.services import prepare_query_params
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
-    ExtraQuerySet, \
+    ExtraQuerySet, Note, \
     Operator, \
     Payer, \
     Provider, \
@@ -24,7 +24,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
 from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
     AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
     CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanyUpdateSerializer, EventCreateSerializer, \
-    EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, OperatorSerializer, \
+    EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, RecipientCreateSerializer, RecipientSerializer, \
     RequesterSerializer, ServiceCreateSerializer, ServiceSerializer, UserCreateSerializer, UserSerializer, \
     UserUpdateSerializer
@@ -653,3 +653,16 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
         serializer.is_valid(raise_exception=True)
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
+
+
+class ManageNote(basic_view_manager(Note, NoteSerializer)):
+    @staticmethod
+    def post(request):
+        data = request.data
+        user: User = request.user
+        data['owner'] = user
+        print('ManageNote Data: ', data)
+        serializer = NoteCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        note_id = serializer.create()
+        return Response(note_id, status=status.HTTP_201_CREATED)
