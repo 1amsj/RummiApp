@@ -661,7 +661,6 @@ class ManageNote(basic_view_manager(Note, NoteSerializer)):
         data = request.data
         user: User = request.user
         data['owner'] = user
-        print('ManageNote Data: ', data)
         serializer = NoteCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         note_id = serializer.create()
