@@ -656,6 +656,19 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
 
 
 class ManageNote(basic_view_manager(Note, NoteSerializer)):
+    @classmethod
+    def get(cls, request):
+        query_params = prepare_query_params(request.GET)
+
+        serializer = NoteSerializer
+
+        queryset = serializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+    
     @staticmethod
     def post(request):
         data = request.data

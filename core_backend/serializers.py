@@ -188,6 +188,10 @@ class NoteSerializer(BaseSerializer):
         model = Note
         fields = ('created_at', 'created_by', 'text')
 
+    @staticmethod
+    def get_default_queryset():
+        return Note.objects.all().not_deleted()
+
 
 class NoteCreateSerializer(NoteSerializer):
     def create(self, validated_data=None) -> int:
