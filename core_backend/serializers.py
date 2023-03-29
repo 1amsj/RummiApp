@@ -226,6 +226,10 @@ class CompanySerializer(BaseSerializer):
                         'locations',
                         queryset=Location.objects.all().not_deleted(),
                     ),
+                    Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset()
+                    ),
                 )
         )
 
@@ -543,6 +547,10 @@ class PayerSerializer(user_subtype_serializer(Payer)):
                         queryset=CompanySerializer.get_default_queryset()
                     ),
                     Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset()
+                    ),
+                    Prefetch(
                         'user',
                         queryset=UserSerializer.get_default_queryset(),
                     ),
@@ -611,6 +619,10 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
                     queryset=CompanySerializer.get_default_queryset()
                 ),
                 Prefetch(
+                    'notes',
+                    queryset=NoteSerializer.get_default_queryset()
+                ),
+                Prefetch(
                     'extra',
                     queryset=ExtraAttrSerializer.get_default_queryset(),
                 ),
@@ -672,6 +684,10 @@ class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
                 .all()
                 .not_deleted('user')
                 .prefetch_related(
+                    Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset()
+                    ),
                     Prefetch(
                         'extra',
                         queryset=ExtraAttrSerializer.get_default_queryset(),
@@ -845,6 +861,10 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
                     Prefetch(
                         'companies',
                         queryset=CompanySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset()
                     ),
                     Prefetch(
                         'expenses',
