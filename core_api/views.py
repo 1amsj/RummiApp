@@ -20,13 +20,14 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Payer, \
     Provider, \
     Recipient, \
-    Requester, Service, User
+    Requester, Service, ServiceRoot, User
 from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
     AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
     CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanyUpdateSerializer, EventCreateSerializer, \
     EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, RecipientCreateSerializer, RecipientSerializer, \
-    RequesterSerializer, ServiceCreateSerializer, ServiceSerializer, UserCreateSerializer, UserSerializer, \
+    RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, \
+    UserCreateSerializer, UserSerializer, \
     UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
@@ -653,3 +654,16 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
         serializer.is_valid(raise_exception=True)
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
+
+
+class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSerializer)):
+    @classmethod
+    def get(cls, request):
+        query_params = prepare_query_params(request.GET)
+
+        queryset = ServiceRootNoBookingSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = ServiceRootNoBookingSerializer(queryset, many=True)
+        return Response(serialized.data)
