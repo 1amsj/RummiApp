@@ -188,6 +188,12 @@ class NoteSerializer(BaseSerializer):
         model = Note
         fields = ('created_at', 'created_by', 'text')
 
+    def validate(self, data: dict):
+        if not (data.get('booking') or data.get('company') or data.get('payer') or data.get('provider') or data.get('recipient')):
+            raise serializers.ValidationError(_('Note has to be related to another entity'))
+
+        return super(NoteSerializer, self).validate(data)
+
     @staticmethod
     def get_default_queryset():
         return Note.objects.all().not_deleted()
