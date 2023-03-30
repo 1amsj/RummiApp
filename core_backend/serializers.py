@@ -7,7 +7,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
-    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
+    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Note, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot, SoftDeletableModel, SoftDeletionQuerySet, User
 from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
     manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
@@ -179,9 +179,39 @@ class CategoryCreateSerializer(CategorySerializer):
         instance.save()
 
 
+class NoteSerializer(BaseSerializer):
+    created_at = serializers.DateTimeField(required=True)
+    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all(), source='owner')
+    text = serializers.CharField(required=True, allow_blank=True)
+
+    class Meta:
+        model = Note
+        fields = ('created_at', 'created_by', 'text')
+
+    def validate(self, data: dict):
+        if not (data.get('booking') or data.get('company') or data.get('payer') or data.get('provider') or data.get('recipient')):
+            raise serializers.ValidationError(_('Note has to be related to another entity'))
+
+        return super(NoteSerializer, self).validate(data)
+
+    @staticmethod
+    def get_default_queryset():
+        return Note.objects.all().not_deleted()
+
+
+class NoteCreateSerializer(NoteSerializer):
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+
+        note = Note.objects.create(**data)
+
+        return note.id
+
+
 class CompanySerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
+    notes = NoteSerializer(many=True, default=[])
 
     class Meta:
         model = Company
@@ -201,6 +231,10 @@ class CompanySerializer(BaseSerializer):
                     Prefetch(
                         'locations',
                         queryset=Location.objects.all().not_deleted(),
+                    ),
+                    Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset()
                     ),
                 )
         )
@@ -505,6 +539,7 @@ class OperatorSerializer(user_subtype_serializer(Operator)):
 class PayerSerializer(user_subtype_serializer(Payer)):
     companies = CompanySerializer(many=True)
     method = serializers.CharField()
+    notes = NoteSerializer(many=True, default=[])
 
     @staticmethod
     def get_default_queryset():
@@ -516,6 +551,10 @@ class PayerSerializer(user_subtype_serializer(Payer)):
                     Prefetch(
                         'companies',
                         queryset=CompanySerializer.get_default_queryset()
+                    ),
+                    Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset()
                     ),
                     Prefetch(
                         'user',
@@ -607,6 +646,7 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
 class ProviderSerializer(user_subtype_serializer(Provider)):
     companies = CompanySerializer(many=True)
     services = ServiceNoProviderSerializer(many=True)
+    notes = NoteSerializer(many=True, default=[])
 
     class Meta:
         model = Provider
@@ -622,6 +662,10 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
                 Prefetch(
                     'companies',
                     queryset=CompanySerializer.get_default_queryset()
+                ),
+                Prefetch(
+                    'notes',
+                    queryset=NoteSerializer.get_default_queryset()
                 ),
                 Prefetch(
                     'extra',
@@ -712,6 +756,8 @@ class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
 
 
 class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
+    notes = NoteSerializer(many=True, default=[])
+    
     class Meta:
         model = Recipient
         exclude = ('companies',)
@@ -723,6 +769,10 @@ class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
                 .all()
                 .not_deleted('user')
                 .prefetch_related(
+                    Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset()
+                    ),
                     Prefetch(
                         'extra',
                         queryset=ExtraAttrSerializer.get_default_queryset(),
@@ -855,6 +905,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
+    notes = NoteSerializer(many=True, default=[])
     service_root = ServiceRootBaseSerializer(allow_null=True)
 
     class Meta:
@@ -875,6 +926,10 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
                     Prefetch(
                         'companies',
                         queryset=CompanySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset()
                     ),
                     Prefetch(
                         'expenses',

@@ -15,7 +15,7 @@ from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerial
 from core_api.services import prepare_query_params
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
-    ExtraQuerySet, \
+    ExtraQuerySet, Note, \
     Operator, \
     Payer, \
     Provider, \
@@ -24,7 +24,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
 from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
     AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
     CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanyUpdateSerializer, EventCreateSerializer, \
-    EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, OperatorSerializer, \
+    EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, RecipientCreateSerializer, RecipientSerializer, \
     RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, \
     UserCreateSerializer, UserSerializer, \
@@ -667,3 +667,29 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSeri
 
         serialized = ServiceRootNoBookingSerializer(queryset, many=True)
         return Response(serialized.data)
+
+
+class ManageNote(basic_view_manager(Note, NoteSerializer)):
+    @classmethod
+    def get(cls, request):
+        query_params = prepare_query_params(request.GET)
+
+        serializer = NoteSerializer
+
+        queryset = serializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+    
+    @staticmethod
+    def post(request):
+        data = request.data
+        user: User = request.user
+        data['owner'] = user
+        serializer = NoteCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        note_id = serializer.create()
+        return Response(note_id, status=status.HTTP_201_CREATED)
+    

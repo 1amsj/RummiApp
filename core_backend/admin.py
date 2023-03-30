@@ -88,5 +88,6 @@ basic_register(Event, historical=True)
 basic_register(Expense, historical=True)
 
 basic_register(Extra, historical=True)
+basic_register(Note, historical=True)
 
 # admin.site.register(Rule)

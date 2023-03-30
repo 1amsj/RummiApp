@@ -182,6 +182,7 @@ class Company(SoftDeletableModel, HistoricalModel):
         # self.contacts.all().delete()
         # self.locations.all().delete()
         self.affiliations.all().delete()
+        self.notes.all().delete()
         pass
 
 
@@ -306,6 +307,7 @@ class Payer(HistoricalModel, SoftDeletableModel):
         return F"[Payer] {self.user}"
 
     def delete_related(self):
+        self.notes.all().delete()
         pass
 
 
@@ -334,6 +336,7 @@ class Provider(ExtendableModel, SoftDeletableModel, HistoricalModel):
 
     def delete_related(self):
         self.services.all().delete()
+        self.notes.all().delete()
 
 
 class Recipient(ExtendableModel, HistoricalModel, SoftDeletableModel):
@@ -349,6 +352,7 @@ class Recipient(ExtendableModel, HistoricalModel, SoftDeletableModel):
 
     def delete_related(self):
         self.affiliations.all().delete()
+        self.notes.all().detele()
 
 
 class Affiliation(ExtendableModel, HistoricalModel, SoftDeletableModel):
@@ -491,6 +495,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     def delete_related(self):
         self.events.all().delete()
         self.expenses.all().delete()
+        self.notes.all().detele()
 
 
 class Event(HistoricalModel, SoftDeletableModel):
@@ -566,3 +571,18 @@ class Invoice(models.Model):
     class Meta:
         verbose_name = _('invoice')
         verbose_name_plural = _('invoices')
+
+
+class Note(SoftDeletableModel):
+    created_at = models.DateField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True)
+    text = models.TextField(blank=True, default='')
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    payer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+
+    class Meta:
+        verbose_name = _('note')
+        verbose_name_plural = _('notes')
