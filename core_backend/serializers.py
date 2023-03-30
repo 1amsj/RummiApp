@@ -575,6 +575,12 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
         model = Service
         fields = '__all__'
 
+    def validate(self, data: dict):
+        if (data.get('bill_amount') < 0):
+            raise serializers.ValidationError(_('Bill amount could not be negative'))
+
+        return super(ServiceNoProviderSerializer, self).validate(data)
+
     @staticmethod
     def get_default_queryset():
         return (
