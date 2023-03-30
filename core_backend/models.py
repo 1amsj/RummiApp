@@ -317,14 +317,14 @@ class Provider(ExtendableModel, SoftDeletableModel, HistoricalModel):
     """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
-    contract_type = models.CharField(choices=ContractType.choices, default=ContractType.CONTRACTOR)
+    contract_type = models.CharField(max_length=255, choices=ContractType.choices, default=ContractType.CONTRACTOR)
     salary = models.DecimalField(max_digits=32, decimal_places=2, blank=True, null=True)
-    payment_via = models.CharField(blank=True, null=True)
-    payment_account = models.CharField(blank=True, null=True)
-    payment_routing = models.CharField(blank=True, null=True)
-    payment_account_type = models.CharField(blank=True, null=True)
+    payment_via = models.CharField(max_length=255, blank=True, null=True)
+    payment_account = models.CharField(max_length=255, blank=True, null=True)
+    payment_routing = models.CharField(max_length=255, blank=True, null=True)
+    payment_account_type = models.CharField(max_length=255, blank=True, null=True)
     minimum_bookings = models.PositiveIntegerField(default=0)
-    certifications = ArrayField(models.CharField(blank=True), default=list, blank=True)
+    certifications = ArrayField(models.CharField(max_length=255, blank=True), default=list, blank=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
@@ -448,7 +448,7 @@ class Service(ExtendableModel, SoftDeletableModel):
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
     root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='services')
     bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
-    bill_rate_type = models.CharField(_('billing rate type'), choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
+    bill_rate_type = models.CharField(_('billing rate type'), max_length=255, choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
     bill_min_payment = models.DecimalField(_('billing minimum payment'), max_digits=32, decimal_places=2, default=0, help_text='Defines the minimum that the provider will charge for this service')
     bill_rate = models.DecimalField(_('billing rate'), max_digits=32, decimal_places=2, default=0, help_text='Is how much the provider charges per `bill_rate_type`')
 
