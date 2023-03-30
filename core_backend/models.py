@@ -407,10 +407,30 @@ class Category(SoftDeletableModel):
         pass
 
 
+class ServiceRoot(SoftDeletableModel):
+    name = models.CharField(_('name'), max_length=128)
+
+    class Meta:
+        verbose_name = _('service root')
+        verbose_name_plural = _('service roots')
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def has_services(self):
+        return hasattr(self, 'services') and self.services is not None
+
+    def delete_related(self):
+        if self.has_services:
+            self.services.all().delete()
+
+
 class Service(ExtendableModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
     categories = models.ManyToManyField(Category, related_name='services')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
+    root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='services')
     bill_amount = models.DecimalField(_('billing amount'), max_digits=32, decimal_places=2)
     bill_rate = models.IntegerField(_('billing rate in seconds'))
 
@@ -430,6 +450,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
+    service_root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
     created_at = models.DateTimeField(auto_now_add=True)
 
