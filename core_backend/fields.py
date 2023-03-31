@@ -9,10 +9,10 @@ class DailyUniqueIdentifierField(models.CharField):
             date = datetime.now().date()
             
             # Get the last object with the same date prefix
-            qs = model_instance.__class__.objects.filter(**{
+            querySet = model_instance.__class__.objects.filter(**{
                 F"{self.name}__startswith": date.strftime('%Y%m%d')
             })
-            last_object = qs.order_by(F"-{self.name}").first()
+            last_object = querySet.order_by(F"-{self.name}").first()
 
             # Increment the sequence number
             sequence_number = 1
