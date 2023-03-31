@@ -995,6 +995,7 @@ class EventNoBookingSerializer(BaseSerializer):
 
 class BookingSerializer(BookingNoEventsSerializer):
     events = EventNoBookingSerializer(many=True)
+    public_id = serializers.ReadOnlyField()
 
     @staticmethod
     def get_default_queryset():
@@ -1018,6 +1019,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
     service_root = serializers.PrimaryKeyRelatedField(required=False, queryset=ServiceRoot.objects.all())
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
     created_at = serializers.DateTimeField(required=False)
+    public_id = serializers.ReadOnlyField()
 
     class Meta:
         # TODO add constraints here for incomplete bookings
@@ -1030,6 +1032,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             'service_root',
             'services',
             'created_at',
+            'public_id',
         )
 
     def create(self, validated_data=None) -> int:
