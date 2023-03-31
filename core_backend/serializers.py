@@ -813,7 +813,7 @@ class AffiliationSerializer(generic_serializer(Affiliation)):
 
 
 class AffiliationCreateSerializer(AffiliationSerializer):
-    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), required=False)
+    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
     recipient = serializers.PrimaryKeyRelatedField(queryset=Recipient.objects.all())
 
     def create(self, business_name, validated_data=None):
