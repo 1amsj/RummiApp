@@ -304,7 +304,37 @@ class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
         serialized = AgentSerializer(queryset, many=True)
         return Response(serialized.data)
 
-ManageOperators = user_subtype_view_manager(Operator, OperatorSerializer)
+class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
+    @staticmethod
+    def apply_nested_filters(queryset, nested_params):
+        if nested_params.is_empty():
+            return queryset
+        
+        service_params, extra_params, _ = filter_params(Service, nested_params.get('services', {}))
+        if not service_params.is_empty():
+            queryset = queryset.filter(**service_params.to_dict('services__'))
+        
+        if not extra_params.is_empty():
+            queryset = queryset.filter_by_extra(related_prefix='services__', **extra_params.to_dict())
+        
+        return queryset
+    
+    @classmethod
+    @expect_does_not_exist(Operator)
+    def get(cls, request, business_name=None, operator_id=None):
+        if operator_id:
+            operator = Operator.objects.all().not_deleted('user').get(id=operator_id)
+            serialized = OperatorSerializer(operator)
+            return Response(serialized.data)
+        
+        query_params = prepare_query_params(request.GET)
+
+        queryset = OperatorSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = OperatorSerializer(queryset, many=True)
+        return Response(serialized.data)
 
 class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
     @staticmethod
@@ -332,6 +362,8 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
 
         serialized = PayerSerializer(queryset, many=True)
         return Response(serialized.data)
+    
+
 
 class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     @staticmethod
