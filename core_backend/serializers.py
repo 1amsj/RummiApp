@@ -571,9 +571,12 @@ class PayerCreateSerializer(PayerSerializer):
     def create(self, validated_data=None):
         data = validated_data or self.validated_data
         companies_data = data.pop('companies', None)
+        notes_data = data.pop('notes', None)
         payer = Payer.objects.create(**data)
         if companies_data:
             payer.companies.add(*companies_data)
+        if notes_data:
+            payer.notes.add(*notes_data)
         return payer
 
 
