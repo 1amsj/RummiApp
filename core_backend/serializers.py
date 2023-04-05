@@ -123,6 +123,7 @@ class BusinessField(serializers.RelatedField):
 
 # General serializers
 class ContactSerializer(BaseSerializer):
+    phone_extension = serializers.SerializerMethodField('get_phone_extension');
     class Meta:
         model = Contact
         fields = '__all__'
@@ -136,6 +137,9 @@ class ContactSerializer(BaseSerializer):
     @staticmethod
     def get_default_queryset():
         return Contact.objects.all().not_deleted()
+    
+    def get_phone_extension(self, contact_instance):
+        return contact_instance.phone.extension
 
 
 class ContactUnsafeSerializer(ContactSerializer):
