@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from core_api.constants import INCLUDE_BOOKING_KEY, INCLUDE_EVENTS_KEY
+from core_api.constants import INCLUDE_BOOKING_KEY, INCLUDE_EVENTS_KEY, INCLUDE_ROLES_KEY
 from core_api.decorators import expect_does_not_exist, expect_key_error, expect_not_implemented
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
@@ -23,7 +23,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Requester, Service, ServiceRoot, User
 from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
     AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
-    CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanyUpdateSerializer, EventCreateSerializer, \
+    CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanySerializerWithRoles, CompanyUpdateSerializer, EventCreateSerializer, \
     EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, RecipientCreateSerializer, RecipientSerializer, \
     RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, \
@@ -607,9 +607,13 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
         if company_id:
             serialized = CompanySerializer(Company.objects.get(id=company_id))
             return Response(serialized.data)
+        
+        include_roles = request.GET.get(INCLUDE_ROLES_KEY, False)
+
         query_params = prepare_query_params(request.GET)
         queryset = cls.apply_filters(Company.objects.filter(is_deleted=False), query_params)
-        serialized = CompanySerializer(queryset, many=True)
+        serializer = CompanySerializerWithRoles if include_roles else CompanySerializer
+        serialized = serializer(queryset, many=True)
         return Response(serialized.data)
 
     @staticmethod

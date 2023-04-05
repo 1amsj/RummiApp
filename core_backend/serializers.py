@@ -1135,3 +1135,16 @@ class LedgerSerializer(BaseSerializer):
     class Meta:
         model = Ledger
         fields = '__all__'
+
+
+class CompanySerializerWithRoles(CompanySerializer):
+    agents = AgentSerializer(many=True)
+    operators = OperatorSerializer(many=True)
+    payers = PayerSerializer(many=True)
+    providers = ProviderSerializer(many=True)
+    recipients = RecipientSerializer(many=True)
+    requesters = RequesterSerializer(many=True)
+
+    class Meta:
+        model = Company
+        fields = '__all__'
