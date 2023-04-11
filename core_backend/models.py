@@ -153,6 +153,9 @@ class Contact(SoftDeletableModel, HistoricalModel):
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
+    phone_context = models.CharField(_('phone context'), max_length=150, blank=True)
+    email_context = models.CharField(_('email context'), max_length=150, blank=True)
+    fax_context = models.CharField(_('fax context'), max_length=150, blank=True)
 
     class Meta:
         verbose_name = _('contact')
@@ -209,6 +212,8 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
     national_id = models.CharField(_('national ID'), max_length=50, blank=True)
     ssn = models.CharField(_('social security number'), max_length=50, blank=True)
+    title = models.CharField(_('title'), max_length=150, blank=True)
+    suffix = models.CharField(_('suffix'), max_length=150, blank=True)
 
     objects = CoreUserManager()
 

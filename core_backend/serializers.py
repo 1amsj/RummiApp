@@ -123,6 +123,7 @@ class BusinessField(serializers.RelatedField):
 
 # General serializers
 class ContactSerializer(BaseSerializer):
+    phone_extension = serializers.SerializerMethodField('get_phone_extension');
     class Meta:
         model = Contact
         fields = '__all__'
@@ -136,6 +137,9 @@ class ContactSerializer(BaseSerializer):
     @staticmethod
     def get_default_queryset():
         return Contact.objects.all().not_deleted()
+    
+    def get_phone_extension(self, contact_instance):
+        return contact_instance.phone.extension
 
 
 class ContactUnsafeSerializer(ContactSerializer):
@@ -197,6 +201,10 @@ class NoteSerializer(BaseSerializer):
     @staticmethod
     def get_default_queryset():
         return Note.objects.all().not_deleted()
+    
+
+class NoteUnsafeSerializer(NoteSerializer):
+    id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
 
 
 class NoteCreateSerializer(NoteSerializer):
@@ -263,6 +271,7 @@ class CompanyCreateSerializer(CompanySerializer):
 class CompanyUpdateSerializer(CompanyCreateSerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
+    notes = NoteUnsafeSerializer(many=True)
     name = serializers.CharField()
 
     def update(self, instance: Company, validated_data=None):
@@ -301,6 +310,23 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
         # Delete
         for id in deleted_locations:
             Location.objects.filter(id=id).delete()
+
+        notes_data = data.pop('notes')
+        
+        created_notes, updated_notes, deleted_notes = fetch_updated_from_validated_data(Note, notes_data, set(instance.notes.all().values_list('id')))
+        
+        # Create
+        if created_notes:
+            created_notes = Note.objects.bulk_create(created_notes)
+            instance.notes.add(*created_notes)
+        
+        # Update
+        if updated_notes:
+            Note.objects.bulk_update(updated_notes, ['text'])
+        
+        # Delete
+        for id in deleted_notes:
+            Note.objects.filter(id=id).delete()
 
         for (k, v) in data.items():
             setattr(instance, k, v)
@@ -571,9 +597,12 @@ class PayerCreateSerializer(PayerSerializer):
     def create(self, validated_data=None):
         data = validated_data or self.validated_data
         companies_data = data.pop('companies', None)
+        notes_data = data.pop('notes', None)
         payer = Payer.objects.create(**data)
         if companies_data:
             payer.companies.add(*companies_data)
+        if notes_data:
+            payer.notes.add(*notes_data)
         return payer
 
 
@@ -813,7 +842,7 @@ class AffiliationSerializer(generic_serializer(Affiliation)):
 
 
 class AffiliationCreateSerializer(AffiliationSerializer):
-    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all())
+    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
     recipient = serializers.PrimaryKeyRelatedField(queryset=Recipient.objects.all())
 
     def create(self, business_name, validated_data=None):
@@ -1068,6 +1097,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
+        notes = data.pop('notes', [])
 
         # TODO add constraints here for incomplete bookings
 
@@ -1075,6 +1105,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             setattr(instance, k, v)
         instance.save()
 
+        instance.notes.set(notes)
         sync_m2m(instance.categories, categories)
         sync_m2m(instance.companies, companies)
         sync_m2m(instance.operators, operators)
