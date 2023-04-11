@@ -190,7 +190,7 @@ class NoteSerializer(BaseSerializer):
 
     class Meta:
         model = Note
-        fields = ('created_at', 'created_by', 'text')
+        fields = ('created_at', 'created_by', 'text', 'id')
 
     def validate(self, data: dict):
         if not (data.get('booking') or data.get('company') or data.get('payer') or data.get('provider') or data.get('recipient')):
@@ -271,7 +271,7 @@ class CompanyCreateSerializer(CompanySerializer):
 class CompanyUpdateSerializer(CompanyCreateSerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
-    notes = NoteUnsafeSerializer(many=True)
+    notes = NoteUnsafeSerializer(many=True, default=[])
     name = serializers.CharField()
 
     def update(self, instance: Company, validated_data=None):
