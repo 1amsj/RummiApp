@@ -201,6 +201,10 @@ class NoteSerializer(BaseSerializer):
     @staticmethod
     def get_default_queryset():
         return Note.objects.all().not_deleted()
+    
+
+class NoteUnsafeSerializer(NoteSerializer):
+    id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
 
 
 class NoteCreateSerializer(NoteSerializer):
@@ -267,6 +271,7 @@ class CompanyCreateSerializer(CompanySerializer):
 class CompanyUpdateSerializer(CompanyCreateSerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
+    notes = NoteUnsafeSerializer(many=True)
     name = serializers.CharField()
 
     def update(self, instance: Company, validated_data=None):
@@ -305,6 +310,23 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
         # Delete
         for id in deleted_locations:
             Location.objects.filter(id=id).delete()
+
+        notes_data = data.pop('notes')
+        
+        created_notes, updated_notes, deleted_notes = fetch_updated_from_validated_data(Note, notes_data, set(instance.notes.all().values_list('id')))
+        
+        # Create
+        if created_notes:
+            created_notes = Note.objects.bulk_create(created_notes)
+            instance.notes.add(*created_notes)
+        
+        # Update
+        if updated_notes:
+            Note.objects.bulk_update(updated_notes, ['text'])
+        
+        # Delete
+        for id in deleted_notes:
+            Note.objects.filter(id=id).delete()
 
         for (k, v) in data.items():
             setattr(instance, k, v)
@@ -1075,6 +1097,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
+        notes = data.pop('notes', [])
 
         # TODO add constraints here for incomplete bookings
 
@@ -1082,6 +1105,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             setattr(instance, k, v)
         instance.save()
 
+        instance.notes.set(notes)
         sync_m2m(instance.categories, categories)
         sync_m2m(instance.companies, companies)
         sync_m2m(instance.operators, operators)
