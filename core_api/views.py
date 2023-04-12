@@ -604,15 +604,15 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
     @classmethod
     @expect_does_not_exist(Company)
     def get(cls, request, company_id=None):
-        if company_id:
-            serialized = CompanySerializer(Company.objects.get(id=company_id))
-            return Response(serialized.data)
-        
         include_roles = request.GET.get(INCLUDE_ROLES_KEY, False)
+        serializer = CompanySerializerWithRoles if include_roles else CompanySerializer
+
+        if company_id:
+            serialized = serializer(Company.objects.get(id=company_id))
+            return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
         queryset = cls.apply_filters(Company.objects.filter(is_deleted=False), query_params)
-        serializer = CompanySerializerWithRoles if include_roles else CompanySerializer
         serialized = serializer(queryset, many=True)
         return Response(serialized.data)
 

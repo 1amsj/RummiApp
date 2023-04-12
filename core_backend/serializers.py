@@ -256,6 +256,13 @@ class CompanyCreateSerializer(CompanySerializer):
 
         company = Company.objects.create(**data)
 
+        company.agents.set(data.pop('agents'))
+        company.operators.set(data.pop('operators'))
+        company.payers.set(data.pop('payers'))
+        company.providers.set(data.pop('providers'))
+        company.recipients.set(data.pop('recipients'))
+        company.requesters.set(data.pop('requesters'))
+
         if contacts_data:
             contacts = [Contact(**d) for d in contacts_data]
             contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
@@ -273,9 +280,22 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
     locations = LocationUnsafeSerializer(many=True)
     notes = NoteUnsafeSerializer(many=True, default=[])
     name = serializers.CharField()
+    agents = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Agent.objects.all())
+    operators = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Operator.objects.all())
+    payers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Payer.objects.all())
+    providers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Provider.objects.all())
+    recipients = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Recipient.objects.all())
+    requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
 
     def update(self, instance: Company, validated_data=None):
         data: dict = validated_data or self.validated_data
+
+        instance.agents.set(data.pop('agents'))
+        instance.operators.set(data.pop('operators'))
+        instance.payers.set(data.pop('payers'))
+        instance.providers.set(data.pop('providers'))
+        instance.recipients.set(data.pop('recipients'))
+        instance.requesters.set(data.pop('requesters'))
 
         contacts_data = data.pop('contacts')
         
