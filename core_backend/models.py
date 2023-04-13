@@ -11,7 +11,7 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
-
+from core_backend.fields import DailyUniqueIdentifierField
 # Query sets
 class SoftDeletionQuerySet(models.QuerySet):
     def deleted(self, *fields: Tuple[str, ...]):
@@ -154,6 +154,9 @@ class Contact(SoftDeletableModel, HistoricalModel):
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
+    phone_context = models.CharField(_('phone context'), max_length=150, blank=True)
+    email_context = models.CharField(_('email context'), max_length=150, blank=True)
+    fax_context = models.CharField(_('fax context'), max_length=150, blank=True)
 
     class Meta:
         verbose_name = _('contact')
@@ -216,6 +219,8 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
     national_id = models.CharField(_('national ID'), max_length=50, blank=True)
     ssn = models.CharField(_('social security number'), max_length=50, blank=True)
+    title = models.CharField(_('title'), max_length=150, blank=True)
+    suffix = models.CharField(_('suffix'), max_length=150, blank=True)
 
     objects = CoreUserManager()
 
@@ -482,6 +487,8 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     service_root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
     created_at = models.DateTimeField(auto_now_add=True)
+    public_id = DailyUniqueIdentifierField(max_length=30, null=True)
+
 
     # Constraints
     categories = models.ManyToManyField(Category, blank=True, related_name='bookings')
