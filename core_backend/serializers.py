@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import models
 from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
+from phonenumbers import PhoneNumber
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
@@ -139,7 +140,10 @@ class ContactSerializer(BaseSerializer):
         return Contact.objects.all().not_deleted()
     
     def get_phone_extension(self, contact_instance):
-        return contact_instance.phone.extension
+        if (contact_instance.phone):
+            return contact_instance.phone.extension
+        else:
+            return ""
 
 
 class ContactUnsafeSerializer(ContactSerializer):
