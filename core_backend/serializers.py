@@ -342,7 +342,7 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
 class UserSerializer(BaseSerializer):
     id = serializers.ReadOnlyField()
     contacts = ContactSerializer(many=True)
-    location = serializers.PrimaryKeyRelatedField(allow_null=True)
+    location = serializers.PrimaryKeyRelatedField(allow_null=True, queryset=Location.objects.all())
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
     date_of_birth = serializers.DateField(required=False)
