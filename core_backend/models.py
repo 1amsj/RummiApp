@@ -207,7 +207,7 @@ class Location(SoftDeletableModel):
 # User models
 class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     contacts = models.ManyToManyField(Contact, blank=True)
-    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='location', null=True)
+    location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='location', blank=True, null=True)
     date_of_birth = models.DateField(_('date of birth'), null=True, blank=True)
     first_name = models.CharField(_('first name'), max_length=150, blank=True)
     last_name = models.CharField(_('last name'), max_length=150, blank=True)
