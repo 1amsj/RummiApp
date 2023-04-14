@@ -358,7 +358,11 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
 class UserSerializer(BaseSerializer):
     id = serializers.ReadOnlyField()
     contacts = ContactSerializer(many=True)
+    agents_id = serializers.PrimaryKeyRelatedField(many=True, allow_null=True, read_only=True, source='as_agents')
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
+    payer_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_payer')
+    provider_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_provider')
+    recipient_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_recipient')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
     date_of_birth = serializers.DateField(required=False)
     class Meta:
@@ -373,7 +377,11 @@ class UserSerializer(BaseSerializer):
             'ssn',
             'date_of_birth',
             'contacts',
+            'agents_id',
             'operator_id',
+            'payer_id',
+            'provider_id',
+            'recipient_id',
             'requester_id',
             'is_operator',
             'is_provider',
