@@ -379,6 +379,10 @@ class UserSerializer(BaseSerializer):
                         'contacts',
                         queryset=ContactSerializer.get_default_queryset(),
                     ),
+                    Prefetch(
+                        'location',
+                        queryset=LocationSerializer.get_default_queryset(),
+                    )
                 )
         )
 
