@@ -266,6 +266,8 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
         if self.is_payer:
             self.as_payer.delete()
 
+        self.location.delete()
+
 
 class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
