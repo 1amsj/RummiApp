@@ -257,6 +257,7 @@ class CompanyCreateSerializer(CompanySerializer):
         data: dict = validated_data or self.validated_data
         contacts_data = data.pop('contacts', None)
         locations_data = data.pop('locations', None)
+        notes_data = data.pop('notes', None)
 
         company = Company.objects.create(**data)
 
@@ -269,6 +270,8 @@ class CompanyCreateSerializer(CompanySerializer):
             locations = [Location(**d) for d in locations_data]
             location_ids = [c.id for c in Location.objects.bulk_create(locations)]
             company.locations.add(*location_ids)
+        if notes_data:
+            company.notes.add(*notes_data)
 
         return company.id
     

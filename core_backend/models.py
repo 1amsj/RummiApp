@@ -189,12 +189,6 @@ class Company(SoftDeletableModel, HistoricalModel):
         self.affiliations.all().delete()
         self.notes.all().delete()
         pass
-    
-    def save(self, *args, **kwargs):
-        if self.parent_company and self.parent_company.name == self.name:
-            raise ValidationError('You can\'t have yourself as a parent!')
-        return super(Category, self).save(*args, **kwargs)
-
 
 class Location(SoftDeletableModel):
     address = models.CharField(_('address'), max_length=128)
