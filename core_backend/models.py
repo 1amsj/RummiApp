@@ -357,7 +357,7 @@ class Recipient(ExtendableModel, HistoricalModel, SoftDeletableModel):
 
     def delete_related(self):
         self.affiliations.all().delete()
-        self.notes.all().detele()
+        self.notes.all().delete()
 
 
 class Affiliation(ExtendableModel, HistoricalModel, SoftDeletableModel):
@@ -502,7 +502,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     def delete_related(self):
         self.events.all().delete()
         self.expenses.all().delete()
-        self.notes.all().detele()
+        self.notes.all().delete()
 
 
 class Event(HistoricalModel, SoftDeletableModel):
