@@ -220,7 +220,7 @@ class NoteCreateSerializer(NoteSerializer):
         return note.id
 
 
-class CompanySerializer(BaseSerializer):
+class BaseCompanySerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
@@ -250,7 +250,10 @@ class CompanySerializer(BaseSerializer):
                     ),
                 )
         )
-
+    
+    
+class CompanySerializer(BaseCompanySerializer):
+    parent_company = BaseCompanySerializer()
 
 class CompanyCreateSerializer(CompanySerializer):
     def create(self, validated_data=None) -> int:
@@ -270,12 +273,13 @@ class CompanyCreateSerializer(CompanySerializer):
             locations = [Location(**d) for d in locations_data]
             location_ids = [c.id for c in Location.objects.bulk_create(locations)]
             company.locations.add(*location_ids)
+
         if notes_data:
             company.notes.add(*notes_data)
 
         return company.id
     
-class CompanyUpdateSerializer(CompanyCreateSerializer):
+class CompanyUpdateSerializer(CompanySerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
     notes = NoteUnsafeSerializer(many=True)
@@ -559,7 +563,7 @@ class OperatorSerializer(user_subtype_serializer(Operator)):
                 .prefetch_related(
                     Prefetch(
                         'companies',
-                        queryset=CompanySerializer.get_default_queryset()
+                        queryset= CompanySerializer.get_default_queryset()
                     ),
                     Prefetch(
                         'user',
@@ -583,7 +587,7 @@ class PayerSerializer(user_subtype_serializer(Payer)):
                 .prefetch_related(
                     Prefetch(
                         'companies',
-                        queryset=CompanySerializer.get_default_queryset()
+                        queryset= CompanySerializer.get_default_queryset()
                     ),
                     Prefetch(
                         'notes',
@@ -697,7 +701,7 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
             .prefetch_related(
                 Prefetch(
                     'companies',
-                    queryset=CompanySerializer.get_default_queryset()
+                    queryset= CompanySerializer.get_default_queryset()
                 ),
                 Prefetch(
                     'notes',
@@ -834,7 +838,7 @@ class AffiliationSerializer(generic_serializer(Affiliation)):
                 .prefetch_related(
                     Prefetch(
                         'company',
-                        queryset=CompanySerializer.get_default_queryset(),
+                        queryset= CompanySerializer.get_default_queryset(),
                     ),
                     Prefetch(
                         'extra',
@@ -894,7 +898,7 @@ class RequesterSerializer(user_subtype_serializer(Requester)):
                 .prefetch_related(
                     Prefetch(
                         'companies',
-                        queryset=CompanySerializer.get_default_queryset()
+                        queryset= CompanySerializer.get_default_queryset()
                     ),
                     Prefetch(
                         'user',
@@ -961,7 +965,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
                     ),
                     Prefetch(
                         'companies',
-                        queryset=CompanySerializer.get_default_queryset(),
+                        queryset= CompanySerializer.get_default_queryset(),
                     ),
                     Prefetch(
                         'notes',
