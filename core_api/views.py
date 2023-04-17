@@ -578,12 +578,24 @@ class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
 
 class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
     @classmethod
-    @expect_not_implemented
-    def get(cls, request, expense_id=None):
+    @expect_does_not_exist(Expense)
+    def get(cls, request, business_name=None, expense_id=None):
         if expense_id:
-            serialized = ExpenseSerializer(Expense.objects.get(id=expense_id))
+            expense = Expense.objects.all().not_deleted('booking').get(id=expense_id)
+            serialized = ExpenseSerializer(expense)
             return Response(serialized.data)
-        raise NotImplementedError('fetching multiple expenses')
+        try:
+            query_params = prepare_query_params(request.GET)
+            
+            queryset = ExpenseSerializer.get_default_queryset()
+
+            queryset = cls.apply_filters(queryset, query_params)
+
+            serialized = ExpenseSerializer(queryset, many=True)
+            return Response(serialized.data)
+        except:
+            raise NotImplementedError('fetching multiple expenses') 
+    
 
     @staticmethod
     @transaction.atomic
@@ -657,9 +669,13 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
             company = Company.objects.all().not_deleted('business').get(id=company_id)
             serialized = CompanySerializer(company)
             return Response(serialized.data)
+        
         query_params = prepare_query_params(request.GET)
+        
         queryset = CompanySerializer.get_default_queryset()
+        
         queryset = cls.apply_filters(queryset, query_params)
+        
         serialized = CompanySerializer(queryset, many=True)
         return Response(serialized.data)
 
