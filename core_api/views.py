@@ -627,11 +627,20 @@ class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
 
 class ManageCategories(basic_view_manager(Category, CategorySerializer)):
     @classmethod
-    def get(cls, request, category_id=None):
+    def get(cls, request, business_name=None, category_id=None):
         if category_id:
-            serialized = CategorySerializer(Category.objects.get(id=category_id))
+            category = Category.objects.all().get(id=category_id)
+            serialized = CategorySerializer(category)
             return Response(serialized.data)
-        return super().get(request)
+        
+        query_params = prepare_query_params(request.GET)
+
+        queryset = CategorySerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = CategorySerializer(queryset, many=True)
+        return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
