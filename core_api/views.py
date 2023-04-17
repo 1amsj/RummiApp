@@ -399,15 +399,32 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
 
 
 class ManageRecipients(user_subtype_view_manager(Recipient, RecipientSerializer)):
+   
     @staticmethod
     @transaction.atomic
     @expect_key_error
     @expect_does_not_exist(Recipient)
-    def post(request):
+    def post(request, business_name=None):
         serializer = RecipientCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        recipient = serializer.create()
+        recipient = serializer.create(business_name)
         return Response(recipient.id, status=status.HTTP_201_CREATED)
+
+    @classmethod
+    def get(cls, request, buisiness_name=None, recipient_id=None):
+        if recipient_id:
+            recipient = Recipient.objects.all().not_deleted('user').get(id=recipient_id)
+            serialized = RecipientSerializer(recipient)
+            return Response(serialized.data)
+        
+        query_params = prepare_query_params(request.GET)
+
+        queryset = RecipientSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = RecipientSerializer(queryset, many=True)
+        return Response(serialized.data)
 
 ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
 
