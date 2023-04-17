@@ -652,12 +652,14 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
 class ManageCompany(basic_view_manager(Company, CompanySerializer)):
     @classmethod
     @expect_does_not_exist(Company)
-    def get(cls, request, company_id=None):
+    def get(cls, request, business_name=None, company_id=None):
         if company_id:
-            serialized = CompanySerializer(Company.objects.get(id=company_id))
+            company = Company.objects.all().not_deleted('business').get(id=company_id)
+            serialized = CompanySerializer(company)
             return Response(serialized.data)
         query_params = prepare_query_params(request.GET)
-        queryset = cls.apply_filters(Company.objects.filter(is_deleted=False), query_params)
+        queryset = CompanySerializer.get_default_queryset()
+        queryset = cls.apply_filters(queryset, query_params)
         serialized = CompanySerializer(queryset, many=True)
         return Response(serialized.data)
 
