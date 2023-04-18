@@ -124,7 +124,8 @@ class BusinessField(serializers.RelatedField):
 
 # General serializers
 class ContactSerializer(BaseSerializer):
-    phone_extension = serializers.SerializerMethodField('get_phone_extension');
+    phone_extension = serializers.SerializerMethodField('get_phone_extension')
+
     class Meta:
         model = Contact
         fields = '__all__'
@@ -292,7 +293,7 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
 
         # Update
         if updated_contacts:
-            Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+            Contact.objects.bulk_update(updated_contacts, ['phone', 'phone_context', 'email', 'email_context', 'fax', 'fax_context'])
 
         # Delete
         for id in deleted_contacts:
@@ -341,6 +342,7 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
 # User serializers
 class UserSerializer(BaseSerializer):
     id = serializers.ReadOnlyField()
+    user_id = serializers.ReadOnlyField(source='id')
     contacts = ContactSerializer(many=True)
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
@@ -349,6 +351,7 @@ class UserSerializer(BaseSerializer):
         model = User
         fields = (
             'id',
+            'user_id',
             'username',
             'email',
             'first_name',
@@ -356,6 +359,8 @@ class UserSerializer(BaseSerializer):
             'national_id',
             'ssn',
             'date_of_birth',
+            'title',
+            'suffix',
             'contacts',
             'operator_id',
             'requester_id',
@@ -396,6 +401,8 @@ class UserCreateSerializer(UserSerializer):
             'national_id',
             'ssn',
             'date_of_birth',
+            'title',
+            'suffix',
             'contacts',
             'password',
             'confirmation',
@@ -454,7 +461,7 @@ class UserUpdateSerializer(UserCreateSerializer):
 
         # Update
         if updated_contacts:
-            Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+            Contact.objects.bulk_update(updated_contacts, ['phone', 'phone_context', 'email', 'email_context', 'fax', 'fax_context'])
 
         # Delete
         for id in deleted_contacts:
