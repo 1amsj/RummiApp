@@ -434,7 +434,24 @@ class ManageRecipients(user_subtype_view_manager(Recipient, RecipientSerializer)
         serialized = RecipientSerializer(queryset, many=True)
         return Response(serialized.data)
 
-ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
+class ManageRequesters(user_subtype_view_manager(Requester, RequesterSerializer)):
+    @classmethod
+    @expect_does_not_exist(Requester)
+    def get(cls, request, business_name=None, requester_id=None):
+        if requester_id:
+            requester = Requester.objects.all().not_deleted('user').get(id=requester_id)
+            serialized = RequesterSerializer(requester)
+            return Response(serialized.data)
+        
+        query_params = prepare_query_params(request.GET)
+
+        queryset = RequesterSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = RequesterSerializer(queryset, many=True)
+        return Response(serialized.data)
+
 
 class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer)):
     @staticmethod
