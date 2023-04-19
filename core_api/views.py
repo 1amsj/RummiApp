@@ -242,10 +242,18 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     @expect_does_not_exist(User)
     def get(cls, request, user_id=None):
         if user_id:
-            serialized = UserSerializer(User.objects.get(id=user_id))
+            user = User.objects.all().not_deleted('user').get(id=user_id)
+            serialized = UserSerializer(user)
             return Response(serialized.data)
+        
+        query_params = prepare_query_params(request.GET)
 
-        return super(ManageUsers, ManageUsers).get(request)
+        queryset = UserSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = UserSerializer(queryset, many=True)
+        return super(ManageUsers, ManageUsers).get(request), Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
