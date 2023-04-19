@@ -537,7 +537,7 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @expect_does_not_exist(Event)
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
-            event = Event.objects.all().not_deleted('booking').get(id=event_id)
+            event = EventSerializer.get_default_queryset().get(id=event_id)
             serialized = EventSerializer(event)
             return Response(serialized.data)
         
