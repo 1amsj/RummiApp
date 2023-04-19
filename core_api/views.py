@@ -524,21 +524,27 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ManageEvents(basic_view_manager(Event, EventNoBookingSerializer)):
+class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @classmethod
     @expect_does_not_exist(Event)
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
-            serialized = EventSerializer(Event.objects.get(id=event_id))
+            event = Event.objects.all().not_deleted('booking').get(id=event_id)
+            serialized = EventSerializer(event)
             return Response(serialized.data)
-
+        
+        include_booking = request.GET.get(INCLUDE_BOOKING_KEY, False)
         query_params = prepare_query_params(request.GET)
-        include_booking = query_params.pop(INCLUDE_BOOKING_KEY, False)
-        queryset = Event.objects.filter(is_deleted=False)
+        
+        serializer = EventSerializer if include_booking else EventNoBookingSerializer
+
+        queryset = serializer.get_default_queryset()
+
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
+        
         queryset = cls.apply_filters(queryset, query_params)
-        serializer = EventSerializer if include_booking else EventNoBookingSerializer
+        
         serialized = serializer(queryset, many=True)
         return Response(serialized.data)
 
