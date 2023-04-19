@@ -482,6 +482,24 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
 
         return queryset
     
+    @classmethod
+    @expect_does_not_exist(Affiliation)
+    def get(cls, request, affiliation_id=None):
+        if affiliation_id:
+            affiliation = Affiliation.objects.all().not_deleted('user').get(id=affiliation_id)
+            serialized = AffiliationSerializer(affiliation)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = AffiliationSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = AffiliationSerializer(queryset, many=True)
+        return Response(serialized.data)
+        
+    
     @staticmethod
     @transaction.atomic
     @expect_key_error
