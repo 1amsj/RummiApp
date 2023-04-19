@@ -733,6 +733,23 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
 
 
 class ManageService(basic_view_manager(Service, ServiceSerializer)):
+    @classmethod
+    @expect_does_not_exist(Service)
+    def get(cls, request, service_id=None):
+        if service_id:
+            service = ServiceSerializer.get_default_queryset().get(id=service_id)
+            serialized = ServiceSerializer(service)
+            return Response(serialized.data)
+        
+        query_params = prepare_query_params(request.GET)
+        
+        queryset = ServiceSerializer.get_default_queryset()
+        
+        queryset = cls.apply_filters(queryset, query_params)
+        
+        serialized = ServiceSerializer(queryset, many=True)
+        return Response(serialized.data)
+    
     @staticmethod
     @transaction.atomic
     @expect_key_error
