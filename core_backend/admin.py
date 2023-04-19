@@ -40,6 +40,10 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin, SimpleHistoryAdmin):
         *BaseUserAdmin.fieldsets[2:],
     )
 
+    def delete_model(self, request, obj):
+        obj.hard_delete()
+
+
 
 def stacked_inline(inline_model: Type[models.Model], extendable=False):
     class Stacked(NestedStackedInline):
@@ -62,6 +66,9 @@ def basic_register(admin_model: Type[models.Model], extendable=False, historical
             extra = 0
         if admin_inlines:
             inlines += admin_inlines
+
+        def delete_model(self, request, obj):
+            obj.hard_delete()
 
     admin.site.register(admin_model, BasicAdmin)
 
