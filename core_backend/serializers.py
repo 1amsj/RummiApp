@@ -195,7 +195,7 @@ class NoteSerializer(BaseSerializer):
 
     class Meta:
         model = Note
-        fields = ('created_at', 'created_by', 'text')
+        fields = ('created_at', 'created_by', 'text', 'id')
 
     def validate(self, data: dict):
         if not (data.get('booking') or data.get('company') or data.get('payer') or data.get('provider') or data.get('recipient')):
@@ -261,6 +261,13 @@ class CompanyCreateSerializer(CompanySerializer):
 
         company = Company.objects.create(**data)
 
+        company.agents.set(data.pop('agents'))
+        company.operators.set(data.pop('operators'))
+        company.payers.set(data.pop('payers'))
+        company.providers.set(data.pop('providers'))
+        company.recipients.set(data.pop('recipients'))
+        company.requesters.set(data.pop('requesters'))
+
         if contacts_data:
             contacts = [Contact(**d) for d in contacts_data]
             contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
@@ -276,11 +283,24 @@ class CompanyCreateSerializer(CompanySerializer):
 class CompanyUpdateSerializer(CompanyCreateSerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
-    notes = NoteUnsafeSerializer(many=True)
+    notes = NoteUnsafeSerializer(many=True, default=[])
     name = serializers.CharField()
+    agents = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Agent.objects.all())
+    operators = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Operator.objects.all())
+    payers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Payer.objects.all())
+    providers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Provider.objects.all())
+    recipients = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Recipient.objects.all())
+    requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
 
     def update(self, instance: Company, validated_data=None):
         data: dict = validated_data or self.validated_data
+
+        instance.agents.set(data.pop('agents'))
+        instance.operators.set(data.pop('operators'))
+        instance.payers.set(data.pop('payers'))
+        instance.providers.set(data.pop('providers'))
+        instance.recipients.set(data.pop('recipients'))
+        instance.requesters.set(data.pop('requesters'))
 
         contacts_data = data.pop('contacts')
         
@@ -345,7 +365,11 @@ class UserSerializer(BaseSerializer):
     user_id = serializers.ReadOnlyField(source='id')
     contacts = ContactSerializer(many=True)
     location = LocationSerializer(required=False)
+    agents_id = serializers.PrimaryKeyRelatedField(many=True, allow_null=True, read_only=True, source='as_agents')
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
+    payer_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_payer')
+    provider_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_provider')
+    recipient_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_recipient')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
     date_of_birth = serializers.DateField(required=False)
     class Meta:
@@ -364,7 +388,11 @@ class UserSerializer(BaseSerializer):
             'suffix',
             'contacts',
             'location',
+            'agents_id',
             'operator_id',
+            'payer_id',
+            'provider_id',
+            'recipient_id',
             'requester_id',
             'is_operator',
             'is_provider',
@@ -1202,4 +1230,17 @@ class LedgerSerializer(BaseSerializer):
 
     class Meta:
         model = Ledger
+        fields = '__all__'
+
+
+class CompanySerializerWithRoles(CompanySerializer):
+    agents = AgentSerializer(many=True)
+    operators = OperatorSerializer(many=True)
+    payers = PayerSerializer(many=True)
+    providers = ProviderSerializer(many=True)
+    recipients = RecipientSerializer(many=True)
+    requesters = RequesterSerializer(many=True)
+
+    class Meta:
+        model = Company
         fields = '__all__'

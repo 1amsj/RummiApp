@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from core_api.constants import INCLUDE_BOOKING_KEY, INCLUDE_EVENTS_KEY
+from core_api.constants import INCLUDE_BOOKING_KEY, INCLUDE_EVENTS_KEY, INCLUDE_ROLES_KEY
 from core_api.decorators import expect_does_not_exist, expect_key_error, expect_not_implemented
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
@@ -23,7 +23,7 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Requester, Service, ServiceRoot, User
 from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
     AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
-    CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanyUpdateSerializer, EventCreateSerializer, \
+    CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanySerializerWithRoles, CompanyUpdateSerializer, EventCreateSerializer, \
     EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, RecipientCreateSerializer, RecipientSerializer, \
     RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, \
@@ -673,19 +673,20 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
 class ManageCompany(basic_view_manager(Company, CompanySerializer)):
     @classmethod
     @expect_does_not_exist(Company)
-    def get(cls, request, business_name=None, company_id=None):
+    def get(cls, request, company_id=None):
+        include_roles = request.GET.get(INCLUDE_ROLES_KEY, False)
+        serializer = CompanySerializerWithRoles if include_roles else CompanySerializer
+
         if company_id:
             company = Company.objects.all().not_deleted('business').get(id=company_id)
             serialized = CompanySerializer(company)
             return Response(serialized.data)
-        
+
         query_params = prepare_query_params(request.GET)
-        
         queryset = CompanySerializer.get_default_queryset()
-        
         queryset = cls.apply_filters(queryset, query_params)
-        
-        serialized = CompanySerializer(queryset, many=True)
+        serialized = serializer(queryset, many=True)
+
         return Response(serialized.data)
 
     @staticmethod
