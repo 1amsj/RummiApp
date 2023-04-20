@@ -329,22 +329,22 @@ class CompanyUpdateSerializer(CompanySerializer):
         for id in deleted_locations:
             Location.objects.filter(id=id).delete()
 
-        # notes_data = data.pop('notes')
+        notes_data = data.pop('notes')
         
-        # created_notes, updated_notes, deleted_notes = fetch_updated_from_validated_data(Note, notes_data, set(instance.notes.all().values_list('id')))
+        created_notes, updated_notes, deleted_notes = fetch_updated_from_validated_data(Note, notes_data, set(instance.notes.all().values_list('id')))
         
-        # # Create
-        # if created_notes:
-        #     created_notes = Note.objects.bulk_create(created_notes)
-        #     instance.notes.add(*created_notes)
+        # Create
+        if created_notes:
+            created_notes = Note.objects.bulk_create(created_notes)
+            instance.notes.add(*created_notes)
         
-        # # Update
-        # if updated_notes:
-        #     Note.objects.bulk_update(updated_notes, ['text'])
+        # Update
+        if updated_notes:
+            Note.objects.bulk_update(updated_notes, ['text'])
         
-        # # Delete
-        # for id in deleted_notes:
-        #     Note.objects.filter(id=id).delete()
+        # Delete
+        for id in deleted_notes:
+            Note.objects.filter(id=id).delete()
 
         if data.get('parent_company') and data.get('parent_company').id == instance.id:
             raise serializers.ValidationError("A company can not be parent of itself.") 
