@@ -256,13 +256,19 @@ class CompanySerializer(BaseCompanySerializer):
     parent_company = BaseCompanySerializer()
 
 class CompanyCreateSerializer(CompanySerializer):
+    parent_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
+
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
+        parent_company = data.get('parent_company', None)
         contacts_data = data.pop('contacts', None)
         locations_data = data.pop('locations', None)
         notes_data = data.pop('notes', None)
 
         company = Company.objects.create(**data)
+
+        if parent_company and parent_company.name == company.name:
+            raise serializers.ValidationError("A company can not be parent of itself.")
 
         if contacts_data:
             contacts = [Contact(**d) for d in contacts_data]
@@ -282,7 +288,8 @@ class CompanyCreateSerializer(CompanySerializer):
 class CompanyUpdateSerializer(CompanySerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
-    notes = NoteUnsafeSerializer(many=True)
+    notes = NoteUnsafeSerializer(many=True, required=False)
+    parent_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
     name = serializers.CharField()
 
     def update(self, instance: Company, validated_data=None):
@@ -338,6 +345,9 @@ class CompanyUpdateSerializer(CompanySerializer):
         # Delete
         for id in deleted_notes:
             Note.objects.filter(id=id).delete()
+
+        if data.get('parent_company').id == instance.id:
+            raise serializers.ValidationError("A company can not be parent of itself.") 
 
         for (k, v) in data.items():
             setattr(instance, k, v)
@@ -434,6 +444,7 @@ class UserCreateSerializer(UserSerializer):
         user_sync_email_with_contact(user)
 
         return user
+
 
 
 class UserUpdateSerializer(UserCreateSerializer):
