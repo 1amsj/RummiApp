@@ -344,6 +344,7 @@ class UserSerializer(BaseSerializer):
     id = serializers.ReadOnlyField()
     user_id = serializers.ReadOnlyField(source='id')
     contacts = ContactSerializer(many=True)
+    location = LocationSerializer(required=False)
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
     date_of_birth = serializers.DateField(required=False)
@@ -362,6 +363,7 @@ class UserSerializer(BaseSerializer):
             'title',
             'suffix',
             'contacts',
+            'location',
             'operator_id',
             'requester_id',
             'is_operator',
@@ -382,6 +384,10 @@ class UserSerializer(BaseSerializer):
                         'contacts',
                         queryset=ContactSerializer.get_default_queryset(),
                     ),
+                    Prefetch(
+                        'location',
+                        queryset=LocationSerializer.get_default_queryset(),
+                    )
                 )
         )
 
@@ -404,6 +410,7 @@ class UserCreateSerializer(UserSerializer):
             'title',
             'suffix',
             'contacts',
+            'location',
             'password',
             'confirmation',
         )
@@ -420,6 +427,7 @@ class UserCreateSerializer(UserSerializer):
         password = data.pop('password', None)
         data.pop('confirmation', None)
         contacts_data = data.pop('contacts', None)
+        location_data = data.pop('location', None)
 
         user = User.objects.create(**data)
         if password:
@@ -430,6 +438,10 @@ class UserCreateSerializer(UserSerializer):
             contacts = [Contact(**d) for d in contacts_data]
             contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
             user.contacts.add(*contact_ids)
+
+        if location_data:
+            user.location = Location.objects.create(**location_data)
+            user.save()
 
         user_sync_email_with_contact(user)
 
@@ -474,6 +486,20 @@ class UserUpdateSerializer(UserCreateSerializer):
         ):
             contact.email = new_email
             contact.save()
+
+        location_data = data.pop('location', None)
+
+        if location_data:
+            location = instance.location
+
+            if location:
+                for (k, v) in location_data.items():
+                    setattr(location, k, v)
+            
+                location.save()
+
+            else:
+                instance.location = Location.objects.create(**location_data)
 
         for (k, v) in data.items():
             setattr(instance, k, v)
