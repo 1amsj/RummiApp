@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import models
 from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
+from phonenumbers import PhoneNumber
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
@@ -123,7 +124,8 @@ class BusinessField(serializers.RelatedField):
 
 # General serializers
 class ContactSerializer(BaseSerializer):
-    phone_extension = serializers.SerializerMethodField('get_phone_extension');
+    phone_extension = serializers.SerializerMethodField('get_phone_extension')
+
     class Meta:
         model = Contact
         fields = '__all__'
@@ -139,7 +141,10 @@ class ContactSerializer(BaseSerializer):
         return Contact.objects.all().not_deleted()
     
     def get_phone_extension(self, contact_instance):
-        return contact_instance.phone.extension
+        if (contact_instance.phone):
+            return contact_instance.phone.extension
+        else:
+            return ""
 
 
 class ContactUnsafeSerializer(ContactSerializer):
@@ -308,7 +313,7 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
 
         # Update
         if updated_contacts:
-            Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+            Contact.objects.bulk_update(updated_contacts, ['phone', 'phone_context', 'email', 'email_context', 'fax', 'fax_context'])
 
         # Delete
         for id in deleted_contacts:
@@ -357,7 +362,9 @@ class CompanyUpdateSerializer(CompanyCreateSerializer):
 # User serializers
 class UserSerializer(BaseSerializer):
     id = serializers.ReadOnlyField()
+    user_id = serializers.ReadOnlyField(source='id')
     contacts = ContactSerializer(many=True)
+    location = LocationSerializer(required=False)
     agents_id = serializers.PrimaryKeyRelatedField(many=True, allow_null=True, read_only=True, source='as_agents')
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     payer_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_payer')
@@ -369,6 +376,7 @@ class UserSerializer(BaseSerializer):
         model = User
         fields = (
             'id',
+            'user_id',
             'username',
             'email',
             'first_name',
@@ -376,7 +384,10 @@ class UserSerializer(BaseSerializer):
             'national_id',
             'ssn',
             'date_of_birth',
+            'title',
+            'suffix',
             'contacts',
+            'location',
             'agents_id',
             'operator_id',
             'payer_id',
@@ -401,6 +412,10 @@ class UserSerializer(BaseSerializer):
                         'contacts',
                         queryset=ContactSerializer.get_default_queryset(),
                     ),
+                    Prefetch(
+                        'location',
+                        queryset=LocationSerializer.get_default_queryset(),
+                    )
                 )
         )
 
@@ -420,7 +435,10 @@ class UserCreateSerializer(UserSerializer):
             'national_id',
             'ssn',
             'date_of_birth',
+            'title',
+            'suffix',
             'contacts',
+            'location',
             'password',
             'confirmation',
         )
@@ -437,6 +455,7 @@ class UserCreateSerializer(UserSerializer):
         password = data.pop('password', None)
         data.pop('confirmation', None)
         contacts_data = data.pop('contacts', None)
+        location_data = data.pop('location', None)
 
         user = User.objects.create(**data)
         if password:
@@ -447,6 +466,10 @@ class UserCreateSerializer(UserSerializer):
             contacts = [Contact(**d) for d in contacts_data]
             contact_ids = [c.id for c in Contact.objects.bulk_create(contacts)]
             user.contacts.add(*contact_ids)
+
+        if location_data:
+            user.location = Location.objects.create(**location_data)
+            user.save()
 
         user_sync_email_with_contact(user)
 
@@ -478,7 +501,7 @@ class UserUpdateSerializer(UserCreateSerializer):
 
         # Update
         if updated_contacts:
-            Contact.objects.bulk_update(updated_contacts, ['phone', 'email', 'fax'])
+            Contact.objects.bulk_update(updated_contacts, ['phone', 'phone_context', 'email', 'email_context', 'fax', 'fax_context'])
 
         # Delete
         for id in deleted_contacts:
@@ -491,6 +514,20 @@ class UserUpdateSerializer(UserCreateSerializer):
         ):
             contact.email = new_email
             contact.save()
+
+        location_data = data.pop('location', None)
+
+        if location_data:
+            location = instance.location
+
+            if location:
+                for (k, v) in location_data.items():
+                    setattr(location, k, v)
+            
+                location.save()
+
+            else:
+                instance.location = Location.objects.create(**location_data)
 
         for (k, v) in data.items():
             setattr(instance, k, v)
