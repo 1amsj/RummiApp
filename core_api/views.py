@@ -724,7 +724,7 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
     @expect_does_not_exist(Company)
     def get(cls, request, business_name=None, company_id=None):
         if company_id:
-            company = Company.objects.all().not_deleted('business').get(id=company_id)
+            company = Company.objects.all().get(id=company_id)
             serialized = CompanySerializer(company)
             return Response(serialized.data)
         
@@ -772,7 +772,7 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     @expect_does_not_exist(Service)
     def get(cls, request, service_id=None):
         if service_id:
-            service = ServiceSerializer.get_default_queryset().get(id=service_id)
+            service = Service.objects.all().get(id=service_id)
             serialized = ServiceSerializer(service)
             return Response(serialized.data)
         
