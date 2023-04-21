@@ -242,7 +242,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     @expect_does_not_exist(User)
     def get(cls, request, user_id=None):
         if user_id:
-            user = User.objects.all().not_deleted('user').get(id=user_id)
+            user = User.objects.all().get(id=user_id)
             serialized = UserSerializer(user)
             return Response(serialized.data)
         
