@@ -38,3 +38,10 @@ venv/
 ENV/
 .vscode
 package.json
+pyvenv.cfg
+
+# Others
+bin/
+lib/
+share/
+.DS_Store
