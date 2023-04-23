@@ -267,14 +267,7 @@ class CompanyCreateSerializer(CompanySerializer):
         notes_data = data.pop('notes', None)
 
         company = Company.objects.create(**data)
-<<<<<<< HEAD
         
-=======
-
-        if parent_company and parent_company.name == company.name:
-            raise serializers.ValidationError("A company can not be parent of itself.")
-            
->>>>>>> 82d3dd2fa31de71778fe9cd19e2adee4dfd7b0c8
         company.agents.set(data.pop('agents'))
         company.operators.set(data.pop('operators'))
         company.payers.set(data.pop('payers'))
@@ -303,14 +296,8 @@ class CompanyCreateSerializer(CompanySerializer):
 class CompanyUpdateSerializer(CompanySerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
-<<<<<<< HEAD
     notes = NoteUnsafeSerializer(many=True, default=[])
     parent_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
-=======
-    parent_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
-    notes = NoteUnsafeSerializer(many=True, default=[])
-    
->>>>>>> 82d3dd2fa31de71778fe9cd19e2adee4dfd7b0c8
     name = serializers.CharField()
     agents = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Agent.objects.all())
     operators = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Operator.objects.all())
