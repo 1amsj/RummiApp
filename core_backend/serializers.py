@@ -374,7 +374,7 @@ class UserSerializer(BaseSerializer):
     id = serializers.ReadOnlyField()
     user_id = serializers.ReadOnlyField(source='id')
     contacts = ContactSerializer(many=True)
-    location = LocationSerializer(required=False)
+    location = LocationSerializer(required=False, allow_null=True)
     agents_id = serializers.PrimaryKeyRelatedField(many=True, allow_null=True, read_only=True, source='as_agents')
     operator_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_operator')
     payer_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_payer')
