@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
 from django.db import models, transaction
 from django.db.models import Q
+from django.forms import ValidationError
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
@@ -172,6 +173,7 @@ class Company(SoftDeletableModel, HistoricalModel):
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
+    parent_company = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _('company')
@@ -187,7 +189,6 @@ class Company(SoftDeletableModel, HistoricalModel):
         self.affiliations.all().delete()
         self.notes.all().delete()
         pass
-
 
 class Location(SoftDeletableModel):
     address = models.CharField(_('address'), max_length=128)
