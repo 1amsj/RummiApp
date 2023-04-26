@@ -288,11 +288,7 @@ class CompanyCreateSerializer(CompanySerializer):
         if notes_data:
             company.notes.add(*notes_data)
 
-        if parent_company and parent_company.name == company.name:
-            raise serializers.ValidationError("A company can not be parent of itself.")
-
         return company.id
-    
 class CompanyUpdateSerializer(CompanySerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
@@ -366,9 +362,6 @@ class CompanyUpdateSerializer(CompanySerializer):
         # Delete
         for id in deleted_notes:
             Note.objects.filter(id=id).delete()
-
-        if data.get('parent_company') and data.get('parent_company').id == instance.id:
-            raise serializers.ValidationError("A company can not be parent of itself.") 
 
         for (k, v) in data.items():
             setattr(instance, k, v)

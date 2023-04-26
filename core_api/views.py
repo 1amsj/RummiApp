@@ -253,7 +253,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         queryset = cls.apply_filters(queryset, query_params)
 
         serialized = UserSerializer(queryset, many=True)
-        return super(ManageUsers, ManageUsers).get(request), Response(serialized.data)
+        return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
@@ -689,7 +689,7 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
         queryset = cls.apply_filters(queryset, query_params)
 
         serialized = CategorySerializer(queryset, many=True)
-        return super().get(request), Response(serialized.data)
+        return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
