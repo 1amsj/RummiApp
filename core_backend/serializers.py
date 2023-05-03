@@ -190,13 +190,13 @@ class CategoryCreateSerializer(CategorySerializer):
 
 class NoteSerializer(BaseSerializer):
     created_at = serializers.DateTimeField(required=True)
-    last_update = serializers.DateTimeField(required=True)
+    last_updated_at = serializers.DateTimeField(required=True)
     created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all())
     text = serializers.CharField(required=True, allow_blank=True)
 
     class Meta:
         model = Note
-        fields = ('created_at', 'last_update', 'created_by', 'text', 'id')
+        fields = ('created_at', 'last_updated_at', 'created_by', 'text', 'id')
 
     @staticmethod
     def get_default_queryset():
