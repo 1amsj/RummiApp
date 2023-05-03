@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
 from django.db import models, transaction
 from django.db.models import Q
+from django.forms import ValidationError
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
@@ -172,6 +173,7 @@ class Company(SoftDeletableModel, HistoricalModel):
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
+    parent_company = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _('company')
@@ -188,20 +190,20 @@ class Company(SoftDeletableModel, HistoricalModel):
         self.notes.all().delete()
         pass
 
-
 class Location(SoftDeletableModel):
-    address = models.CharField(_('address'), max_length=128)
-    city = models.CharField(_('city'), max_length=128)
-    state = models.CharField(_('state or province'), max_length=128)
-    country = models.CharField(_('country'), max_length=128)
-    zip = models.CharField(_('ZIP code'), max_length=10, blank=True)
+    address = models.TextField(_('address'), null=True, blank=True)
+    unit_number = models.TextField(_('unit number'), null=True, blank=True)
+    city = models.TextField(_('city'), null=True, blank=True)
+    state = models.TextField(_('state or province'), null=True, blank=True)
+    country = models.TextField(_('country'), null=True, blank=True)
+    zip = models.TextField(_('ZIP code'), null=True, blank=True)
 
     class Meta:
         verbose_name = _('location')
         verbose_name_plural = _('locations')
 
     def __str__(self):
-        return F"{self.country}, {self.state}, {self.city}, {self.address}, {self.zip}"
+        return F"{self.country}, {self.state}, {self.city}, {self.address}{F' {self.unit_number}' if self.unit_number else ''}, {self.zip}"
 
 
 # User models
