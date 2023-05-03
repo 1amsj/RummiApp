@@ -586,7 +586,8 @@ class Invoice(models.Model):
 
 
 class Note(SoftDeletableModel):
-    created_at = models.DateField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_update = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True)
     text = models.TextField(blank=True, default='')
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)

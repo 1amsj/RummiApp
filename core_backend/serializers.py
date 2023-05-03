@@ -190,12 +190,13 @@ class CategoryCreateSerializer(CategorySerializer):
 
 class NoteSerializer(BaseSerializer):
     created_at = serializers.DateTimeField(required=True)
-    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all(), source='owner')
+    last_update = serializers.DateTimeField(required=True)
+    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all())
     text = serializers.CharField(required=True, allow_blank=True)
 
     class Meta:
         model = Note
-        fields = ('created_at', 'created_by', 'text', 'id')
+        fields = ('created_at', 'last_update', 'created_by', 'text', 'id')
 
     @staticmethod
     def get_default_queryset():
@@ -1158,7 +1159,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         if services:
             booking.services.add(*services)
         if notes:
-            noteObjects = [Note(created_at = note['created_at'], created_by = note['owner'], text = note['text']) for note in notes]
+            noteObjects = [Note(created_by = note['owner'], text = note['text']) for note in notes]
             notes = Note.objects.bulk_create(noteObjects)
             booking.notes.add(*notes)
         manage_extra_attrs(business, booking, extras)
