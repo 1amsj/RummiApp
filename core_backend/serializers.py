@@ -251,24 +251,40 @@ class BaseCompanySerializer(BaseSerializer):
 class CompanySerializer(BaseCompanySerializer):
     parent_company = BaseCompanySerializer()
 
+
 class CompanyCreateSerializer(CompanySerializer):
     parent_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
+    agents = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Agent.objects.all())
+    operators = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Operator.objects.all())
+    payers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Payer.objects.all())
+    providers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Provider.objects.all())
+    recipients = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Recipient.objects.all())
+    requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
 
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
+
         parent_company = data.get('parent_company', None)
+
         contacts_data = data.pop('contacts', None)
         locations_data = data.pop('locations', None)
         notes_data = data.pop('notes', None)
 
+        agents_data = data.pop('agents')
+        operators_data = data.pop('operators')
+        payers_data = data.pop('payers')
+        providers_data = data.pop('providers')
+        recipients_data = data.pop('recipients')
+        requesters_data = data.pop('requesters')
+
         company = Company.objects.create(**data)
         
-        company.agents.set(data.pop('agents'))
-        company.operators.set(data.pop('operators'))
-        company.payers.set(data.pop('payers'))
-        company.providers.set(data.pop('providers'))
-        company.recipients.set(data.pop('recipients'))
-        company.requesters.set(data.pop('requesters'))
+        company.agents.set(agents_data)
+        company.operators.set(operators_data)
+        company.payers.set(payers_data)
+        company.providers.set(providers_data)
+        company.recipients.set(recipients_data)
+        company.requesters.set(requesters_data)
 
         if contacts_data:
             contacts = [Contact(**d) for d in contacts_data]
@@ -284,6 +300,8 @@ class CompanyCreateSerializer(CompanySerializer):
             company.notes.add(*notes_data)
 
         return company.id
+    
+
 class CompanyUpdateSerializer(CompanySerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)

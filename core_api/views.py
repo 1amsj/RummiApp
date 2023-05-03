@@ -728,11 +728,11 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
 
         if company_id:
             company = Company.objects.all().get(id=company_id)
-            serialized = CompanySerializer(company)
+            serialized = serializer(company)
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
-        queryset = CompanySerializer.get_default_queryset()
+        queryset = serializer.get_default_queryset()
         queryset = cls.apply_filters(queryset, query_params)
         serialized = serializer(queryset, many=True)
 
