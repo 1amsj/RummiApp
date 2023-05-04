@@ -190,18 +190,13 @@ class CategoryCreateSerializer(CategorySerializer):
 
 class NoteSerializer(BaseSerializer):
     created_at = serializers.DateTimeField(required=True)
-    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all(), source='owner')
+    last_updated_at = serializers.DateTimeField(required=True)
+    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all())
     text = serializers.CharField(required=True, allow_blank=True)
 
     class Meta:
         model = Note
-        fields = ('created_at', 'created_by', 'text', 'id')
-
-    def validate(self, data: dict):
-        if not (data.get('booking') or data.get('company') or data.get('payer') or data.get('provider') or data.get('recipient')):
-            raise serializers.ValidationError(_('Note has to be related to another entity'))
-
-        return super(NoteSerializer, self).validate(data)
+        fields = ('created_at', 'last_updated_at', 'created_by', 'text', 'id')
 
     @staticmethod
     def get_default_queryset():
@@ -1143,6 +1138,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
     created_at = serializers.DateTimeField(required=False)
     public_id = serializers.ReadOnlyField()
+    notes = NoteSerializer(many=True, default=[])
 
     class Meta:
         # TODO add constraints here for incomplete bookings
@@ -1156,6 +1152,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             'services',
             'created_at',
             'public_id',
+            'notes'
         )
 
     def create(self, validated_data=None) -> int:
@@ -1166,6 +1163,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
+        notes = data.pop('notes', [])
 
         # TODO add constraints here for incomplete bookings
 
@@ -1178,6 +1176,10 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             booking.operators.add(*operators)
         if services:
             booking.services.add(*services)
+        if notes:
+            noteObjects = [Note(created_by = note['owner'], text = note['text']) for note in notes]
+            notes = Note.objects.bulk_create(noteObjects)
+            booking.notes.add(*notes)
         manage_extra_attrs(business, booking, extras)
 
         return booking.id
