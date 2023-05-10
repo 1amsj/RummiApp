@@ -189,14 +189,14 @@ class CategoryCreateSerializer(CategorySerializer):
 
 
 class NoteSerializer(BaseSerializer):
-    created_at = serializers.DateTimeField(required=True)
-    last_updated_at = serializers.DateTimeField(required=True)
     created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all())
+    created_by_first_name = serializers.CharField(read_only=True, source='created_by.first_name')
+    created_by_last_name = serializers.CharField(read_only=True, source='created_by.last_name')
     text = serializers.CharField(required=True, allow_blank=True)
 
     class Meta:
         model = Note
-        fields = ('created_at', 'last_updated_at', 'created_by', 'text', 'id')
+        fields = '__all__'
 
     @staticmethod
     def get_default_queryset():
@@ -1138,7 +1138,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
     created_at = serializers.DateTimeField(required=False)
     public_id = serializers.ReadOnlyField()
-    notes = NoteSerializer(many=True, default=[])
+    notes = NoteUnsafeSerializer(many=True, default=[])
 
     class Meta:
         # TODO add constraints here for incomplete bookings
@@ -1177,7 +1177,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         if services:
             booking.services.add(*services)
         if notes:
-            noteObjects = [Note(created_by = note['owner'], text = note['text']) for note in notes]
+            noteObjects = [Note(created_by = note['created_by'], text = note['text']) for note in notes]
             notes = Note.objects.bulk_create(noteObjects)
             booking.notes.add(*notes)
         manage_extra_attrs(business, booking, extras)
@@ -1193,7 +1193,22 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
-        notes = data.pop('notes', [])
+
+        notes_data = data.pop('notes', [])
+        
+        created_notes, updated_notes, deleted_notes = fetch_updated_from_validated_data(Note, notes_data, set(instance.notes.all().not_deleted().values_list('id')))
+        
+        # Create
+        if created_notes:
+            created_notes = Note.objects.bulk_create(created_notes)
+            instance.notes.add(*created_notes)
+        
+        # Update
+        if updated_notes:
+            Note.objects.bulk_update(updated_notes, ['text'])
+        
+        # Delete
+        Note.objects.filter(id__in=deleted_notes).delete()
 
         # TODO add constraints here for incomplete bookings
 
@@ -1201,7 +1216,6 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             setattr(instance, k, v)
         instance.save()
 
-        instance.notes.set(notes)
         sync_m2m(instance.categories, categories)
         sync_m2m(instance.companies, companies)
         sync_m2m(instance.operators, operators)
