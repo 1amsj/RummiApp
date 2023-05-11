@@ -268,12 +268,12 @@ class CompanyCreateSerializer(CompanySerializer):
 
         company = Company.objects.create(**data)
         
-        company.agents.set(data.pop('agents'))
-        company.operators.set(data.pop('operators'))
-        company.payers.set(data.pop('payers'))
-        company.providers.set(data.pop('providers'))
-        company.recipients.set(data.pop('recipients'))
-        company.requesters.set(data.pop('requesters'))
+        company.agents.set(data.pop('agents', []))
+        company.operators.set(data.pop('operators', []))
+        company.payers.set(data.pop('payers', []))
+        company.providers.set(data.pop('providers', []))
+        company.recipients.set(data.pop('recipients', []))
+        company.requesters.set(data.pop('requesters', []))
 
         if contacts_data:
             contacts = [Contact(**d) for d in contacts_data]
