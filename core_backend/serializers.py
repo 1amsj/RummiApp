@@ -4,14 +4,13 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import models
 from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
-from phonenumbers import PhoneNumber
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
     Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Note, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot, SoftDeletableModel, SoftDeletionQuerySet, User
-from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
-    manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
+from core_backend.services import assert_extendable, fetch_updated_from_validated_data, get_model_field_names, \
+    is_extendable, manage_extra_attrs, sync_m2m, user_sync_email_with_contact
 
 
 class BaseSerializer(serializers.ModelSerializer):
@@ -546,7 +545,7 @@ class UserUpdateSerializer(UserCreateSerializer):
             instance.set_password(password)
             instance.save()
 
-        contacts_data = data.pop('contacts', None)
+        contacts_data = data.pop('contacts', [])
 
         created_contacts, updated_contacts, deleted_contacts = fetch_updated_from_validated_data(Contact, contacts_data, set(instance.contacts.all().values_list('id')))
 
@@ -1010,6 +1009,9 @@ class RecipientCreateSerializer(extendable_serializer(Recipient)):
 
 
 class RecipientUpdateSerializer(RecipientCreateSerializer):
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
+    notes = NoteSerializer(many=True, default=[])
+
     def update(self, instance: Recipient, business_name, validated_data=None):
         data = validated_data or self.validated_data
         extras = data.pop('extra', {})

@@ -42,7 +42,7 @@ urlpatterns = [
     path('test/', views.test_end_point, name='test'),
     path('version/', views.get_version, name='test'),
 
-    *path_optional('users/', '<id:user_id>', views.ManageUsers.as_view(), name='manage_users'),
+    *path_optionals_xor('users/', ['<id:user_id>', '<str:business_name>'], views.ManageUsers.as_view(), name='manage_users'),
     path('operators/', views.ManageOperators.as_view(), name='manage_operators'),
     path('payers/', views.ManagePayers.as_view(), name='manage_payers'),
     *path_optionals_xor('providers/', ['<id:provider_id>', '<str:business_name>'], views.ManageProviders.as_view(), name='manage_providers'),

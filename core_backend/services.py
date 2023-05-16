@@ -6,6 +6,7 @@ from django.db import models
 
 import core_backend.models as app_models
 from core_api.constants import FIELDS_BLACKLIST
+from core_api.exceptions import BusinessNotProvidedException
 from core_backend.datastructures import QueryParams
 from core_backend.exceptions import ModelNotExtendableException
 
@@ -72,7 +73,10 @@ def filter_extra_attrs(model: Type[models.Model], fields: dict) -> dict:
     }
 
 
-def manage_extra_attrs(business: Union[str, app_models.Business], inst: models.Model, fields: dict):
+def manage_extra_attrs(business: Union[None, str, app_models.Business], inst: models.Model, fields: dict):
+    if not business:
+        raise BusinessNotProvidedException
+
     if isinstance(business, str):
         business = app_models.Business.objects.get(name=business)
     model = inst.__class__
