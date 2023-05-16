@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Iterator, Tuple, Type, Union
+from typing import Iterator, Set, Tuple, Type, Union
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -120,7 +120,9 @@ def sync_sets(original_set, new_set, add, remove):
         add(created)
 
 
+
 def sync_m2m(manager, new_set, field='id'):
+    """Sync a many-to-many relationship based on the ids"""
     return sync_sets(
         original_set=manager.all().values_list(field, flat=True),
         new_set=new_set,
@@ -129,7 +131,11 @@ def sync_m2m(manager, new_set, field='id'):
     )
 
 
-def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset, current_ids: set = set()):
+def fetch_updated_from_validated_data(
+        obj_type: Type[models.Model],
+        dataset,
+        current_ids: Set[int],
+) -> Tuple[Set[models.Model], Set[models.Model], Set[int]]:
     created, updated, deleted = [], [], []
     ids_list = set()
 

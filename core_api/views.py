@@ -23,10 +23,13 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
     Requester, Service, ServiceRoot, User
 from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
     AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
-    CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanySerializerWithRoles, CompanyUpdateSerializer, EventCreateSerializer, \
-    EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, NoteSerializer, OperatorSerializer, \
+    CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanySerializerWithRoles, CompanyUpdateSerializer, \
+    EventCreateSerializer, \
+    EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, \
+    NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, RecipientCreateSerializer, RecipientSerializer, \
-    RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, \
+    RecipientUpdateSerializer, RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, \
+    ServiceSerializer, \
     UserCreateSerializer, UserSerializer, \
     UserUpdateSerializer
 from core_backend.services import filter_params, is_extendable
@@ -407,19 +410,8 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
 
 
 class ManageRecipients(user_subtype_view_manager(Recipient, RecipientSerializer)):
-   
-    @staticmethod
-    @transaction.atomic
-    @expect_key_error
-    @expect_does_not_exist(Recipient)
-    def post(request, business_name=None):
-        serializer = RecipientCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        recipient = serializer.create(business_name)
-        return Response(recipient.id, status=status.HTTP_201_CREATED)
-
     @classmethod
-    def get(cls, request, buisiness_name=None, recipient_id=None):
+    def get(cls, request, business_name=None, recipient_id=None):
         if recipient_id:
             recipient = Recipient.objects.all().not_deleted('user').get(id=recipient_id)
             serialized = RecipientSerializer(recipient)
@@ -433,6 +425,28 @@ class ManageRecipients(user_subtype_view_manager(Recipient, RecipientSerializer)
 
         serialized = RecipientSerializer(queryset, many=True)
         return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Recipient)
+    def post(request, business_name=None):
+        serializer = RecipientCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recipient = serializer.create(business_name)
+        return Response(recipient.id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Recipient)
+    def put(request, recipient_id=None):
+        recipient = Recipient.objects.get(id=recipient_id)
+        business = request.data.pop('business')
+        serializer = RecipientUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(recipient, business)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class ManageRequesters(user_subtype_view_manager(Requester, RequesterSerializer)):
     @classmethod
@@ -835,4 +849,3 @@ class ManageNote(basic_view_manager(Note, NoteSerializer)):
         serializer.is_valid(raise_exception=True)
         note_id = serializer.create()
         return Response(note_id, status=status.HTTP_201_CREATED)
-    
