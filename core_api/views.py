@@ -14,7 +14,7 @@ from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_recipient_wrap, create_user, \
-    update_recipient_wrap, \
+    update_provider_wrap, update_recipient_wrap, \
     update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
@@ -30,7 +30,8 @@ from core_backend.serializers import AffiliationCreateSerializer, AffiliationSer
     EventCreateSerializer, \
     EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, \
     NoteSerializer, OperatorSerializer, \
-    PayerCreateSerializer, PayerSerializer, ProviderSerializer, RecipientCreateSerializer, RecipientSerializer, \
+    PayerCreateSerializer, PayerSerializer, ProviderSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
+    RecipientSerializer, \
     RecipientUpdateSerializer, RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, \
     ServiceSerializer, \
     UserCreateSerializer, UserSerializer
@@ -313,10 +314,11 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     @expect_does_not_exist(Recipient)
     def put(request, user_id=None):
         """
-        Update a user; if _recipient_data provided, update it too
+        Update a user; if _provider_data or _recipient_data provided, update them too
         """
         # Update user
-        # Extract recipient data before the serializer deals with it
+        # Extract management data before the serializer deals with it
+        provider_data = request.data.pop(ApiSpecialKeys.PROVIDER_DATA, None)
         recipient_data = request.data.pop(ApiSpecialKeys.RECIPIENT_DATA, None)
 
         user = User.objects.get(id=user_id)
@@ -325,19 +327,26 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             user_instance=user
         )
 
-        if not recipient_data:
-            # Only update user
-            return Response(status=status.HTTP_204_NO_CONTENT)
-
-        # Update recipient
+        # Update others
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
 
-        update_recipient_wrap(
-            recipient_data,
-            business_name,
-            user_id,
-            recipient_instance=user.as_recipient
-        )
+        # Update provider
+        if provider_data:
+            update_provider_wrap(
+                provider_data,
+                business_name,
+                user_id,
+                provider_instance=user.as_provider
+            )
+
+        # Update recipient
+        if recipient_data:
+            update_recipient_wrap(
+                recipient_data,
+                business_name,
+                user_id,
+                recipient_instance=user.as_recipient
+            )
 
         # Done
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -471,6 +480,17 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
 
         serialized = ProviderSerializer(queryset, many=True)
         return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Provider)
+    def put(request, provider_id=None):
+        provider = Provider.objects.get(id=provider_id)
+        business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        serializer = ProviderUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(provider, business)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ManageRecipients(user_subtype_view_manager(Recipient, RecipientSerializer)):

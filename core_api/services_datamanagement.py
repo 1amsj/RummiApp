@@ -3,7 +3,8 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BusinessNotProvidedException
-from core_backend.serializers import AffiliationCreateSerializer, RecipientCreateSerializer, RecipientUpdateSerializer, \
+from core_backend.serializers import AffiliationCreateSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
+    RecipientUpdateSerializer, \
     UserCreateSerializer, UserUpdateSerializer
 
 
@@ -70,6 +71,25 @@ def update_user(data, user_instance):
     serializer = UserUpdateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
     serializer.update(user_instance)
+
+
+@transaction.atomic
+def update_provider_wrap(data, business_name, user_id, provider_instance):
+    if not business_name:
+        raise BusinessNotProvidedException
+
+    # Handle provider role update
+    try:
+        data['user'] = user_id
+        serializer = ProviderUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(provider_instance, business_name)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.PROVIDER_DATA: exc.detail,
+        })
 
 
 @transaction.atomic

@@ -832,6 +832,31 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
         )
 
 
+class ProviderUpdateSerializer(serializers.Serializer):
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
+    notes = NoteUnsafeSerializer(many=True, default=[])
+    # services is not modifiable from here
+
+    class Meta:
+        model = Provider
+        fields = '__all__'
+
+    def update(self, instance: Provider, business_name, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        companies = data.pop('companies', [])
+        notes = data.pop('notes', [])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.companies, companies)
+        NoteSerializer.sync_notes(instance, notes)
+
+        manage_extra_attrs(business_name, instance, extras)
+
+
 class ServiceSerializer(ServiceNoProviderSerializer):
     provider = ProviderSerializer()
 
@@ -1010,7 +1035,7 @@ class RecipientCreateSerializer(extendable_serializer(Recipient)):
 
 class RecipientUpdateSerializer(RecipientCreateSerializer):
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
-    notes = NoteSerializer(many=True, default=[])
+    notes = NoteUnsafeSerializer(many=True, default=[])
 
     def update(self, instance: Recipient, business_name, validated_data=None):
         data = validated_data or self.validated_data
