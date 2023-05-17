@@ -318,6 +318,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         """
         # Update user
         # Extract management data before the serializer deals with it
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS, None)
         provider_data = request.data.pop(ApiSpecialKeys.PROVIDER_DATA, None)
         recipient_data = request.data.pop(ApiSpecialKeys.RECIPIENT_DATA, None)
 
@@ -326,9 +327,6 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             request.data,
             user_instance=user
         )
-
-        # Update others
-        business_name = request.data.pop(ApiSpecialKeys.BUSINESS, None)
 
         # Update provider
         if provider_data:
