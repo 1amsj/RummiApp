@@ -328,7 +328,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         )
 
         # Update others
-        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS, None)
 
         # Update provider
         if provider_data:
