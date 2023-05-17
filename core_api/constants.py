@@ -1,19 +1,26 @@
-NO_EXACT_MATCH_SUFFIX = '__icontains'
+from enum import Enum
 
-EXACT_MATCH_KEY = '_exact_match'
-INCLUDE_BOOKING_KEY = '_include_booking'
-INCLUDE_EVENTS_KEY = '_include_events'
-INCLUDE_ROLES_KEY = '_include_roles'
+# API special payload keys
+class ApiSpecialKeys(str, Enum):
+    # Includes
+    INCLUDE_BOOKING = '_include_booking'
+    INCLUDE_EVENTS = '_include_events'
+    INCLUDE_ROLES = '_include_roles'
 
-FIELDS_BLACKLIST = [
-    EXACT_MATCH_KEY,
-    INCLUDE_EVENTS_KEY,
-    INCLUDE_ROLES_KEY,
-]
+    # Appended data
+    BUSINESS = '_business'
+    AFFILIATION_DATALIST = '_affiliation_datalist'
+    PROVIDER_DATA = '_provider_data'
+    RECIPIENT_DATA = '_recipient_data'
 
+
+FIELDS_BLACKLIST = [key for key in ApiSpecialKeys]
+
+# API separators
 API_NESTED_QUERY_PARAM_SEPARATOR = '.'
 API_QUERY_LOOKUP_SEPARATOR = '__'
 
+# API querying keys
 API_QUERY_LOOKUP_MAP = {
     "em": "exact",
     "nem": "icontains",

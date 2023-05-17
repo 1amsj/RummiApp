@@ -1,11 +1,12 @@
 from functools import lru_cache
-from typing import Iterator, Tuple, Type, Union
+from typing import Iterator, Set, Tuple, Type, Union
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 import core_backend.models as app_models
 from core_api.constants import FIELDS_BLACKLIST
+from core_api.exceptions import BusinessNotProvidedException
 from core_backend.datastructures import QueryParams
 from core_backend.exceptions import ModelNotExtendableException
 
@@ -72,7 +73,10 @@ def filter_extra_attrs(model: Type[models.Model], fields: dict) -> dict:
     }
 
 
-def manage_extra_attrs(business: Union[str, app_models.Business], inst: models.Model, fields: dict):
+def manage_extra_attrs(business: Union[None, str, app_models.Business], inst: models.Model, fields: dict):
+    if not business:
+        raise BusinessNotProvidedException
+
     if isinstance(business, str):
         business = app_models.Business.objects.get(name=business)
     model = inst.__class__
@@ -120,7 +124,9 @@ def sync_sets(original_set, new_set, add, remove):
         add(created)
 
 
+
 def sync_m2m(manager, new_set, field='id'):
+    """Sync a many-to-many relationship based on the ids"""
     return sync_sets(
         original_set=manager.all().values_list(field, flat=True),
         new_set=new_set,
@@ -129,7 +135,11 @@ def sync_m2m(manager, new_set, field='id'):
     )
 
 
-def fetch_updated_from_validated_data(obj_type: Type[models.Model], dataset, current_ids: set = set()):
+def fetch_updated_from_validated_data(
+        obj_type: Type[models.Model],
+        dataset,
+        current_ids: Set[int],
+) -> Tuple[Set[models.Model], Set[models.Model], Set[int]]:
     created, updated, deleted = [], [], []
     ids_list = set()
 

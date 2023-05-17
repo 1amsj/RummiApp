@@ -18,3 +18,7 @@ class NotImplementedAPIException(APIException):
     status_code = status.HTTP_501_NOT_IMPLEMENTED
     default_detail = 'Not implemented'
     default_code = 'not_implemented'
+
+
+class BusinessNotProvidedException(BadRequestException):
+    default_detail = 'Bad request: business not provided'

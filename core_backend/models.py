@@ -6,12 +6,13 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import ArrayField
 from django.db import models, transaction
 from django.db.models import Q
-from django.forms import ValidationError
 from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
 from core_backend.fields import DailyUniqueIdentifierField
+
+
 # Query sets
 class SoftDeletionQuerySet(models.QuerySet):
     def deleted(self, *fields: Tuple[str, ...]):
@@ -322,11 +323,12 @@ class Payer(HistoricalModel, SoftDeletableModel):
 
 
 class Provider(ExtendableModel, SoftDeletableModel, HistoricalModel):
+    """Who provides the service"""
+
     class ContractType(models.TextChoices):
         CONTRACTOR = 'CONTRACTOR', _('Contractor')
         SALARIED = 'SALARIED', _('Salaried')
     
-    """Who provides the service"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_provider')
     companies = models.ManyToManyField(Company, related_name='providers')
     contract_type = models.CharField(max_length=255, choices=ContractType.choices, default=ContractType.CONTRACTOR)
@@ -586,7 +588,8 @@ class Invoice(models.Model):
 
 
 class Note(SoftDeletableModel):
-    created_at = models.DateField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True)
     text = models.TextField(blank=True, default='')
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)

@@ -1,17 +1,16 @@
-from typing import Type
+from typing import List, Type
 
 from django.contrib.auth.password_validation import validate_password
 from django.db import models
 from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
-from phonenumbers import PhoneNumber
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
     Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Note, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot, SoftDeletableModel, SoftDeletionQuerySet, User
-from core_backend.services import assert_extendable, get_model_field_names, is_extendable, \
-    manage_extra_attrs, fetch_updated_from_validated_data, sync_m2m, user_sync_email_with_contact
+from core_backend.services import assert_extendable, fetch_updated_from_validated_data, get_model_field_names, \
+    is_extendable, manage_extra_attrs, sync_m2m, user_sync_email_with_contact
 
 
 class BaseSerializer(serializers.ModelSerializer):
@@ -189,24 +188,51 @@ class CategoryCreateSerializer(CategorySerializer):
 
 
 class NoteSerializer(BaseSerializer):
-    created_at = serializers.DateTimeField(required=True)
-    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all(), source='owner')
+    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all())
+    created_by_first_name = serializers.CharField(read_only=True, source='created_by.first_name')
+    created_by_last_name = serializers.CharField(read_only=True, source='created_by.last_name')
     text = serializers.CharField(required=True, allow_blank=True)
 
     class Meta:
         model = Note
-        fields = ('created_at', 'created_by', 'text', 'id')
-
-    def validate(self, data: dict):
-        if not (data.get('booking') or data.get('company') or data.get('payer') or data.get('provider') or data.get('recipient')):
-            raise serializers.ValidationError(_('Note has to be related to another entity'))
-
-        return super(NoteSerializer, self).validate(data)
+        fields = '__all__'
 
     @staticmethod
     def get_default_queryset():
         return Note.objects.all().not_deleted()
-    
+
+    @staticmethod
+    def build_model_instance(data: dict):
+        return Note(
+            created_by=data['created_by'],
+            text=data['text'],
+        )
+
+    @staticmethod
+    def create_instances(note_dicts: [dict]):
+        note_instances = [NoteSerializer.build_model_instance(note_data) for note_data in note_dicts]
+        return Note.objects.bulk_create(note_instances)
+
+    @staticmethod
+    def sync_notes(instance, notes_data: List[dict]):
+        created_notes, updated_notes, deleted_notes = fetch_updated_from_validated_data(
+            Note,
+            notes_data,
+            set(instance.notes.all().not_deleted().values_list('id'))
+        )
+
+        # Create
+        if created_notes:
+            created_notes = Note.objects.bulk_create(created_notes)
+            instance.notes.add(*created_notes)
+
+        # Update
+        if updated_notes:
+            Note.objects.bulk_update(updated_notes, ['text'])
+
+        # Delete
+        Note.objects.filter(id__in=deleted_notes).delete()
+
 
 class NoteUnsafeSerializer(NoteSerializer):
     id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
@@ -256,15 +282,31 @@ class BaseCompanySerializer(BaseSerializer):
 class CompanySerializer(BaseCompanySerializer):
     parent_company = BaseCompanySerializer()
 
+
 class CompanyCreateSerializer(CompanySerializer):
     parent_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
+    agents = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Agent.objects.all())
+    operators = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Operator.objects.all())
+    payers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Payer.objects.all())
+    providers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Provider.objects.all())
+    recipients = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Recipient.objects.all())
+    requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
 
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
+
         parent_company = data.get('parent_company', None)
+
         contacts_data = data.pop('contacts', None)
         locations_data = data.pop('locations', None)
         notes_data = data.pop('notes', None)
+
+        agents_data = data.pop('agents')
+        operators_data = data.pop('operators')
+        payers_data = data.pop('payers')
+        providers_data = data.pop('providers')
+        recipients_data = data.pop('recipients')
+        requesters_data = data.pop('requesters')
 
         company = Company.objects.create(**data)
         
@@ -289,6 +331,8 @@ class CompanyCreateSerializer(CompanySerializer):
             company.notes.add(*notes_data)
 
         return company.id
+    
+
 class CompanyUpdateSerializer(CompanySerializer):
     contacts = ContactUnsafeSerializer(many=True)
     locations = LocationUnsafeSerializer(many=True)
@@ -501,7 +545,7 @@ class UserUpdateSerializer(UserCreateSerializer):
             instance.set_password(password)
             instance.save()
 
-        contacts_data = data.pop('contacts', None)
+        contacts_data = data.pop('contacts', [])
 
         created_contacts, updated_contacts, deleted_contacts = fetch_updated_from_validated_data(Contact, contacts_data, set(instance.contacts.all().values_list('id')))
 
@@ -788,6 +832,31 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
         )
 
 
+class ProviderUpdateSerializer(serializers.Serializer):
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
+    notes = NoteUnsafeSerializer(many=True, default=[])
+    # services is not modifiable from here
+
+    class Meta:
+        model = Provider
+        fields = '__all__'
+
+    def update(self, instance: Provider, business_name, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        companies = data.pop('companies', [])
+        notes = data.pop('notes', [])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.companies, companies)
+        NoteSerializer.sync_notes(instance, notes)
+
+        manage_extra_attrs(business_name, instance, extras)
+
+
 class ServiceSerializer(ServiceNoProviderSerializer):
     provider = ProviderSerializer()
 
@@ -861,11 +930,12 @@ class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
 
 
 class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
     notes = NoteSerializer(many=True, default=[])
     
     class Meta:
         model = Recipient
-        exclude = ('companies',)
+        fields = '__all__'
 
     @staticmethod
     def get_default_queryset():
@@ -875,12 +945,16 @@ class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
                 .not_deleted('user')
                 .prefetch_related(
                     Prefetch(
-                        'notes',
-                        queryset=NoteSerializer.get_default_queryset()
+                        'companies',
+                        queryset=CompanySerializer.get_default_queryset(),
                     ),
                     Prefetch(
                         'extra',
                         queryset=ExtraAttrSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'notes',
+                        queryset=NoteSerializer.get_default_queryset(),
                     ),
                     Prefetch(
                         'user',
@@ -935,20 +1009,48 @@ class AffiliationCreateSerializer(AffiliationSerializer):
 class RecipientSerializer(RecipientNoAffiliationSerializer):
     affiliations = AffiliationNoRecipientSerializer(many=True, read_only=True)
 
+
 class RecipientCreateSerializer(extendable_serializer(Recipient)):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-    
-    def create(self, validated_data=None):
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
+    notes = NoteSerializer(many=True, default=[])
+
+    def create(self, business_name, validated_data=None):
         data = validated_data or self.validated_data
         extras = data.pop('extra', {})
         companies = data.pop('companies', [])
+        notes = data.pop('notes', [])
 
         recipient = Recipient.objects.create(**data)
         if companies:
             recipient.categories.add(*companies)
-        manage_extra_attrs(recipient.companies, recipient, extras)
+        if notes:
+            note_instances = NoteSerializer.create_instances(notes)
+            recipient.notes.add(*note_instances)
+
+        manage_extra_attrs(business_name, recipient, extras)
 
         return recipient
+
+
+class RecipientUpdateSerializer(RecipientCreateSerializer):
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
+    notes = NoteUnsafeSerializer(many=True, default=[])
+
+    def update(self, instance: Recipient, business_name, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        companies = data.pop('companies', [])
+        notes = data.pop('notes', [])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.companies, companies)
+        NoteSerializer.sync_notes(instance, notes)
+
+        manage_extra_attrs(business_name, instance, extras)
 
 
 class RequesterSerializer(user_subtype_serializer(Requester)):
@@ -1125,6 +1227,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
     created_at = serializers.DateTimeField(required=False)
     public_id = serializers.ReadOnlyField()
+    notes = NoteUnsafeSerializer(many=True, default=[])
 
     class Meta:
         # TODO add constraints here for incomplete bookings
@@ -1138,6 +1241,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             'services',
             'created_at',
             'public_id',
+            'notes'
         )
 
     def create(self, validated_data=None) -> int:
@@ -1148,6 +1252,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
+        notes = data.pop('notes', [])
 
         # TODO add constraints here for incomplete bookings
 
@@ -1160,6 +1265,9 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             booking.operators.add(*operators)
         if services:
             booking.services.add(*services)
+        if notes:
+            note_instances = NoteSerializer.create_instances(notes)
+            booking.notes.add(*note_instances)
         manage_extra_attrs(business, booking, extras)
 
         return booking.id
@@ -1173,7 +1281,9 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
-        notes = data.pop('notes', [])
+        notes_data = data.pop('notes', [])
+
+        NoteSerializer.sync_notes(instance, notes_data)
 
         # TODO add constraints here for incomplete bookings
 
@@ -1181,7 +1291,6 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
             setattr(instance, k, v)
         instance.save()
 
-        instance.notes.set(notes)
         sync_m2m(instance.categories, categories)
         sync_m2m(instance.companies, companies)
         sync_m2m(instance.operators, operators)
