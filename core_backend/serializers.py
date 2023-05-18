@@ -209,7 +209,7 @@ class NoteSerializer(BaseSerializer):
         )
 
     @staticmethod
-    def create_instances(note_dicts: [dict]):
+    def create_instances(note_dicts: List[dict]):
         note_instances = [NoteSerializer.build_model_instance(note_data) for note_data in note_dicts]
         return Note.objects.bulk_create(note_instances)
 
@@ -291,6 +291,7 @@ class CompanyCreateSerializer(CompanySerializer):
     providers = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Provider.objects.all())
     recipients = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Recipient.objects.all())
     requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
+    notes = NoteSerializer(many=True, default=[])
 
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
@@ -299,7 +300,7 @@ class CompanyCreateSerializer(CompanySerializer):
 
         contacts_data = data.pop('contacts', None)
         locations_data = data.pop('locations', None)
-        notes_data = data.pop('notes', None)
+        notes_data = data.pop('notes', [])
 
         agents_data = data.pop('agents')
         operators_data = data.pop('operators')
@@ -328,7 +329,8 @@ class CompanyCreateSerializer(CompanySerializer):
             company.locations.add(*location_ids)
 
         if notes_data:
-            company.notes.add(*notes_data)
+            note_instances = NoteSerializer.create_instances(notes_data)
+            company.notes.add(*note_instances)
 
         return company.id
     
