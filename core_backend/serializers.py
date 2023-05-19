@@ -394,20 +394,7 @@ class CompanyUpdateSerializer(CompanySerializer):
 
         notes_data = data.pop('notes')
         
-        created_notes, updated_notes, deleted_notes = fetch_updated_from_validated_data(Note, notes_data, set(instance.notes.all().values_list('id')))
-        
-        # Create
-        if created_notes:
-            created_notes = Note.objects.bulk_create(created_notes)
-            instance.notes.add(*created_notes)
-        
-        # Update
-        if updated_notes:
-            Note.objects.bulk_update(updated_notes, ['text'])
-        
-        # Delete
-        for id in deleted_notes:
-            Note.objects.filter(id=id).delete()
+        NoteSerializer.sync_notes(instance, notes_data)
 
         for (k, v) in data.items():
             setattr(instance, k, v)
