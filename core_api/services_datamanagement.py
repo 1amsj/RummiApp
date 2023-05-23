@@ -18,13 +18,13 @@ def create_user(data):
 
 
 @transaction.atomic
-def create_agent_wrap(data, user_id):
+def create_agent_wrap(data, user_id, business_name):
     # Handle recipient role creation
     try:
         data['user'] = user_id
         serializer = AgentCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        agent = serializer.create()
+        agent = serializer.create(business_name)
 
     except ValidationError as exc:
         # Wrap errors
