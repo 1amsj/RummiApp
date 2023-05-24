@@ -1314,7 +1314,7 @@ class EventCreateSerializer(BaseSerializer):
         if agents:
             event.agents.add(*agents)
 
-        return event.id
+        return event
 
     def update(self, instance: Event, validated_data=None):
         data: dict = validated_data or self.validated_data

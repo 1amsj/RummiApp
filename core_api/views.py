@@ -13,7 +13,7 @@ from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_recipient_wrap, create_user, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_booking, create_events_wrap, create_recipient_wrap, create_user, \
     update_provider_wrap, update_recipient_wrap, \
     update_user
 from core_backend.datastructures import QueryParams
@@ -631,16 +631,18 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request, business_name):
-        data = request.data
-        data['business'] = business_name
-        if not data.get('operators'):
-            user: User = request.user
-            data['operators'] = [user.as_operator.id] if user.is_operator else None
+        event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
+        booking_id = create_booking(request.data, business_name, request.user)
 
-        serializer = BookingCreateSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        booking_id = serializer.create()
-        return Response(booking_id, status=status.HTTP_201_CREATED)
+        event_ids = create_events_wrap(
+            datalist=event_datalist,
+            booking_id=booking_id,
+        )
+
+        return Response({
+            "booking_id": booking_id,
+            "event_ids": event_ids,
+        }, status=status.HTTP_201_CREATED)
 
     @staticmethod
     @transaction.atomic

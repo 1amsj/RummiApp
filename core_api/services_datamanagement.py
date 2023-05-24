@@ -3,7 +3,8 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BusinessNotProvidedException
-from core_backend.serializers import AffiliationCreateSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
+from core_backend.models import User
+from core_backend.serializers import AffiliationCreateSerializer, BookingCreateSerializer, EventCreateSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
     RecipientUpdateSerializer, \
     UserCreateSerializer, UserUpdateSerializer
 
@@ -63,6 +64,44 @@ def create_affiliations_wrap(datalist, business_name, recipient_id):
         })
 
     return affiliation_ids
+
+
+@transaction.atomic
+def create_booking(data, business_name, user):
+    data['business'] = business_name
+
+    if not data.get('operators'):
+        user: User = user
+        data['operators'] = [user.as_operator.id] if user.is_operator else None
+
+    serializer = BookingCreateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    booking_id = serializer.create()
+    return booking_id;
+
+
+@transaction.atomic
+def create_events_wrap(datalist, booking_id):
+    # Handle events creation
+    event_ids = []
+    event_errors = []
+    for event_data in datalist:
+        try:
+            event_data['booking'] = booking_id
+            serializer = EventCreateSerializer(data=event_data)
+            serializer.is_valid(raise_exception=True)
+            event = serializer.create()
+            event_ids.append(event.id)
+
+        except ValidationError as exc:
+            event_errors.append(exc.detail)
+
+    if event_errors:
+        raise ValidationError({
+            ApiSpecialKeys.EVENT_DATALIST: event_errors
+        })
+
+    return event_ids
 
 
 # Update
