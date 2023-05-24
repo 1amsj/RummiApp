@@ -12,6 +12,7 @@ class ApiSpecialKeys(str, Enum):
     AFFILIATION_DATALIST = '_affiliation_datalist'
     PROVIDER_DATA = '_provider_data'
     RECIPIENT_DATA = '_recipient_data'
+    REQUESTER_DATA = '_requester_data'
 
 
 FIELDS_BLACKLIST = [key for key in ApiSpecialKeys]

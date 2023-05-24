@@ -15,7 +15,7 @@ from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerial
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_recipient_wrap, create_user, \
     update_provider_wrap, update_recipient_wrap, \
-    update_user
+    update_user, create_requester_wrap
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
     ExtraQuerySet, Note, \
@@ -275,12 +275,15 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             "companies": [],
             "notes": [],
         })
+        requester_data = request.data.pop(ApiSpecialKeys.REQUESTER_DATA, {
+            "companies": [],
+        })
 
         user_id = create_user(
             request.data
         )
 
-        if not recipient_data:
+        if not recipient_data and not requester_data:
             # Only create user
             return Response({"user_id": user_id}, status=status.HTTP_201_CREATED)
 
@@ -300,11 +303,18 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             recipient_id=recipient_id
         )
 
+        requester_id = create_requester_wrap(
+            requester_data,
+            business_name,
+            user_id=user_id
+        )
+
         # Respond with complex ids object
         return Response({
             "user_id": user_id,
             "recipient_id": recipient_id,
             "affiliation_ids": affiliation_ids,
+            "requester_id": requester_id,
         }, status=status.HTTP_201_CREATED)
 
     @staticmethod
