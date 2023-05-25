@@ -13,6 +13,7 @@ class ApiSpecialKeys(str, Enum):
     PROVIDER_DATA = '_provider_data'
     RECIPIENT_DATA = '_recipient_data'
     AGENT_DATA = '_agent_data'
+    REQUESTER_DATA = '_requester_data'
 
 
 FIELDS_BLACKLIST = [key for key in ApiSpecialKeys]

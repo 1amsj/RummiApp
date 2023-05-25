@@ -15,7 +15,7 @@ from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerial
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_recipient_wrap, create_user, \
     update_provider_wrap, update_recipient_wrap, \
-    update_user
+    update_user, create_requester_wrap
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
     ExtraQuerySet, Note, \
@@ -278,6 +278,10 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
         agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA, None)
 
+        requester_data = request.data.pop(ApiSpecialKeys.REQUESTER_DATA, {
+            "companies": [],
+        })
+
         user_id = create_user(
             request.data
         )
@@ -301,17 +305,29 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
                 recipient_id=recipient_id
             )
 
-            response["recipient_id"] = recipient_id;
-            response["affiliation_ids"] = affiliation_ids;
+            response["recipient_id"] = recipient_id
+            response["affiliation_ids"] = affiliation_ids
+        
 
         if agent_data:
             agent_id = create_agent_wrap(
                 agent_data,
+                business_name,
                 user_id=user_id,
-                business_name=business_name
             )
 
-            response["agent_id"] = agent_id;
+            response["agent_id"] = agent_id
+        
+
+        if requester_data:
+            requester_id = create_requester_wrap(
+                requester_data,
+                business_name,
+                user_id=user_id
+            )
+            
+            response["requester_id"] = requester_id
+            
 
         # Respond with complex ids object
         return Response(response, status=status.HTTP_201_CREATED)

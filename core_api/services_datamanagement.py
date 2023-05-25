@@ -5,7 +5,7 @@ from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BusinessNotProvidedException
 from core_backend.serializers import AffiliationCreateSerializer, AgentCreateSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
     RecipientUpdateSerializer, \
-    UserCreateSerializer, UserUpdateSerializer
+    UserCreateSerializer, UserUpdateSerializer, RequesterCreateSerializer
 
 
 # Creation
@@ -55,6 +55,22 @@ def create_recipient_wrap(data, business_name, user_id):
 
     return recipient.id
 
+@transaction.atomic
+def create_requester_wrap(data, business_name, user_id):
+    if not business_name:
+        raise BusinessNotProvidedException
+    try:
+        data['user'] = user_id
+        serializer = RequesterCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        requester = serializer.create(business_name)
+
+    except ValidationError as exc:
+        raise ValidationError({
+            ApiSpecialKeys.REQUESTER_DATA: exc.detail,
+        })
+
+    return requester.id
 
 @transaction.atomic
 def create_affiliations_wrap(datalist, business_name, recipient_id):
