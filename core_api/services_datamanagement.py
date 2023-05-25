@@ -16,22 +16,6 @@ def create_user(data):
     user = serializer.create()
     return user.id
 
-@transaction.atomic
-def create_requester_wrap(data, business_name, user_id):
-    if not business_name:
-        raise BusinessNotProvidedException
-    try:
-        data['user'] = user_id
-        serializer = RequesterCreateSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        requester = serializer.create(business_name)
-
-    except ValidationError as exc:
-        raise ValidationError({
-            ApiSpecialKeys.REQUESTER_DATA: exc.detail,
-        })
-
-    return requester.id
 
 @transaction.atomic
 def create_agent_wrap(data, user_id, business_name):
@@ -71,6 +55,22 @@ def create_recipient_wrap(data, business_name, user_id):
 
     return recipient.id
 
+@transaction.atomic
+def create_requester_wrap(data, business_name, user_id):
+    if not business_name:
+        raise BusinessNotProvidedException
+    try:
+        data['user'] = user_id
+        serializer = RequesterCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        requester = serializer.create(business_name)
+
+    except ValidationError as exc:
+        raise ValidationError({
+            ApiSpecialKeys.REQUESTER_DATA: exc.detail,
+        })
+
+    return requester.id
 
 @transaction.atomic
 def create_affiliations_wrap(datalist, business_name, recipient_id):
