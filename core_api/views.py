@@ -13,9 +13,9 @@ from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_booking, create_events_wrap, create_recipient_wrap, create_user, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_booking, create_events_wrap, create_agent_wrap, create_recipient_wrap, create_user, \
     update_provider_wrap, update_recipient_wrap, \
-    update_user
+    update_user, create_requester_wrap
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
     ExtraQuerySet, Note, \
@@ -276,36 +276,61 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             "notes": [],
         })
 
+        agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA, None)
+
+        requester_data = request.data.pop(ApiSpecialKeys.REQUESTER_DATA, {
+            "companies": [],
+        })
+
         user_id = create_user(
             request.data
         )
 
-        if not recipient_data:
-            # Only create user
-            return Response({"user_id": user_id}, status=status.HTTP_201_CREATED)
+        response = {"user_id": user_id}
 
-        # Create recipient and affiliation
-        # Extract affiliation data before the serializer deals with it
-        affiliation_datalist = recipient_data.pop(ApiSpecialKeys.AFFILIATION_DATALIST, [{"company": None}])
+        if recipient_data:
+            # Create recipient and affiliation
+            # Extract affiliation data before the serializer deals with it
+            affiliation_datalist = recipient_data.pop(ApiSpecialKeys.AFFILIATION_DATALIST, [{"company": None}])
 
-        recipient_id = create_recipient_wrap(
-            recipient_data,
-            business_name,
-            user_id=user_id
-        )
+            recipient_id = create_recipient_wrap(
+                recipient_data,
+                business_name,
+                user_id=user_id
+            )
 
-        affiliation_ids = create_affiliations_wrap(
-            affiliation_datalist,
-            business_name,
-            recipient_id=recipient_id
-        )
+            affiliation_ids = create_affiliations_wrap(
+                affiliation_datalist,
+                business_name,
+                recipient_id=recipient_id
+            )
+
+            response["recipient_id"] = recipient_id
+            response["affiliation_ids"] = affiliation_ids
+        
+
+        if agent_data:
+            agent_id = create_agent_wrap(
+                agent_data,
+                business_name,
+                user_id=user_id,
+            )
+
+            response["agent_id"] = agent_id
+        
+
+        if requester_data:
+            requester_id = create_requester_wrap(
+                requester_data,
+                business_name,
+                user_id=user_id
+            )
+            
+            response["requester_id"] = requester_id
+            
 
         # Respond with complex ids object
-        return Response({
-            "user_id": user_id,
-            "recipient_id": recipient_id,
-            "affiliation_ids": affiliation_ids,
-        }, status=status.HTTP_201_CREATED)
+        return Response(response, status=status.HTTP_201_CREATED)
 
     @staticmethod
     @transaction.atomic

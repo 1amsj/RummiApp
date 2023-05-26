@@ -1063,6 +1063,20 @@ class RequesterSerializer(user_subtype_serializer(Requester)):
                 )
         )
 
+class RequesterCreateSerializer(generic_serializer(Requester)):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
+
+    def create(self, business_name, validated_data=None):
+        data = validated_data or self.validated_data
+        companies = data.pop('companies', [])
+
+        requester = Requester.objects.create(**data)
+        if companies:
+            requester.categories.add(*companies)
+
+        return requester
+
 
 BusinessSerializer = generic_serializer(Business)
 
