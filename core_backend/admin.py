@@ -97,7 +97,7 @@ basic_register(Category)
 basic_register(Service, extendable=True)
 basic_register(ServiceRoot, admin_inlines=[stacked_inline(Service, extendable=True)])
 basic_register(Booking, extendable=True, admin_inlines=[stacked_inline(Ledger), stacked_inline(Expense, extendable=True), stacked_inline(Event, extendable=True)])
-basic_register(Event, historical=True)
+basic_register(Event, extendable=True, historical=True)
 basic_register(Expense, historical=True)
 
 basic_register(Extra, historical=True)

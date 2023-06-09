@@ -13,7 +13,8 @@ from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_recipient_wrap, create_user, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_event, \
+    create_payer_wrap, create_recipient_wrap, create_user, handle_events_bulk, update_event, \
     update_provider_wrap, update_recipient_wrap, \
     update_user, create_requester_wrap
 from core_backend.datastructures import QueryParams
@@ -27,7 +28,6 @@ from core_backend.models import Affiliation, Agent, Booking, Business, Category,
 from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
     AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
     CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanySerializerWithRoles, CompanyUpdateSerializer, \
-    EventCreateSerializer, \
     EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, \
     NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
@@ -127,8 +127,11 @@ def test_end_point(request):
 
 @api_view(['GET'])
 def get_version(request):
-    with open(VERSION_FILE_DIR, 'r') as f:
-        return Response(f.readline().strip('\n'))
+    try:
+        with open(VERSION_FILE_DIR, 'r') as f:
+            return Response(f.readline().strip('\n'))
+    except FileNotFoundError:
+        return Response("unknown")
 
 
 @api_view(['GET'])
@@ -270,13 +273,18 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         respectively
         """
         # Create user
-        # Extract recipient data before the serializer deals with it
+        # Extract roles data before the serializer deals with it
+        agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA, None)
+
+        payer_data = request.data.pop(ApiSpecialKeys.PAYER_DATA, {
+            "companies": [],
+            "method": '',
+        })
+
         recipient_data = request.data.pop(ApiSpecialKeys.RECIPIENT_DATA, {
             "companies": [],
             "notes": [],
         })
-
-        agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA, None)
 
         requester_data = request.data.pop(ApiSpecialKeys.REQUESTER_DATA, {
             "companies": [],
@@ -287,6 +295,23 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         )
 
         response = {"user_id": user_id}
+
+        if agent_data:
+            agent_id = create_agent_wrap(
+                agent_data,
+                business_name,
+                user_id=user_id,
+            )
+
+            response["agent_id"] = agent_id
+
+        if payer_data:
+            payer_id = create_payer_wrap(
+                payer_data,
+                user_id=user_id,
+            )
+
+            response["payer_id"] = payer_id
 
         if recipient_data:
             # Create recipient and affiliation
@@ -307,17 +332,6 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
             response["recipient_id"] = recipient_id
             response["affiliation_ids"] = affiliation_ids
-        
-
-        if agent_data:
-            agent_id = create_agent_wrap(
-                agent_data,
-                business_name,
-                user_id=user_id,
-            )
-
-            response["agent_id"] = agent_id
-        
 
         if requester_data:
             requester_id = create_requester_wrap(
@@ -325,9 +339,9 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
                 business_name,
                 user_id=user_id
             )
-            
+
             response["requester_id"] = requester_id
-            
+
 
         # Respond with complex ids object
         return Response(response, status=status.HTTP_201_CREATED)
@@ -715,34 +729,54 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_key_error
-    def post(request):
+    def post(request, business_name=None):
+        """
+        Create a new event.
+        If the payload is an array of objects, the events will be created/updated depending on whether they provide
+        their ID or not
+        """
         data = request.data
-        if not data.get('requester'):
-            user: User = request.user
-            data['requester'] = user.as_requester.id if user.is_requester else None
+        user: User = request.user
+        requester_id = user.as_requester.id if user.is_requester else None
 
-        serializer = EventCreateSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        event_id = serializer.create()
+        if type(data) is list:
+            # Create, update or delete events in bulk
+            event_ids = handle_events_bulk(
+                data,
+                business_name,
+                requester_id
+            )
+            return Response(event_ids, status=status.HTTP_201_CREATED)
+
+        # Create a single event
+        event_id = create_event(
+            data,
+            business_name,
+            requester_id
+        )
+
         return Response(event_id, status=status.HTTP_201_CREATED)
 
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(Event)
     def put(request, event_id=None):
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         event = Event.objects.get(id=event_id)
-        serializer = EventCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.update(event)
+
+        update_event(
+            request.data,
+            business_name,
+            event_instance=event,
+        )
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(Event)
     def delete(request, event_id=None):
-        event = Event.objects.get(id=event_id)
-        event.is_deleted = True
-        event.save()
+        Event.objects.get(id=event_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
