@@ -526,7 +526,7 @@ class Event(HistoricalModel, SoftDeletableModel):
     end_at = models.DateTimeField(_('end date and time'))
     arrive_at = models.DateTimeField(_('arrival date and time'), null=True, blank=True)
     observations = models.CharField(_('observations'), max_length=256, blank=True)
-    description = models.CharField(_('types of appointments'), max_length=256)
+    description = models.CharField(_('types of appointments'), max_length=256, null=True, blank=True)
 
     class Meta:
         verbose_name = _('event')
