@@ -510,6 +510,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
         self.events.all().delete()
         self.expenses.all().delete()
         self.notes.all().delete()
+        self.offers.all().delete()
 
 
 class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
@@ -602,3 +603,19 @@ class Note(SoftDeletableModel):
     class Meta:
         verbose_name = _('note')
         verbose_name_plural = _('notes')
+
+
+class Offer(ExtendableModel, SoftDeletableModel):
+    class Status(models.TextChoices):
+        ACCEPTED = 'ACCEPTED', _('Accepted')
+        OFFERED = 'OFFERED', _('Offered')
+        REJECTED = 'REJECTED', _('Rejected')
+        NOT_AVAILABLE = 'NOT_AVAILABLE', _('Not Available')
+
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.OFFERED)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='offers')
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='offers')
+
+    class Meta:
+        verbose_name = _('offer')
+        verbose_name_plural = _('offers')
