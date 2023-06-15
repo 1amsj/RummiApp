@@ -7,12 +7,16 @@ class ApiSpecialKeys(str, Enum):
     INCLUDE_EVENTS = '_include_events'
     INCLUDE_ROLES = '_include_roles'
 
+    # Flags
+    DELETED_FLAG = '_deleted'
+
     # Appended data
     BUSINESS = '_business'
     AFFILIATION_DATALIST = '_affiliation_datalist'
+    AGENT_DATA = '_agent_data'
+    PAYER_DATA = '_payer_data'
     PROVIDER_DATA = '_provider_data'
     RECIPIENT_DATA = '_recipient_data'
-    AGENT_DATA = '_agent_data'
     REQUESTER_DATA = '_requester_data'
 
 

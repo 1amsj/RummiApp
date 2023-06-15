@@ -309,7 +309,7 @@ class Payer(HistoricalModel, SoftDeletableModel):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
     companies = models.ManyToManyField(Company, related_name='payers')
-    method = models.CharField(_('paying method'), max_length=64)
+    method = models.CharField(_('paying method'), max_length=64, blank=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
@@ -512,12 +512,13 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
         self.notes.all().delete()
 
 
-class Event(HistoricalModel, SoftDeletableModel):
+class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
     agents = models.ManyToManyField(Agent, related_name='events')
     payer = models.ForeignKey(Payer, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
+    payer_company = models.ForeignKey(Company, on_delete=models.PROTECT, null=True, blank=True, related_name='events_as_payer')
     requester = models.ForeignKey(Requester, on_delete=models.PROTECT, related_name='events')
 
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
