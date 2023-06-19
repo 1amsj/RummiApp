@@ -753,6 +753,7 @@ class PayerCreateSerializer(PayerSerializer):
 
 class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
     bookings = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all(), many=True)
+    categories = CategorySerializer(many=True)
     services = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all(), many=True)
 
     class Meta:
@@ -771,6 +772,10 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
                         queryset=Booking.objects.all().not_deleted('business'),
                     ),
                     Prefetch(
+                        'categories',
+                        queryset=CategorySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
                         'services',
                         queryset=Service.objects.all().not_deleted('business'),
                     ),
@@ -779,7 +784,6 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
 
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
-    categories = CategorySerializer(many=True)
     root = ServiceRootBaseSerializer(required=False)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()
@@ -789,7 +793,7 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
         fields = '__all__'
 
     def validate(self, data: dict):
-        if (data.get('bill_amount') < 0):
+        if data.get('bill_amount') < 0:
             raise serializers.ValidationError(_('Bill amount could not be negative'))
 
         return super(ServiceNoProviderSerializer, self).validate(data)
@@ -801,10 +805,6 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
                 .all()
                 .not_deleted('business')
                 .prefetch_related(
-                    Prefetch(
-                        'categories',
-                        queryset=CategorySerializer.get_default_queryset(),
-                    ),
                     Prefetch(
                         'extra',
                         queryset=ExtraAttrSerializer.get_default_queryset(),
