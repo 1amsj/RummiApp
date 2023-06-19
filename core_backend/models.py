@@ -607,12 +607,15 @@ class Note(SoftDeletableModel):
 
 class Offer(ExtendableModel, SoftDeletableModel):
     class Status(models.TextChoices):
-        ACCEPTED = 'ACCEPTED', _('Accepted')
-        OFFERED = 'OFFERED', _('Offered')
-        REJECTED = 'REJECTED', _('Rejected')
+        REQUESTED = 'REQUESTED', _('Requested')
+        AVAILABLE = 'AVAILABLE', _('Available')
         NOT_AVAILABLE = 'NOT_AVAILABLE', _('Not Available')
+        PENDING_OFFER = 'PENDING_OFFER', _('Pending Offer')
+        ACCEPTED = 'ACCEPTED', _('Accepted')
+        REJECTED = 'REJECTED', _('Rejected')
 
-    status = models.CharField(max_length=32, choices=Status.choices, default=Status.OFFERED)
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.REQUESTED)
+    last_status_change = models.DateTimeField(auto_now=True)
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='offers')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='offers')
 
