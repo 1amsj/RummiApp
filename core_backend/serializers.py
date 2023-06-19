@@ -7,8 +7,8 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
-    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Note, Operator, Payer, Provider, Recipient, Requester, \
-    Service, ServiceRoot, SoftDeletableModel, SoftDeletionQuerySet, User, Status
+    Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Note, Offer, Operator, Payer, Provider, Recipient, Requester, \
+    Service, ServiceRoot, SoftDeletableModel, SoftDeletionQuerySet, User
 from core_backend.services import assert_extendable, fetch_updated_from_validated_data, get_model_field_names, \
     is_extendable, manage_extra_attrs, sync_m2m, user_sync_email_with_contact
 
@@ -1152,7 +1152,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     operators = OperatorSerializer(many=True)
     services = ServiceSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
-    offers = OfferSerializer(many=True, default=[])
+    offers = serializers.PrimaryKeyRelatedField(many=True, queryset=Offer.objects.all(), default=[])
     service_root = ServiceRootBaseSerializer(allow_null=True)
 
     class Meta:
@@ -1173,6 +1173,10 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
                     Prefetch(
                         'companies',
                         queryset= CompanySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'offers',
+                        queryset=OfferSerializer.get_default_queryset(),
                     ),
                     Prefetch(
                         'notes',

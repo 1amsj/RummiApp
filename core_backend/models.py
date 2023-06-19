@@ -604,7 +604,7 @@ class Note(SoftDeletableModel):
         verbose_name_plural = _('notes')
 
 
-class Offer(ExtendableModel, SoftDeletableModel):
+class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Status(models.TextChoices):
         REQUESTED = 'REQUESTED', _('Requested')
         AVAILABLE = 'AVAILABLE', _('Available')
@@ -614,7 +614,7 @@ class Offer(ExtendableModel, SoftDeletableModel):
         REJECTED = 'REJECTED', _('Rejected')
 
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.REQUESTED)
-    last_status_change = models.DateTimeField(auto_now=True)
+    last_updated_at = models.DateTimeField(auto_now=True)
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='offers')
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='offers')
 
