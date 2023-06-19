@@ -424,16 +424,14 @@ class Category(SoftDeletableModel):
     def __str__(self):
         return self.name
 
-    @property
-    def has_services(self):
-        return hasattr(self, 'services') and self.services is not None
-
     def delete_related(self):
         pass
 
 
 class ServiceRoot(SoftDeletableModel):
-    name = models.CharField(_('name'), max_length=128)
+    categories = models.ManyToManyField(Category, related_name='roots', blank=True)
+    description = models.TextField(_('description'), blank=True, default='')
+    name = models.TextField(_('name'))
 
     class Meta:
         verbose_name = _('service root')
@@ -447,6 +445,8 @@ class ServiceRoot(SoftDeletableModel):
         return hasattr(self, 'services') and self.services is not None
 
     def delete_related(self):
+        self.categories.all().delete()
+
         if self.has_services:
             self.services.all().delete()
 
@@ -460,7 +460,6 @@ class Service(ExtendableModel, SoftDeletableModel):
         QUANTITY = 'QUANTITY', _('Quantity')
 
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
-    categories = models.ManyToManyField(Category, related_name='services', blank=True)
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
     root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='services')
     bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
