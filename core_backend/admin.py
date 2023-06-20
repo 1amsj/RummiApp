@@ -3,7 +3,7 @@ from typing import Type
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
-from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline
+from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from simple_history.admin import SimpleHistoryAdmin
 
 from core_backend.models import *
@@ -48,7 +48,6 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin, SimpleHistoryAdmin):
 
     def delete_model(self, request, obj):
         obj.hard_delete()
-
 
 
 def stacked_inline(inline_model: Type[models.Model], extendable=False):
