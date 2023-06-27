@@ -924,7 +924,6 @@ class ServiceRootNoBookingSerializer(ServiceRootBaseSerializer):
 class ServiceCreateSerializer(ServiceNoProviderSerializer):
     business = BusinessField()
     # TODO Review categories on service
-    # categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
     provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
     root = serializers.PrimaryKeyRelatedField(queryset=ServiceRoot.objects.all(), required=False)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
