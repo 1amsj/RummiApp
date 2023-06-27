@@ -59,6 +59,7 @@ urlpatterns = [
     *path_optional('expenses/', '<id:expense_id>', views.ManageExpenses.as_view(), name='manage_expenses'),
     *path_optional('services/', '<str:business_name>', views.ManageService.as_view(), name='manage_services'),
     path('service_roots/', views.ManageServiceRoot.as_view(), name='manage_service_roots'),
+    path('offers/', views.ManageOffers.as_view(), name='manage_offers'),
 
     path('search/', views.search_bookings, name='search'),
 

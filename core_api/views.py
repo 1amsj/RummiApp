@@ -19,7 +19,7 @@ from core_api.services_datamanagement import create_affiliations_wrap, create_ag
     update_user, create_requester_wrap
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
-    ExtraQuerySet, Note, \
+    ExtraQuerySet, Note, Offer, \
     Operator, \
     Payer, \
     Provider, \
@@ -31,7 +31,7 @@ from core_backend.serializers import AffiliationCreateSerializer, AffiliationSer
     EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, \
     NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
-    RecipientSerializer, \
+    RecipientSerializer, OfferSerializer, OfferCreateSerializer, \
     RecipientUpdateSerializer, RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, \
     ServiceSerializer, \
     UserCreateSerializer, UserSerializer
@@ -990,3 +990,37 @@ class ManageNote(basic_view_manager(Note, NoteSerializer)):
         serializer.is_valid(raise_exception=True)
         note_id = serializer.create()
         return Response(note_id, status=status.HTTP_201_CREATED)
+
+
+class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
+    @classmethod
+    def get(cls, request):
+        query_params = prepare_query_params(request.GET)
+
+        serializer = OfferSerializer
+
+        queryset = serializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+    
+    @staticmethod
+    def post(request, business_name=None):
+        data = request.data
+        user: User = request.user
+        data['owner'] = user
+        serializer = OfferCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        offer_id = serializer.create(business_name)
+        return Response(offer_id, status=status.HTTP_201_CREATED)
+    
+    @staticmethod
+    def put(request, offer_id=None, business_name=None):
+        offer = Offer.objects.get(id=offer_id)
+        serializer = OfferCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(offer, business_name)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    

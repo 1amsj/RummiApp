@@ -1428,3 +1428,30 @@ class OfferSerializer(BaseSerializer):
         model = Offer
         fields = '__all__'
 
+
+class OfferCreateSerializer(extendable_serializer(Offer)):
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
+    provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
+
+    class Meta:
+        model = Offer
+        fields = '__all__'
+
+    def create(self, business, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+
+        offer = Offer.objects.create(**data)
+        manage_extra_attrs(business, offer, extras)
+
+        return offer.id
+
+    def update(self, instance: Offer, business, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        manage_extra_attrs(business, instance, extras)
