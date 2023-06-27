@@ -785,8 +785,8 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     root = ServiceRootBaseSerializer(required=False)
-    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
-    bill_rate = serializers.IntegerField()
+    bill_rate = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_amount = serializers.IntegerField()
 
     class Meta:
         model = Service
@@ -923,7 +923,6 @@ class ServiceRootNoBookingSerializer(ServiceRootBaseSerializer):
 
 class ServiceCreateSerializer(ServiceNoProviderSerializer):
     business = BusinessField()
-    categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
     provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
     root = serializers.PrimaryKeyRelatedField(queryset=ServiceRoot.objects.all(), required=False)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
