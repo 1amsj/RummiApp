@@ -152,6 +152,11 @@ class Extra(SoftDeletableModel):
 
 
 class Contact(SoftDeletableModel, HistoricalModel):
+    class Via(models.TextChoices):
+        EMAIL = 'email', _('email')
+        PHONE = 'phone', _('phone')
+        FAX = 'fax', _('fax')
+
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
@@ -603,3 +608,26 @@ class Note(SoftDeletableModel):
     class Meta:
         verbose_name = _('note')
         verbose_name_plural = _('notes')
+
+
+class Authorization(ExtendableModel, HistoricalModel, SoftDeletableModel):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', _('Pending')
+        ACCEPTED = 'ACCEPTED', _('Accepted')
+        REJECTED = 'REJECTED', _('Rejected')
+        REFERRED = 'REFERRED', _('Referred')
+
+    authorizer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='authorizations')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='authorizations')
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='authorizations')
+    contact_via = models.CharField(max_length=32, choices=Contact.Via.choices)
+    events = models.ManyToManyField(Event, related_name='authorizations')
+    last_updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING)
+
+    class Meta:
+        verbose_name = _('authorization')
+        verbose_name_plural = _('authorizations')
+
+    def __str__(self):
+        return F'{self.id} - {list(self.events.all().values_list("id", flat=True))} - {self.authorizer} - {self.company} - {self.status}'
