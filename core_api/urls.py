@@ -52,6 +52,7 @@ urlpatterns = [
     path('notes/', views.ManageNote.as_view(), name='manage_notes'),
     
     *path_optional('affiliations/', '<str:business_name>', views.ManageAffiliations.as_view(), name='manage_affiliations'),
+    *path_optional('authorizations/', '<id:authorization_id>', views.ManageAuthorizations.as_view(), name='manage_authorizations'),
     *path_optionals_xor('bookings/', ['<id:booking_id>', '<str:business_name>'], views.ManageBooking.as_view(), name='manage_booking'),
     *path_optional('categories/', '<id:category_id>', views.ManageCategories.as_view(), name='manage_categories'),
     *path_optional('companies/', '<id:company_id>', views.ManageCompany.as_view(), name='manage_companies'),

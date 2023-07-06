@@ -2,6 +2,10 @@ from enum import Enum
 
 # API special payload keys
 class ApiSpecialKeys(str, Enum):
+    # Querying
+    EVENTS_QUERY = '_events_query'
+    PATCH_QUERY = '_query'
+
     # Includes
     INCLUDE_BOOKING = '_include_booking'
     INCLUDE_EVENTS = '_include_events'

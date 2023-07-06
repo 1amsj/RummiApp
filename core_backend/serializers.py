@@ -6,7 +6,7 @@ from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
     Expense, ExtendableModel, Extra, Invoice, Ledger, Location, Note, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot, SoftDeletableModel, SoftDeletionQuerySet, User
 from core_backend.services import assert_extendable, fetch_updated_from_validated_data, get_model_field_names, \
@@ -245,6 +245,69 @@ class NoteCreateSerializer(NoteSerializer):
         note = Note.objects.create(**data)
 
         return note.id
+
+
+class AuthorizationBaseSerializer(BaseSerializer):
+    authorizer = serializers.PrimaryKeyRelatedField(queryset=Payer.objects.all().not_deleted())
+    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all().not_deleted())
+    contact = serializers.PrimaryKeyRelatedField(queryset=Contact.objects.all().not_deleted())
+    events = serializers.PrimaryKeyRelatedField(many=True, queryset=Event.objects.all().not_deleted())
+
+    class Meta:
+        model = Authorization
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Authorization.objects
+                .all()
+                .not_deleted()
+                .prefetch_related(
+                    Prefetch(
+                        'authorizer',
+                        queryset=Payer.objects.all().not_deleted(),
+                    ),
+                    Prefetch(
+                        'company',
+                        queryset=Company.objects.all().not_deleted(),
+                    ),
+                    Prefetch(
+                        'contact',
+                        queryset=Contact.objects.all().not_deleted(),
+                    ),
+                    Prefetch(
+                        'events',
+                        queryset=Event.objects.all().not_deleted(),
+                    ),
+                )
+        )
+
+
+class AuthorizationCreateSerializer(AuthorizationBaseSerializer):
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        events_data = data.pop('events', None)
+
+        authorization = Authorization.objects.create(**data)
+
+        if events_data is not None:
+            authorization.events.set(events_data)
+
+        return authorization.id
+
+
+class AuthorizationUpdateSerializer(AuthorizationBaseSerializer):
+    def update(self, instance: Authorization, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        events_data = data.pop('events', None)
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        if events_data is not None:
+            instance.events.set(events_data)
 
 
 # User serializers
@@ -1203,6 +1266,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
 class EventNoBookingSerializer(extendable_serializer(Event)):
     affiliates = AffiliationSerializer(many=True)
     agents = AgentSerializer(many=True)
+    authorizations = AuthorizationBaseSerializer(many=True)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
     payer = PayerSerializer(required=False)
     payer_company = CompanySerializer(required=False)
@@ -1222,6 +1286,10 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
                     Prefetch(
                         'affiliates',
                         queryset=AffiliationSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'authorizations',
+                        queryset=AuthorizationBaseSerializer.get_default_queryset(),
                     ),
                     Prefetch(
                         'agents',
@@ -1388,6 +1456,31 @@ class EventCreateSerializer(extendable_serializer(Event)):
         manage_extra_attrs(business, instance, extras)
 
 
+class EventPatchSerializer(EventCreateSerializer):
+     def __init__(self, *args, **kwargs):
+        kwargs['partial'] = True
+        super(EventPatchSerializer, self).__init__(*args, **kwargs)
+
+     def patch(self, instance: Event, business, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        affiliates = data.pop('affiliates', None)
+        agents = data.pop('agents', None)
+        extras = data.pop('extra', None)
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        if affiliates is not None:
+            sync_m2m(instance.affiliates, affiliates)
+
+        if agents is not None:
+            sync_m2m(instance.agents, agents)
+
+        if extras is not None:
+            manage_extra_attrs(business, instance, extras)
+
+
 InvoiceSerializer = generic_serializer(Invoice)
 
 
@@ -1412,3 +1505,40 @@ class CompanySerializerWithRoles(CompanySerializer):
     class Meta:
         model = Company
         fields = '__all__'
+
+
+class AuthorizationSerializer(BaseSerializer):
+    authorizer = PayerSerializer()
+    company = CompanySerializer()
+    contact = ContactSerializer()
+    events = EventSerializer(many=True)
+
+    class Meta:
+        model = Authorization
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Authorization.objects
+                .all()
+                .not_deleted()
+                .prefetch_related(
+                    Prefetch(
+                        'authorizer',
+                        queryset=PayerSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'company',
+                        queryset=CompanySerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'contact',
+                        queryset=ContactSerializer.get_default_queryset(),
+                    ),
+                    Prefetch(
+                        'events',
+                        queryset=EventSerializer.get_default_queryset(),
+                    ),
+                )
+        )
