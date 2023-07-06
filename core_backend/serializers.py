@@ -250,7 +250,7 @@ class NoteCreateSerializer(NoteSerializer):
 class AuthorizationBaseSerializer(BaseSerializer):
     authorizer = serializers.PrimaryKeyRelatedField(queryset=Payer.objects.all().not_deleted())
     company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all().not_deleted())
-    contact = serializers.PrimaryKeyRelatedField(queryset=Contact.objects.all().not_deleted())
+    contact = serializers.PrimaryKeyRelatedField(required=False, queryset=Contact.objects.all().not_deleted())
     events = serializers.PrimaryKeyRelatedField(many=True, queryset=Event.objects.all().not_deleted())
 
     class Meta:
