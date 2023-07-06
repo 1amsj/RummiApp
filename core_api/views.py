@@ -145,21 +145,21 @@ def search_bookings(request):
     if last_name := request.GET.get('last_name'):
         person_query = person_query and Q(last_name__icontains=last_name)
 
-    eligible_users = UserSerializer.get_default_queryset.filter(person_query)
-    eligible_services = ServiceSerializer.get_default_queryset.filter(
+    eligible_users = UserSerializer.get_default_queryset(person_query)
+    eligible_services = ServiceSerializer.get_default_queryset(
         is_deleted=False,
         provider__user__in=eligible_users,
     )
-    eligible_affiliations = AffiliationSerializer.get_default_queryset.filter(
+    eligible_affiliations = AffiliationSerializer.get_default_queryset(
         is_deleted=False,
         recipient__user__in=eligible_users,
     )
-    eligible_events = EventSerializer.get_default_queryset.filter(
+    eligible_events = EventSerializer.get_default_queryset(
         is_deleted=False,
         affiliates__in=eligible_affiliations,
     )
 
-    queryset = BookingSerializer.get_default_queryset.filter(
+    queryset = BookingSerializer.get_default_queryset(
         is_deleted=False,
         services__in=eligible_services,
         events__in=eligible_events,
