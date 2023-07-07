@@ -152,6 +152,11 @@ class Extra(SoftDeletableModel):
 
 
 class Contact(SoftDeletableModel, HistoricalModel):
+    class Via(models.TextChoices):
+        EMAIL = 'email', _('email')
+        PHONE = 'phone', _('phone')
+        FAX = 'fax', _('fax')
+
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
@@ -525,7 +530,9 @@ class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
     meeting_url = models.URLField(_('meeting URL'), null=True, blank=True)
     start_at = models.DateTimeField(_('start date and time'))
     end_at = models.DateTimeField(_('end date and time'))
+    arrive_at = models.DateTimeField(_('arrival date and time'), null=True, blank=True)
     observations = models.CharField(_('observations'), max_length=256, blank=True)
+    description = models.CharField(_('description'), max_length=256, null=True, blank=True)
 
     class Meta:
         verbose_name = _('event')
@@ -604,6 +611,30 @@ class Note(SoftDeletableModel):
         verbose_name_plural = _('notes')
 
 
+class Authorization(ExtendableModel, HistoricalModel, SoftDeletableModel):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', _('Pending')
+        ACCEPTED = 'ACCEPTED', _('Accepted')
+        REJECTED = 'REJECTED', _('Rejected')
+        REFERRED = 'REFERRED', _('Referred')
+        OVERRIDE = 'OVERRIDE', _('Override')
+
+    authorizer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='authorizations')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='authorizations')
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, blank=True, null=True, related_name='authorizations')
+    contact_via = models.CharField(max_length=32, choices=Contact.Via.choices, blank=True, null=True)
+    events = models.ManyToManyField(Event, related_name='authorizations')
+    last_updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING)
+
+    class Meta:
+        verbose_name = _('authorization')
+        verbose_name_plural = _('authorizations')
+
+    def __str__(self):
+        return F'{self.id} - {list(self.events.all().values_list("id", flat=True))} - {self.authorizer} - {self.company} - {self.status}'
+
+
 class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Status(models.TextChoices):
         REQUESTED = 'REQUESTED', _('Requested')
@@ -621,3 +652,4 @@ class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Meta:
         verbose_name = _('offer')
         verbose_name_plural = _('offers')
+

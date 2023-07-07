@@ -11,6 +11,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
+from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_event, \
@@ -18,17 +19,23 @@ from core_api.services_datamanagement import create_affiliations_wrap, create_ag
     update_provider_wrap, update_recipient_wrap, \
     update_user, create_requester_wrap
 from core_backend.datastructures import QueryParams
-from core_backend.models import Affiliation, Agent, Booking, Business, Category, Company, Contact, Event, Expense, \
-    ExtraQuerySet, Note, Offer, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
+    Expense, ExtraQuerySet, Note, Offer, \
     Operator, \
     Payer, \
     Provider, \
     Recipient, \
     Requester, Service, ServiceRoot, User
 from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
-    AgentSerializer, BookingCreateSerializer, BookingNoEventsSerializer, BookingSerializer, CategoryCreateSerializer, \
+    AgentSerializer, AuthorizationBaseSerializer, AuthorizationCreateSerializer, \
+    AuthorizationSerializer, \
+    AuthorizationUpdateSerializer, \
+    BookingCreateSerializer, \
+    BookingNoEventsSerializer, BookingSerializer, \
+    CategoryCreateSerializer, \
     CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanySerializerWithRoles, CompanyUpdateSerializer, \
-    EventNoBookingSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, NoteCreateSerializer, \
+    EventNoBookingSerializer, EventPatchSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
+    NoteCreateSerializer, \
     NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
     RecipientSerializer, OfferSerializer, OfferCreateSerializer, \
@@ -49,6 +56,7 @@ def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
             return (method == 'GET' and user.has_perm(F'core_api.view_{model_name}')) \
                 or (method == 'POST' and user.has_perm(F'core_api.add_{model_name}')) \
                 or (method == 'PUT' and user.has_perm(F'core_api.change_{model_name}')) \
+                or (method == 'PATCH' and user.has_perm(F'core_api.change_{model_name}')) \
                 or (method == 'DELETE' and user.has_perm(F'core_api.delete_{model_name}'))
 
     return CanManageModel
@@ -145,21 +153,21 @@ def search_bookings(request):
     if last_name := request.GET.get('last_name'):
         person_query = person_query and Q(last_name__icontains=last_name)
 
-    eligible_users = User.objects.filter(person_query)
-    eligible_services = Service.objects.filter(
+    eligible_users = UserSerializer.get_default_queryset.filter(person_query)
+    eligible_services = ServiceSerializer.get_default_queryset.filter(
         is_deleted=False,
         provider__user__in=eligible_users,
     )
-    eligible_affiliations = Affiliation.objects.filter(
+    eligible_affiliations = AffiliationSerializer.get_default_queryset.filter(
         is_deleted=False,
         recipient__user__in=eligible_users,
     )
-    eligible_events = Event.objects.filter(
+    eligible_events = EventSerializer.get_default_queryset.filter(
         is_deleted=False,
         affiliates__in=eligible_affiliations,
     )
 
-    queryset = Booking.objects.filter(
+    queryset = BookingSerializer.get_default_queryset.filter(
         is_deleted=False,
         services__in=eligible_services,
         events__in=eligible_events,
@@ -196,7 +204,7 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
 
             queryset = cls.apply_nested_filters(queryset, nested_params)
 
-            return queryset
+            return queryset.distinct()
 
         @classmethod
         def filter_related_per_deleted(cls, queryset: QuerySet[model]):
@@ -772,6 +780,31 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @classmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def patch(cls, request, business_name=None):
+        data = request.data
+
+        # Extract query keys
+        try:
+            patch_query = data.pop(ApiSpecialKeys.PATCH_QUERY)
+        except KeyError:
+            raise BadRequestException('Missing patch query')
+
+        # Get target queryset
+        query_params = prepare_query_params(patch_query)
+        queryset = EventSerializer.get_default_queryset()
+        queryset = cls.apply_filters(queryset, query_params)
+
+        # Apply patch to each event
+        for event in queryset:
+            serializer = EventPatchSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.patch(event, business_name)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(Event)
@@ -992,6 +1025,79 @@ class ManageNote(basic_view_manager(Note, NoteSerializer)):
         return Response(note_id, status=status.HTTP_201_CREATED)
 
 
+class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSerializer)):
+    @staticmethod
+    def apply_nested_filters(queryset, nested_params):
+        # Only supports filtering by event and its extras
+
+        if nested_params.is_empty():
+            return queryset
+
+        event_params, extra_params, _ = filter_params(Event, nested_params.get('events', {}))
+        if not event_params.is_empty():
+            queryset = queryset.filter(**event_params.to_dict('events__'))
+
+        if not extra_params.is_empty():
+            queryset = queryset.filter_by_extra(related_prefix='events__', **extra_params.to_dict())
+
+        return queryset
+
+    @classmethod
+    @expect_does_not_exist(Authorization)
+    def get(cls, request, authorization_id=None):
+        if authorization_id:
+            authorization = AuthorizationSerializer.get_default_queryset().get(id=authorization_id)
+            serialized = AuthorizationSerializer(authorization)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = AuthorizationSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = AuthorizationSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        events_query = data.pop(ApiSpecialKeys.EVENTS_QUERY, None)
+
+        if events_query:
+            # If events query is present, fetch from a query which events to relate to the authorization
+            #  using the same method ManageEvents uses
+            query_params = prepare_query_params(events_query)
+            queryset = EventSerializer.get_default_queryset()
+            queryset = ManageEvents.apply_filters(queryset, query_params)
+
+            data['events'] = queryset.values_list('id', flat=True)
+
+        serializer = AuthorizationCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        authorization_id = serializer.create()
+        return Response(authorization_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Authorization)
+    def put(request, authorization_id=None):
+        authorization = Authorization.objects.get(id=authorization_id)
+        serializer = AuthorizationUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(authorization)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Authorization)
+    def delete(request, authorization_id=None):
+        Authorization.objects.get(id=authorization_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
     @classmethod
     def get(cls, request):
@@ -1023,4 +1129,3 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
         serializer.is_valid(raise_exception=True)
         serializer.update(offer, business_name)
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
