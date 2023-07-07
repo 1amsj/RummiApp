@@ -782,6 +782,12 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
                 )
         )
 
+class ServiceRootCreateSerializer(generic_serializer(ServiceRoot)):
+
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        service_root = ServiceRoot.objects.create(**data)
+        return service_root.id
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     root = ServiceRootBaseSerializer(required=False)

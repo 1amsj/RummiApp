@@ -32,7 +32,7 @@ from core_backend.serializers import AffiliationCreateSerializer, AffiliationSer
     NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
     RecipientSerializer, \
-    RecipientUpdateSerializer, RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, \
+    RecipientUpdateSerializer, RequesterSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, ServiceRootNoBookingSerializer, \
     ServiceSerializer, \
     UserCreateSerializer, UserSerializer
 from core_backend.services import filter_params, is_extendable
@@ -965,6 +965,14 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSeri
 
         serialized = ServiceRootNoBookingSerializer(queryset, many=True)
         return Response(serialized.data)
+    
+    @staticmethod
+    def post(request):
+        data = request.data
+        serializer = ServiceRootCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        service_id = serializer.create()
+        return Response(service_id, status=status.HTTP_201_CREATED)
 
 
 class ManageNote(basic_view_manager(Note, NoteSerializer)):
