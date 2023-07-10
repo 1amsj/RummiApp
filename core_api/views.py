@@ -15,9 +15,8 @@ from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_event, \
-    create_payer_wrap, create_recipient_wrap, create_user, handle_events_bulk, update_event, \
-    update_provider_wrap, update_recipient_wrap, \
-    update_user, create_requester_wrap
+    create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event, \
+    update_provider_wrap, update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
     Expense, \
@@ -27,22 +26,20 @@ from core_backend.models import Affiliation, Agent, Authorization, Booking, Busi
     Provider, \
     Recipient, \
     Requester, Service, ServiceRoot, User
-from core_backend.serializers import AffiliationCreateSerializer, AffiliationSerializer, AgentCreateSerializer, \
-    AgentSerializer, AuthorizationBaseSerializer, AuthorizationCreateSerializer, \
-    AuthorizationSerializer, \
-    AuthorizationUpdateSerializer, \
-    BookingCreateSerializer, \
-    BookingNoEventsSerializer, BookingSerializer, \
-    CategoryCreateSerializer, \
-    CategorySerializer, CompanyCreateSerializer, CompanySerializer, CompanySerializerWithRoles, CompanyUpdateSerializer, \
-    EventNoBookingSerializer, EventPatchSerializer, EventSerializer, ExpenseCreateSerializer, ExpenseSerializer, \
-    NoteCreateSerializer, \
-    NoteSerializer, OperatorSerializer, \
-    PayerCreateSerializer, PayerSerializer, ProviderSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
-    RecipientSerializer, \
-    RecipientUpdateSerializer, RequesterSerializer, ServiceCreateSerializer, ServiceRootNoBookingSerializer, \
-    ServiceSerializer, \
-    UserCreateSerializer, UserSerializer
+from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
+    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
+    CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
+    ExpenseSerializer, NoteSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, RecipientSerializer, \
+    RequesterSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
+from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
+    AuthorizationCreateSerializer, BookingCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, \
+    ExpenseCreateSerializer, NoteCreateSerializer, PayerCreateSerializer, RecipientCreateSerializer, \
+    ServiceCreateSerializer, UserCreateSerializer
+from core_backend.serializers.serializers_patch import EventPatchSerializer
+from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
+    CategoryUpdateSerializer, CompanyUpdateSerializer, \
+    ExpenseUpdateSerializer, ProviderUpdateSerializer, \
+    RecipientUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
 
@@ -696,7 +693,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     def put(request, booking_id=None):
         booking = Booking.objects.get(id=booking_id)
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
-        serializer = BookingCreateSerializer(data=request.data)
+        serializer = BookingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(booking, business)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -850,7 +847,7 @@ class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
     @expect_does_not_exist(Expense)
     def put(request, expense_id=None):
         expense = Expense.objects.get(id=expense_id)
-        serializer = ExpenseCreateSerializer(data=request.data)
+        serializer = ExpenseUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(expense)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -895,7 +892,7 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
     @expect_does_not_exist(Expense)
     def put(request, category_id=None):
         category = Category.objects.get(id=category_id)
-        serializer = CategoryCreateSerializer(data=request.data)
+        serializer = CategoryUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(category)
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -908,12 +905,12 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ManageCompany(basic_view_manager(Company, CompanySerializer)):
+class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @classmethod
     @expect_does_not_exist(Company)
     def get(cls, request, company_id=None):
         include_roles = request.GET.get(ApiSpecialKeys.INCLUDE_ROLES, False)
-        serializer = CompanySerializerWithRoles if include_roles else CompanySerializer
+        serializer = CompanyWithRolesSerializer if include_roles else CompanyWithParentSerializer
 
         if company_id:
             company = Company.objects.all().get(id=company_id)
