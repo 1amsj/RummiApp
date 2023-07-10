@@ -85,8 +85,6 @@ def basic_register(admin_model: Type[models.Model], readonly=(), extendable=Fals
 
         def get_actions(self, request):
             actions = super().get_actions(request)
-            if 'delete_selected' in actions:
-                del actions['delete_selected']
             actions['bulk_delete_model'] = (
                 self.bulk_delete_model,
                 'bulk_delete_model',
