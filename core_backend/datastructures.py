@@ -34,41 +34,42 @@ class QueryParams(Dict[str, QueryParamsValue]):
         if len(affixes) > 2 or len(affixes) < 1:
             raise ValueError('Invalid query')
 
-        ks = affixes[0].split(API_NESTED_QUERY_PARAM_SEPARATOR)
+        keys = affixes[0].split(API_NESTED_QUERY_PARAM_SEPARATOR)
         try:
             suffix = affixes[1]
         except IndexError:
             suffix = None
 
         current = self
-        for k in ks[:-1]:
+        for key in keys[:-1]:
             try:
-                current[k]
+                current[key]
             except KeyError:
-                super(QueryParams, current).__setitem__(k, QueryParams())
-            current = current[k]
+                super(QueryParams, current).__setitem__(key, QueryParams())
+            current = current[key]
 
-        value = self.correct_value(value)
+        value = QueryParams.correct_value(value)
 
-        k = ks[-1]
-        is_array = '[' in k
+        key = keys[-1]
+        is_array = '[' in key
 
         if not is_array:
-            super(QueryParams, current).__setitem__(k, Param(
+            super(QueryParams, current).__setitem__(key, Param(
                 value=value,
                 lookup=suffix,
             ) if not isinstance(value, (Param, QueryParams)) else value)
 
         else:
-            k = k.split('[')[0]
-            prev: Param | None = super(QueryParams, current).get(k)
+            key = key.split('[')[0]
+            prev: Optional[Param] = super(QueryParams, current).get(key)
             if prev:
                 value = (prev.value + [value]) if isinstance(prev.value, list) else [prev.value, value]
             else:
                 value = [value]
-            current[F'{k}__array_in'] = value
+            current[F'{key}__array_in'] = value
 
-    def correct_value(self, value):
+    @staticmethod
+    def correct_value(value):
         if value == "true":
             return True
 

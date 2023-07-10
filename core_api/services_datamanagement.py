@@ -4,11 +4,12 @@ from rest_framework.exceptions import ValidationError
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
 from core_backend.models import Event
-from core_backend.serializers import AffiliationCreateSerializer, AgentCreateSerializer, EventCreateSerializer, \
-    PayerCreateSerializer, ProviderUpdateSerializer, \
-    RecipientCreateSerializer, \
+from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
+    EventCreateSerializer, PayerCreateSerializer, \
+    RecipientCreateSerializer, RequesterCreateSerializer, UserCreateSerializer
+from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, \
-    UserCreateSerializer, UserUpdateSerializer, RequesterCreateSerializer
+    UserUpdateSerializer
 
 
 # Creation
@@ -76,6 +77,7 @@ def create_recipient_wrap(data, business_name, user_id):
 
     return recipient.id
 
+
 @transaction.atomic
 def create_requester_wrap(data, business_name, user_id):
     if not business_name:
@@ -92,6 +94,7 @@ def create_requester_wrap(data, business_name, user_id):
         })
 
     return requester.id
+
 
 @transaction.atomic
 def create_affiliations_wrap(datalist, business_name, recipient_id):
@@ -178,7 +181,7 @@ def update_recipient_wrap(data, business_name, user_id, recipient_instance):
 
 @transaction.atomic
 def update_event(data, business_name, event_instance):
-    serializer = EventCreateSerializer(data=data)
+    serializer = EventUpdateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
     serializer.update(event_instance, business_name)
 
@@ -219,7 +222,6 @@ def handle_events_bulk(datalist: list, business_name, requester_id):
                 )
             else:
                 Event.objects.get(id=event_id).delete()
-
 
             # Append empty error to object so that the indexes of the errors correspond to the indexes of the data
             event_errors.append({})
