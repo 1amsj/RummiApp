@@ -285,7 +285,6 @@ class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
     class Meta:
         verbose_name = _('agent')
         verbose_name_plural = _('agents')
-        unique_together = ('user', 'role',)
 
     def __str__(self):
         return F"[{self.role} (agent)] {self.user}"
