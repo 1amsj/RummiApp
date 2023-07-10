@@ -76,6 +76,23 @@ def basic_register(admin_model: Type[models.Model], readonly=(), extendable=Fals
         def delete_model(self, request, obj):
             obj.hard_delete()
 
+        def bulk_delete_model(self, request, queryset, obj=None ):
+             if obj is None:
+                for obj in queryset:
+                    self.delete_model(request, obj)
+             else:
+                self.delete_model(request, obj)
+
+        def get_actions(self, request):
+            actions = super().get_actions(request)
+            actions['bulk_delete_model'] = (
+                self.bulk_delete_model,
+                'bulk_delete_model',
+                'Bulk Delete (Hard Delete)'
+            )
+            return actions
+
+
     admin.site.register(admin_model, BasicAdmin)
 
 
