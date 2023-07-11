@@ -32,7 +32,7 @@ from core_backend.serializers import AffiliationCreateSerializer, AffiliationSer
     NoteSerializer, OperatorSerializer, \
     PayerCreateSerializer, PayerSerializer, ProviderSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
     RecipientSerializer, \
-    RecipientUpdateSerializer, RequesterSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, ServiceRootNoBookingSerializer, \
+    RecipientUpdateSerializer, RequesterSerializer, ServiceCreateSerializer, ServiceRootBaseSerializer, ServiceRootCreateSerializer, ServiceRootNoBookingSerializer, \
     ServiceSerializer, \
     UserCreateSerializer, UserSerializer
 from core_backend.services import filter_params, is_extendable
@@ -956,7 +956,11 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
 
 class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSerializer)):
     @classmethod
-    def get(cls, request):
+    def get(cls, request, business_name=None, service_root_id=None):
+        if service_root_id:
+            service_root = ServiceRoot.objects.all().get(id=service_root_id)
+            serialized = ServiceRootBaseSerializer(service_root)
+            return Response(serialized.data)
         query_params = prepare_query_params(request.GET)
 
         queryset = ServiceRootNoBookingSerializer.get_default_queryset()
@@ -973,6 +977,23 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSeri
         serializer.is_valid(raise_exception=True)
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def put(request, service_root_id=None):
+        service_root = ServiceRoot.objects.get(id=service_root_id)
+        serializer = ServiceRootCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(service_root)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def delete(request, service_root_id=None):
+        ServiceRoot.objects.get(id=service_root_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ManageNote(basic_view_manager(Note, NoteSerializer)):

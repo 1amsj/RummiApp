@@ -783,11 +783,21 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
         )
 
 class ServiceRootCreateSerializer(generic_serializer(ServiceRoot)):
+    categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
 
     def create(self, validated_data=None) -> int:
         data = validated_data or self.validated_data
+        categories_data = data.pop('categories', None)
         service_root = ServiceRoot.objects.create(**data)
+        if categories_data:
+            service_root.categories.add(*categories_data)
         return service_root.id
+    
+    def update(self, instance: ServiceRoot, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
 
 class ServiceNoProviderSerializer(extendable_serializer(Service)):
     root = ServiceRootBaseSerializer(required=False)
