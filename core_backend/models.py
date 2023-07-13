@@ -449,7 +449,6 @@ class ServiceRoot(SoftDeletableModel):
         return hasattr(self, 'services') and self.services is not None
 
     def delete_related(self):
-        self.categories.all().delete()
 
         if self.has_services:
             self.services.all().delete()

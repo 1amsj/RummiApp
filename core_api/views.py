@@ -30,16 +30,16 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, NoteSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, RecipientSerializer, \
-    RequesterSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
+    RequesterSerializer, ServiceRootBaseSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, BookingCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, \
     ExpenseCreateSerializer, NoteCreateSerializer, PayerCreateSerializer, RecipientCreateSerializer, \
-    ServiceCreateSerializer, UserCreateSerializer
+    ServiceCreateSerializer, ServiceRootCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
     CategoryUpdateSerializer, CompanyUpdateSerializer, \
     ExpenseUpdateSerializer, ProviderUpdateSerializer, \
-    RecipientUpdateSerializer
+    RecipientUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
 
@@ -987,7 +987,11 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
 
 class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSerializer)):
     @classmethod
-    def get(cls, request):
+    def get(cls, request, business_name=None, service_root_id=None):
+        if service_root_id:
+            service_root = ServiceRoot.objects.all().get(id=service_root_id)
+            serialized = ServiceRootBaseSerializer(service_root)
+            return Response(serialized.data)
         query_params = prepare_query_params(request.GET)
 
         queryset = ServiceRootNoBookingSerializer.get_default_queryset()
@@ -996,6 +1000,31 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSeri
 
         serialized = ServiceRootNoBookingSerializer(queryset, many=True)
         return Response(serialized.data)
+    
+    @staticmethod
+    def post(request):
+        data = request.data
+        serializer = ServiceRootCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        service_id = serializer.create()
+        return Response(service_id, status=status.HTTP_201_CREATED)
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def put(request, service_root_id=None):
+        service_root = ServiceRoot.objects.get(id=service_root_id)
+        serializer = ServiceRootUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(service_root)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def delete(request, service_root_id=None):
+        ServiceRoot.objects.get(id=service_root_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ManageNote(basic_view_manager(Note, NoteSerializer)):
