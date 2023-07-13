@@ -247,7 +247,7 @@ class RecipientCreateSerializer(extendable_serializer(Recipient)):
 
         recipient = Recipient.objects.create(**data)
         if companies:
-            recipient.categories.add(*companies)
+            recipient.companies.add(*companies)
         if notes:
             note_instances = NoteSerializer.create_instances(notes)
             recipient.notes.add(*note_instances)
@@ -267,7 +267,7 @@ class RequesterCreateSerializer(generic_serializer(Requester)):
 
         requester = Requester.objects.create(**data)
         if companies:
-            requester.categories.add(*companies)
+            requester.companies.add(*companies)
 
         return requester
 
