@@ -3,14 +3,14 @@ from rest_framework import serializers
 from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Location, Operator, Payer, \
     Provider, \
     Recipient, \
-    Requester, \
+    Requester, ServiceRoot, \
     User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyWithParentSerializer, \
     ContactSerializer, \
     LocationSerializer, NoteSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, \
     EventCreateSerializer, \
-    ExpenseCreateSerializer, RecipientCreateSerializer, \
+    ExpenseCreateSerializer, RecipientCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
@@ -191,6 +191,18 @@ class RecipientUpdateSerializer(RecipientCreateSerializer):
         NoteSerializer.sync_notes(instance, notes)
 
         manage_extra_attrs(business_name, instance, extras)
+
+
+class ServiceRootUpdateSerializer(ServiceRootCreateSerializer):
+    def update(self, instance: ServiceRoot, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        categories = data.pop('categories', None)
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.categories, categories)
 
 
 class UserUpdateSerializer(UserCreateSerializer):

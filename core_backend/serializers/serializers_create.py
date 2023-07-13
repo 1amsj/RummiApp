@@ -294,6 +294,18 @@ class ServiceCreateSerializer(ServiceNoProviderSerializer):
         manage_extra_attrs(service.business, service, extras)
 
         return service.id
+    
+
+class ServiceRootCreateSerializer(generic_serializer(ServiceRoot)):
+    categories = serializers.PrimaryKeyRelatedField(many=True, queryset=Category.objects.all())
+
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        categories_data = data.pop('categories', None)
+        service_root = ServiceRoot.objects.create(**data)
+        if categories_data:
+            service_root.categories.add(*categories_data)
+        return service_root.id
 
 
 class UserCreateSerializer(UserSerializer):
