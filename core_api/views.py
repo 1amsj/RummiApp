@@ -306,7 +306,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             agent_id = create_agent_wrap(
                 data=agent_data,
                 user_id=user_id,
-                bussines_name=business_name,
+                business_name=business_name,
             )
 
             response["agent_id"] = agent_id
