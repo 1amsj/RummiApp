@@ -4,9 +4,14 @@ from rest_framework.exceptions import ValidationError
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BusinessNotProvidedException
 from core_backend.models import User
-from core_backend.serializers import AffiliationCreateSerializer, AgentCreateSerializer, BookingCreateSerializer, EventCreateSerializer, ProviderUpdateSerializer, RecipientCreateSerializer, \
+from core_api.exceptions import BadRequestException, BusinessNotProvidedException
+from core_backend.models import Event
+from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, BookingCreateSerializer, \
+    EventCreateSerializer, PayerCreateSerializer, \
+    RecipientCreateSerializer, RequesterCreateSerializer, UserCreateSerializer
+from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, \
-    UserCreateSerializer, UserUpdateSerializer, RequesterCreateSerializer
+    UserUpdateSerializer
 
 
 # Creation
@@ -37,6 +42,24 @@ def create_agent_wrap(data, user_id, business_name):
 
 
 @transaction.atomic
+def create_payer_wrap(data, user_id):
+    # Handle payer role creation
+    try:
+        data['user'] = user_id
+        serializer = PayerCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        payer = serializer.create()
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.PAYER_DATA: exc.detail,
+        })
+
+    return payer.id
+
+
+@transaction.atomic
 def create_recipient_wrap(data, business_name, user_id):
     if not business_name:
         raise BusinessNotProvidedException
@@ -56,6 +79,7 @@ def create_recipient_wrap(data, business_name, user_id):
 
     return recipient.id
 
+
 @transaction.atomic
 def create_requester_wrap(data, business_name, user_id):
     if not business_name:
@@ -72,6 +96,7 @@ def create_requester_wrap(data, business_name, user_id):
         })
 
     return requester.id
+
 
 @transaction.atomic
 def create_affiliations_wrap(datalist, business_name, recipient_id):
@@ -115,7 +140,7 @@ def create_booking(data, business_name, user):
 
 
 @transaction.atomic
-def create_events_wrap(datalist, booking_id):
+def create_events_wrap(datalist, bussines, booking_id):
     # Handle events creation
     event_ids = []
     event_errors = []
@@ -124,8 +149,8 @@ def create_events_wrap(datalist, booking_id):
             event_data['booking'] = booking_id
             serializer = EventCreateSerializer(data=event_data)
             serializer.is_valid(raise_exception=True)
-            event = serializer.create()
-            event_ids.append(event.id)
+            event_id = serializer.create(bussines)
+            event_ids.append(event_id)
 
         except ValidationError as exc:
             event_errors.append(exc.detail)
@@ -136,6 +161,15 @@ def create_events_wrap(datalist, booking_id):
         })
 
     return event_ids
+
+
+def create_event(data, business_name, requester_id):
+    if not data.get('requester'):
+        data['requester'] = requester_id
+
+    serializer = EventCreateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    return serializer.create(business_name)
 
 
 # Update
@@ -182,3 +216,61 @@ def update_recipient_wrap(data, business_name, user_id, recipient_instance):
         raise ValidationError({
             ApiSpecialKeys.RECIPIENT_DATA: exc.detail,
         })
+
+
+@transaction.atomic
+def update_event(data, business_name, event_instance):
+    serializer = EventUpdateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    serializer.update(event_instance, business_name)
+
+
+# Bulk
+@transaction.atomic
+def handle_events_bulk(datalist: list, business_name, requester_id):
+    """
+    Create, update or delete the events in bulk, depending on whether the payload includes an ID or not
+    """
+    # TODO It is noteworthy that currently this is not a true bulk operation.
+    #  Also, events get created event even if an error was found before,
+    #  this might make the transaction rollback expensive.
+
+    event_ids = []
+    event_errors = []
+    error_found = False
+
+    for data in datalist:
+        event_id = data.pop('id', None)
+        deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if not event_id and deleted_flag:
+            raise BadRequestException('Event flagged as deleted but no ID provided')
+
+        try:
+            if not event_id:
+                event_id = create_event(
+                    data,
+                    business_name,
+                    requester_id
+                )
+            elif not deleted_flag:
+                update_event(
+                    data,
+                    business_name,
+                    event_instance=Event.objects.get(id=event_id)
+                )
+            else:
+                Event.objects.get(id=event_id).delete()
+
+            # Append empty error to object so that the indexes of the errors correspond to the indexes of the data
+            event_errors.append({})
+            event_ids.append(event_id)
+
+        except ValidationError as exc:
+            error_found = True
+            event_errors.append(exc.detail)
+
+    if error_found:
+        raise ValidationError(event_errors)
+
+    return event_ids

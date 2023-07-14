@@ -152,6 +152,11 @@ class Extra(SoftDeletableModel):
 
 
 class Contact(SoftDeletableModel, HistoricalModel):
+    class Via(models.TextChoices):
+        EMAIL = 'email', _('email')
+        PHONE = 'phone', _('phone')
+        FAX = 'fax', _('fax')
+
     email = models.EmailField(_("email address"), blank=True)
     phone = PhoneNumberField(_('phone number'), blank=True)
     fax = PhoneNumberField(_('fax number'), blank=True)
@@ -280,7 +285,6 @@ class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
     class Meta:
         verbose_name = _('agent')
         verbose_name_plural = _('agents')
-        unique_together = ('user', 'role',)
 
     def __str__(self):
         return F"[{self.role} (agent)] {self.user}"
@@ -309,7 +313,7 @@ class Payer(HistoricalModel, SoftDeletableModel):
     """Who pays the service invoice"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_payer')
     companies = models.ManyToManyField(Company, related_name='payers')
-    method = models.CharField(_('paying method'), max_length=64)
+    method = models.CharField(_('paying method'), max_length=64, blank=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('payer data')
@@ -424,16 +428,14 @@ class Category(SoftDeletableModel):
     def __str__(self):
         return self.name
 
-    @property
-    def has_services(self):
-        return hasattr(self, 'services') and self.services is not None
-
     def delete_related(self):
         pass
 
 
 class ServiceRoot(SoftDeletableModel):
-    name = models.CharField(_('name'), max_length=128)
+    categories = models.ManyToManyField(Category, related_name='roots', blank=True)
+    description = models.TextField(_('description'), blank=True, default='')
+    name = models.TextField(_('name'))
 
     class Meta:
         verbose_name = _('service root')
@@ -447,6 +449,7 @@ class ServiceRoot(SoftDeletableModel):
         return hasattr(self, 'services') and self.services is not None
 
     def delete_related(self):
+
         if self.has_services:
             self.services.all().delete()
 
@@ -460,7 +463,6 @@ class Service(ExtendableModel, SoftDeletableModel):
         QUANTITY = 'QUANTITY', _('Quantity')
 
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='services')
-    categories = models.ManyToManyField(Category, related_name='services', blank=True)
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='services')
     root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='services')
     bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
@@ -512,19 +514,22 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
         self.notes.all().delete()
 
 
-class Event(HistoricalModel, SoftDeletableModel):
+class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
     agents = models.ManyToManyField(Agent, related_name='events')
     payer = models.ForeignKey(Payer, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
+    payer_company = models.ForeignKey(Company, on_delete=models.PROTECT, null=True, blank=True, related_name='events_as_payer')
     requester = models.ForeignKey(Requester, on_delete=models.PROTECT, related_name='events')
 
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True, related_name='events')
     meeting_url = models.URLField(_('meeting URL'), null=True, blank=True)
     start_at = models.DateTimeField(_('start date and time'))
     end_at = models.DateTimeField(_('end date and time'))
+    arrive_at = models.DateTimeField(_('arrival date and time'), null=True, blank=True)
     observations = models.CharField(_('observations'), max_length=256, blank=True)
+    description = models.CharField(_('description'), max_length=256, null=True, blank=True)
 
     class Meta:
         verbose_name = _('event')
@@ -601,3 +606,27 @@ class Note(SoftDeletableModel):
     class Meta:
         verbose_name = _('note')
         verbose_name_plural = _('notes')
+
+
+class Authorization(ExtendableModel, HistoricalModel, SoftDeletableModel):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', _('Pending')
+        ACCEPTED = 'ACCEPTED', _('Accepted')
+        REJECTED = 'REJECTED', _('Rejected')
+        REFERRED = 'REFERRED', _('Referred')
+        OVERRIDE = 'OVERRIDE', _('Override')
+
+    authorizer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='authorizations')
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='authorizations')
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, blank=True, null=True, related_name='authorizations')
+    contact_via = models.CharField(max_length=32, choices=Contact.Via.choices, blank=True, null=True)
+    events = models.ManyToManyField(Event, related_name='authorizations')
+    last_updated_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING)
+
+    class Meta:
+        verbose_name = _('authorization')
+        verbose_name_plural = _('authorizations')
+
+    def __str__(self):
+        return F'{self.id} - {list(self.events.all().values_list("id", flat=True))} - {self.authorizer} - {self.company} - {self.status}'

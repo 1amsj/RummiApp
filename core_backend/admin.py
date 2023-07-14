@@ -3,7 +3,7 @@ from typing import Type
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
-from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline
+from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from simple_history.admin import SimpleHistoryAdmin
 
 from core_backend.models import *
@@ -50,7 +50,6 @@ class UserAdmin(NestedModelAdmin, BaseUserAdmin, SimpleHistoryAdmin):
         obj.hard_delete()
 
 
-
 def stacked_inline(inline_model: Type[models.Model], extendable=False):
     class Stacked(NestedStackedInline):
         model = inline_model
@@ -61,10 +60,11 @@ def stacked_inline(inline_model: Type[models.Model], extendable=False):
     return Stacked
 
 
-def basic_register(admin_model: Type[models.Model], extendable=False, historical=False, admin_inlines: list = None):
+def basic_register(admin_model: Type[models.Model], readonly=(), extendable=False, historical=False, admin_inlines: list = None):
     parents = [SimpleHistoryAdmin] if historical else []
 
     class BasicAdmin(NestedModelAdmin, *parents):
+        readonly_fields = readonly
         model = admin_model
         inlines = []
         if extendable:
@@ -75,6 +75,23 @@ def basic_register(admin_model: Type[models.Model], extendable=False, historical
 
         def delete_model(self, request, obj):
             obj.hard_delete()
+
+        def bulk_delete_model(self, request, queryset, obj=None ):
+             if obj is None:
+                for obj in queryset:
+                    self.delete_model(request, obj)
+             else:
+                self.delete_model(request, obj)
+
+        def get_actions(self, request):
+            actions = super().get_actions(request)
+            actions['bulk_delete_model'] = (
+                self.bulk_delete_model,
+                'bulk_delete_model',
+                'Bulk Delete (Hard Delete)'
+            )
+            return actions
+
 
     admin.site.register(admin_model, BasicAdmin)
 
@@ -97,9 +114,10 @@ basic_register(Category)
 basic_register(Service, extendable=True)
 basic_register(ServiceRoot, admin_inlines=[stacked_inline(Service, extendable=True)])
 basic_register(Booking, extendable=True, admin_inlines=[stacked_inline(Ledger), stacked_inline(Expense, extendable=True), stacked_inline(Event, extendable=True)])
-basic_register(Event, historical=True)
+basic_register(Event, extendable=True, historical=True, admin_inlines=[stacked_inline(Authorization.events.through)])
 basic_register(Expense, historical=True)
 
+basic_register(Authorization, historical=True, readonly=('last_updated_at',))
 basic_register(Extra, historical=True)
 basic_register(Note, historical=True)
 
