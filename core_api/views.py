@@ -280,7 +280,10 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         """
         # Create user
         # Extract roles data before the serializer deals with it
-        agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA, None)
+        agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA,{
+            "companies": [],
+            "role": '',
+        })
 
         payer_data = request.data.pop(ApiSpecialKeys.PAYER_DATA, {
             "companies": [],
