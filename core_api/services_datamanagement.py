@@ -219,10 +219,20 @@ def update_recipient_wrap(data, business_name, user_id, recipient_instance):
 
 
 @transaction.atomic
-def update_event(data, business_name, event_instance):
-    serializer = EventUpdateSerializer(data=data)
-    serializer.is_valid(raise_exception=True)
-    serializer.update(event_instance, business_name)
+def update_event_wrap(data, business_name, event_instance):
+    if not business_name:
+        raise BusinessNotProvidedException
+    
+    try:
+        serializer = EventUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(event_instance, business_name)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.EVENT_DATALIST: exc.detail,
+        })
 
 
 # Bulk
@@ -254,7 +264,7 @@ def handle_events_bulk(datalist: list, business_name, requester_id):
                     requester_id
                 )
             elif not deleted_flag:
-                update_event(
+                update_event_wrap(
                     data,
                     business_name,
                     event_instance=Event.objects.get(id=event_id)

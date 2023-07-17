@@ -15,7 +15,7 @@ from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, create_events_wrap, \
-    create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event, \
+    create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, \
     update_provider_wrap, update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
@@ -696,6 +696,26 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     def put(request, booking_id=None):
         booking = Booking.objects.get(id=booking_id)
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
+        events_to_create = []
+
+        for event_data in event_datalist:
+            event_id = event_data.get("id", None)
+
+            if event_id:
+                event = Event.objects.get(id=event_id)
+                update_event_wrap(event_data, business, event)
+            else:
+                events_to_create.append(event_data)
+
+        if len(events_to_create) > 0:
+            print("🚀 ~ file: views.py:715 ~ events_to_create:", events_to_create)
+            create_events_wrap(
+                datalist=events_to_create,
+                business=business,
+                booking_id=booking_id,
+            )
+
         serializer = BookingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(booking, business)
@@ -773,7 +793,7 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         event = Event.objects.get(id=event_id)
 
-        update_event(
+        update_event_wrap(
             request.data,
             business_name,
             event_instance=event,
