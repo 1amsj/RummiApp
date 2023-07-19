@@ -237,7 +237,7 @@ def update_event_wrap(data, business_name, event_instance):
 
 # Bulk
 @transaction.atomic
-def handle_events_bulk(datalist: list, business_name, requester_id):
+def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=None):
     """
     Create, update or delete the events in bulk, depending on whether the payload includes an ID or not
     """
@@ -258,6 +258,8 @@ def handle_events_bulk(datalist: list, business_name, requester_id):
 
         try:
             if not event_id:
+                data['booking'] = booking_id
+                
                 event_id = create_event(
                     data,
                     business_name,

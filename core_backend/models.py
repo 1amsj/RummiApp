@@ -546,8 +546,6 @@ class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
     def is_online(self):
         return bool(self.meeting_url)
 
-    def delete_related(self):
-        self.location.delete()
 
 # Billing models
 class Expense(HistoricalModel, SoftDeletableModel):

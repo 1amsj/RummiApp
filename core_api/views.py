@@ -697,24 +697,9 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking = Booking.objects.get(id=booking_id)
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
-        events_to_create = []
+        requester = request.data.pop('requester', None)
 
-        for event_data in event_datalist:
-            event_id = event_data.get("id", None)
-
-            if event_id:
-                event = Event.objects.get(id=event_id)
-                update_event_wrap(event_data, business, event)
-            else:
-                events_to_create.append(event_data)
-
-        if len(events_to_create) > 0:
-            print("🚀 ~ file: views.py:715 ~ events_to_create:", events_to_create)
-            create_events_wrap(
-                datalist=events_to_create,
-                business=business,
-                booking_id=booking_id,
-            )
+        handle_events_bulk(event_datalist, business, requester, booking_id)
 
         serializer = BookingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
