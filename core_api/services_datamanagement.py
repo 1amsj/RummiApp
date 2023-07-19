@@ -24,7 +24,7 @@ def create_user(data):
 
 
 @transaction.atomic
-def create_agent_wrap(data, user_id, business_name):
+def create_agent_wrap(data,  business_name, user_id,):
     # Handle recipient role creation
     try:
         data['user'] = user_id

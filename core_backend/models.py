@@ -486,6 +486,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
+    parent = models.ForeignKey("Booking", null=True, blank=True, on_delete=models.SET_NULL, related_name='children')
     service_root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -506,7 +507,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
         verbose_name_plural = _('bookings')
 
     def __str__(self):
-        return super(Booking, self).__str__()
+        return F"Booking #{self.public_id} ({self.id})"
 
     def delete_related(self):
         self.events.all().delete()
