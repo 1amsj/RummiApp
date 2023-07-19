@@ -231,6 +231,10 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
         verbose_name = _("user")
         verbose_name_plural = _("users")
 
+    def __str__(self):
+            return F"{self.title} {self.first_name} {self.last_name} {self.suffix} - {self.username}"
+
+
     @property
     def is_agent(self):
         return getattr(self, 'as_agents', None) is not None
