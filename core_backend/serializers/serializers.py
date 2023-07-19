@@ -421,10 +421,12 @@ class RequesterSerializer(user_subtype_serializer(Requester)):
 
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
+    children = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Booking.objects.all().not_deleted('business'))
     companies = CompanyWithParentSerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
     expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
+    parent = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'), allow_null=True)
     services = ServiceSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
     service_root = ServiceRootBaseSerializer(allow_null=True)

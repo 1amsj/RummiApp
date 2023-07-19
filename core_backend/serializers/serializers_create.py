@@ -61,8 +61,10 @@ class AuthorizationCreateSerializer(AuthorizationBaseSerializer):
 class BookingCreateSerializer(extendable_serializer(Booking)):
     business = BusinessField(required=False)
     categories = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Category.objects.all())
+    children = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Booking.objects.all())
     companies = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Company.objects.all())
     operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
+    parent = serializers.PrimaryKeyRelatedField(required=False, queryset=Booking.objects.all())
     service_root = serializers.PrimaryKeyRelatedField(required=False, queryset=ServiceRoot.objects.all())
     services = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Service.objects.all())
     created_at = serializers.DateTimeField(required=False)
@@ -71,23 +73,14 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
 
     class Meta:
         model = Booking
-        fields = (
-            'business',
-            'categories',
-            'companies',
-            'operators',
-            'service_root',
-            'services',
-            'created_at',
-            'public_id',
-            'notes'
-        )
+        fields = '__all__'
 
     def create(self, validated_data=None) -> int:
         data = validated_data or self.validated_data
         business = BusinessField().to_internal_value(data.get('business'))
         extras = data.pop('extra', {})
         categories = data.pop('categories', [])
+        children = data.pop('children', [])
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
         services = data.pop('services', [])
@@ -96,6 +89,8 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         booking = Booking.objects.create(**data)
         if categories:
             booking.categories.add(*categories)
+        if children:
+            booking.children.add(*children)
         if companies:
             booking.companies.add(*companies)
         if operators:
