@@ -232,7 +232,7 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
         verbose_name_plural = _("users")
 
     def __str__(self):
-            return F"{self.title} {self.first_name} {self.last_name} {self.suffix} - {self.username}"
+            return F"{self.title} {self.first_name} {self.last_name} {self.suffix} - {self.username} ({self.id})"
 
 
     @property
