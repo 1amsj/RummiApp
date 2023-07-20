@@ -24,7 +24,13 @@ class ExtendableAdmin(NestedModelAdmin):
 class UserAdmin(NestedModelAdmin, BaseUserAdmin, SimpleHistoryAdmin):
     readonly_fields = ('is_operator', 'is_payer', 'is_provider', 'is_recipient', 'is_requester')
     fieldsets = (
-        *BaseUserAdmin.fieldsets[:2],
+        *BaseUserAdmin.fieldsets[:1],
+        (
+            _('Personal Information'),
+            {
+                'fields': ('title', 'first_name', 'last_name', 'suffix', 'email',)
+            }
+        ),
         (
             _('Contact'),
             {
