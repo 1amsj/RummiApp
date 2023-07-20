@@ -14,8 +14,8 @@ from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_event, \
-    create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, create_events_wrap, \
+    create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, \
     update_provider_wrap, update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
@@ -307,9 +307,9 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
         if agent_data:
             agent_id = create_agent_wrap(
-                agent_data,
-                business_name,
+                data=agent_data,
                 user_id=user_id,
+                business_name=business_name,
             )
 
             response["agent_id"] = agent_id
@@ -679,16 +679,19 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request, business_name):
-        data = request.data
-        data['business'] = business_name
-        if not data.get('operators'):
-            user: User = request.user
-            data['operators'] = [user.as_operator.id] if user.is_operator else None
+        event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
+        booking_id = create_booking(request.data, business_name, request.user)
 
-        serializer = BookingCreateSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        booking_id = serializer.create()
-        return Response(booking_id, status=status.HTTP_201_CREATED)
+        event_ids = create_events_wrap(
+            datalist=event_datalist,
+            business=business_name,
+            booking_id=booking_id,
+        )
+
+        return Response({
+            "booking_id": booking_id,
+            "event_ids": event_ids,
+        }, status=status.HTTP_201_CREATED)
 
     @staticmethod
     @transaction.atomic
@@ -696,6 +699,11 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     def put(request, booking_id=None):
         booking = Booking.objects.get(id=booking_id)
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
+        requester = request.data.pop('requester', None)
+
+        handle_events_bulk(event_datalist, business, requester, booking_id)
+
         serializer = BookingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(booking, business)
@@ -773,7 +781,7 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         event = Event.objects.get(id=event_id)
 
-        update_event(
+        update_event_wrap(
             request.data,
             business_name,
             event_instance=event,
