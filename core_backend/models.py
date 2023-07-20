@@ -231,6 +231,10 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
         verbose_name = _("user")
         verbose_name_plural = _("users")
 
+    def __str__(self):
+            return F"{self.title} {self.first_name} {self.last_name} {self.suffix} - {self.username} ({self.id})"
+
+
     @property
     def is_agent(self):
         return getattr(self, 'as_agents', None) is not None
@@ -285,7 +289,6 @@ class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
     class Meta:
         verbose_name = _('agent')
         verbose_name_plural = _('agents')
-        unique_together = ('user', 'role',)
 
     def __str__(self):
         return F"[{self.role} (agent)] {self.user}"
@@ -450,7 +453,6 @@ class ServiceRoot(SoftDeletableModel):
         return hasattr(self, 'services') and self.services is not None
 
     def delete_related(self):
-        self.categories.all().delete()
 
         if self.has_services:
             self.services.all().delete()
@@ -488,6 +490,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
     companies = models.ManyToManyField(Company, related_name='bookings')
     operators = models.ManyToManyField(Operator, related_name='bookings')
+    parent = models.ForeignKey("Booking", null=True, blank=True, on_delete=models.SET_NULL, related_name='children')
     service_root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -508,7 +511,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
         verbose_name_plural = _('bookings')
 
     def __str__(self):
-        return super(Booking, self).__str__()
+        return F"Booking #{self.public_id} ({self.id})"
 
     def delete_related(self):
         self.events.all().delete()
@@ -616,11 +619,12 @@ class Authorization(ExtendableModel, HistoricalModel, SoftDeletableModel):
         ACCEPTED = 'ACCEPTED', _('Accepted')
         REJECTED = 'REJECTED', _('Rejected')
         REFERRED = 'REFERRED', _('Referred')
+        OVERRIDE = 'OVERRIDE', _('Override')
 
     authorizer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='authorizations')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='authorizations')
-    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, related_name='authorizations')
-    contact_via = models.CharField(max_length=32, choices=Contact.Via.choices)
+    contact = models.ForeignKey(Contact, on_delete=models.CASCADE, blank=True, null=True, related_name='authorizations')
+    contact_via = models.CharField(max_length=32, choices=Contact.Via.choices, blank=True, null=True)
     events = models.ManyToManyField(Event, related_name='authorizations')
     last_updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING)
