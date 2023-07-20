@@ -50,6 +50,7 @@ urlpatterns = [
     *path_optionals_xor('recipients/', ['<id:recipient_id>', '<str:business_name>'], views.ManageRecipients.as_view(), name='manage_recipients'),
     path('requesters/', views.ManageRequesters.as_view(), name='manage_requesters'),
     path('notes/', views.ManageNote.as_view(), name='manage_notes'),
+    path('offers/', views.ManageOffers.as_view(), name='manage_offers'),
     
     *path_optional('affiliations/', '<str:business_name>', views.ManageAffiliations.as_view(), name='manage_affiliations'),
     *path_optional('authorizations/', '<id:authorization_id>', views.ManageAuthorizations.as_view(), name='manage_authorizations'),
@@ -59,8 +60,7 @@ urlpatterns = [
     *path_optionals_xor('events/', ['<id:event_id>', '<str:business_name>'], views.ManageEvents.as_view(), name='manage_events'),
     *path_optional('expenses/', '<id:expense_id>', views.ManageExpenses.as_view(), name='manage_expenses'),
     *path_optional('services/', '<str:business_name>', views.ManageService.as_view(), name='manage_services'),
-    path('service_roots/', views.ManageServiceRoot.as_view(), name='manage_service_roots'),
-    path('offers/', views.ManageOffers.as_view(), name='manage_offers'),
+    *path_optional('service_roots/', '<id:service_root_id>', views.ManageServiceRoot.as_view(), name='manage_service_roots'),
 
     path('search/', views.search_bookings, name='search'),
 

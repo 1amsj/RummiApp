@@ -2,13 +2,16 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
+from core_api.exceptions import BusinessNotProvidedException
+from core_backend.models import User
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
 from core_backend.models import Event
-from core_backend.serializers import AffiliationCreateSerializer, AgentCreateSerializer, EventCreateSerializer, \
-    PayerCreateSerializer, ProviderUpdateSerializer, \
-    RecipientCreateSerializer, \
+from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, BookingCreateSerializer, \
+    EventCreateSerializer, PayerCreateSerializer, \
+    RecipientCreateSerializer, RequesterCreateSerializer, UserCreateSerializer
+from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, \
-    UserCreateSerializer, UserUpdateSerializer, RequesterCreateSerializer
+    UserUpdateSerializer
 
 
 # Creation
@@ -21,7 +24,7 @@ def create_user(data):
 
 
 @transaction.atomic
-def create_agent_wrap(data, user_id, business_name):
+def create_agent_wrap(data,  business_name, user_id,):
     # Handle recipient role creation
     try:
         data['user'] = user_id
@@ -76,6 +79,7 @@ def create_recipient_wrap(data, business_name, user_id):
 
     return recipient.id
 
+
 @transaction.atomic
 def create_requester_wrap(data, business_name, user_id):
     if not business_name:
@@ -92,6 +96,7 @@ def create_requester_wrap(data, business_name, user_id):
         })
 
     return requester.id
+
 
 @transaction.atomic
 def create_affiliations_wrap(datalist, business_name, recipient_id):
@@ -121,6 +126,43 @@ def create_affiliations_wrap(datalist, business_name, recipient_id):
 
 
 @transaction.atomic
+def create_booking(data, business_name, user):
+    data['business'] = business_name
+
+    if not data.get('operators'):
+        user: User = user
+        data['operators'] = [user.as_operator.id] if user.is_operator else None
+
+    serializer = BookingCreateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    booking_id = serializer.create()
+    return booking_id;
+
+
+@transaction.atomic
+def create_events_wrap(datalist, business, booking_id):
+    # Handle events creation
+    event_ids = []
+    event_errors = []
+    for event_data in datalist:
+        try:
+            event_data['booking'] = booking_id
+            serializer = EventCreateSerializer(data=event_data)
+            serializer.is_valid(raise_exception=True)
+            event_id = serializer.create(business)
+            event_ids.append(event_id)
+
+        except ValidationError as exc:
+            event_errors.append(exc.detail)
+
+    if event_errors:
+        raise ValidationError({
+            ApiSpecialKeys.EVENT_DATALIST: event_errors
+        })
+
+    return event_ids
+
+
 def create_event(data, business_name, requester_id):
     if not data.get('requester'):
         data['requester'] = requester_id
@@ -177,15 +219,25 @@ def update_recipient_wrap(data, business_name, user_id, recipient_instance):
 
 
 @transaction.atomic
-def update_event(data, business_name, event_instance):
-    serializer = EventCreateSerializer(data=data)
-    serializer.is_valid(raise_exception=True)
-    serializer.update(event_instance, business_name)
+def update_event_wrap(data, business_name, event_instance):
+    if not business_name:
+        raise BusinessNotProvidedException
+    
+    try:
+        serializer = EventUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(event_instance, business_name)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.EVENT_DATALIST: exc.detail,
+        })
 
 
 # Bulk
 @transaction.atomic
-def handle_events_bulk(datalist: list, business_name, requester_id):
+def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=None):
     """
     Create, update or delete the events in bulk, depending on whether the payload includes an ID or not
     """
@@ -206,20 +258,21 @@ def handle_events_bulk(datalist: list, business_name, requester_id):
 
         try:
             if not event_id:
+                data['booking'] = booking_id
+                
                 event_id = create_event(
                     data,
                     business_name,
                     requester_id
                 )
             elif not deleted_flag:
-                update_event(
+                update_event_wrap(
                     data,
                     business_name,
                     event_instance=Event.objects.get(id=event_id)
                 )
             else:
                 Event.objects.get(id=event_id).delete()
-
 
             # Append empty error to object so that the indexes of the errors correspond to the indexes of the data
             event_errors.append({})
