@@ -37,7 +37,7 @@ from core_backend.serializers.serializers_create import AffiliationCreateSeriali
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
     CategoryUpdateSerializer, CompanyUpdateSerializer, \
-    ExpenseUpdateSerializer, ProviderUpdateSerializer, \
+    ExpenseUpdateSerializer, OfferUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
@@ -1161,8 +1161,6 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
     @staticmethod
     def post(request, business_name=None):
         data = request.data
-        user: User = request.user
-        data['owner'] = user
         serializer = OfferCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         offer_id = serializer.create(business_name)
@@ -1171,7 +1169,7 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
     @staticmethod
     def put(request, offer_id=None, business_name=None):
         offer = Offer.objects.get(id=offer_id)
-        serializer = OfferCreateSerializer(data=request.data)
+        serializer = OfferUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(offer, business_name)
         return Response(status=status.HTTP_204_NO_CONTENT)

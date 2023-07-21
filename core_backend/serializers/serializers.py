@@ -419,6 +419,24 @@ class RequesterSerializer(user_subtype_serializer(Requester)):
         )
 
 
+
+class OfferSerializer(BaseSerializer):
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
+    service = ServiceSerializer()
+
+    class Meta:
+        model = Offer
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Offer.objects
+            .all()
+            .not_deleted()
+        )
+
+
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
     children = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Booking.objects.all().not_deleted('business'))
@@ -429,6 +447,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     parent = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'), allow_null=True)
     services = ServiceSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
+    offers = OfferSerializer(many=True, default=[])
     service_root = ServiceRootBaseSerializer(allow_null=True)
 
     class Meta:
@@ -453,6 +472,10 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
                 Prefetch(
                     'notes',
                     queryset=NoteSerializer.get_default_queryset()
+                ),
+                Prefetch(
+                    'offers',
+                    queryset=OfferSerializer.get_default_queryset(),
                 ),
                 Prefetch(
                     'expenses',
@@ -524,29 +547,10 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
                 ),
             )
         )
-    
-
-class OfferSerializer(BaseSerializer):
-    booking = BookingNoEventsSerializer()
-    service = ServiceSerializer()
-
-    class Meta:
-        model = Offer
-        fields = '__all__'
-
-    @staticmethod
-    def get_default_queryset():
-        return (
-            Offer.objects
-            .all()
-            .not_deleted()
-        )
-            
 
 
 class BookingSerializer(BookingNoEventsSerializer):
     events = EventNoBookingSerializer(many=True)
-    offers = OfferSerializer(many=True, default=[])
     public_id = serializers.ReadOnlyField()
 
     @staticmethod
@@ -558,10 +562,6 @@ class BookingSerializer(BookingNoEventsSerializer):
                 Prefetch(
                     'events',
                     queryset=EventNoBookingSerializer.get_default_queryset(),
-                ),
-                Prefetch(
-                    'offers',
-                    queryset=OfferSerializer.get_default_queryset(),
                 ),
             )
         )

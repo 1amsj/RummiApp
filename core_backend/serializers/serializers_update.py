@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Location, Operator, Payer, \
+from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Location, Offer, Operator, Payer, \
     Provider, \
     Recipient, \
     Requester, ServiceRoot, \
@@ -10,7 +10,7 @@ from core_backend.serializers.serializers import AuthorizationBaseSerializer, Co
     LocationSerializer, NoteSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, \
     EventCreateSerializer, \
-    ExpenseCreateSerializer, RecipientCreateSerializer, ServiceRootCreateSerializer, \
+    ExpenseCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
@@ -252,3 +252,21 @@ class UserUpdateSerializer(UserCreateSerializer):
         instance.save()
 
         user_sync_email_with_contact(instance)
+
+
+class OfferUpdateSerializer(OfferCreateSerializer):
+    # Override the fields from the parent class and set required=False
+    booking = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
+    service = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
+    status = serializers.CharField(required=True)
+
+    def update(self, instance: Offer, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        data.pop('booking', None)
+        data.pop('service', None)
+        data.pop('extra', None)
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+
+        instance.save()
