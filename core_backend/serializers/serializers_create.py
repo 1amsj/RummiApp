@@ -360,7 +360,7 @@ class UserCreateSerializer(UserSerializer):
 
 class OfferCreateSerializer(extendable_serializer(Offer)):
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
-    provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
+    service = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all())
 
     class Meta:
         model = Offer

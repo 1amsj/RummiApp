@@ -14,7 +14,7 @@ from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, create_events_wrap, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, create_events_wrap, create_offers_wrap, \
     create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, \
     update_provider_wrap, update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
@@ -679,6 +679,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @expect_key_error
     def post(request, business_name):
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
+        offer_datalist = request.data.pop(ApiSpecialKeys.OFFER_DATALIST, [])
         booking_id = create_booking(request.data, business_name, request.user)
 
         event_ids = create_events_wrap(
@@ -687,9 +688,17 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             booking_id=booking_id,
         )
 
+        offer_ids = create_offers_wrap(
+            datalist=offer_datalist,
+            business=business_name,
+            booking_id=booking_id,
+        )
+
+
         return Response({
             "booking_id": booking_id,
             "event_ids": event_ids,
+            "offer_ids": offer_ids,
         }, status=status.HTTP_201_CREATED)
 
     @staticmethod

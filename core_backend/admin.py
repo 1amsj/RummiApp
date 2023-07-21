@@ -122,6 +122,7 @@ basic_register(ServiceRoot, admin_inlines=[stacked_inline(Service, extendable=Tr
 basic_register(Booking, extendable=True, admin_inlines=[stacked_inline(Ledger), stacked_inline(Expense, extendable=True), stacked_inline(Event, extendable=True)])
 basic_register(Event, extendable=True, historical=True, admin_inlines=[stacked_inline(Authorization.events.through)])
 basic_register(Expense, historical=True)
+basic_register(Offer, historical=True)
 
 basic_register(Authorization, historical=True, readonly=('last_updated_at',))
 basic_register(Extra, historical=True)

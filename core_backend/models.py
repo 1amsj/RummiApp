@@ -648,7 +648,7 @@ class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.REQUESTED)
     last_updated_at = models.DateTimeField(auto_now=True)
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='offers')
-    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='offers')
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='offers')
 
     class Meta:
         verbose_name = _('offer')
