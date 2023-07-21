@@ -21,6 +21,6 @@ class DailyUniqueIdentifierField(models.CharField):
                 sequence_number = last_sequence_number + 1
 
             # Set the unique identifier field value
-            model_instance.__dict__[self.name] = '{}-{:03d}'.format(date.strftime('%Y%m%d'), sequence_number)
+            model_instance.__dict__[self.name] = '{}-{:03d}'.format(date.strftime('%y%m%d'), sequence_number)
 
         return model_instance.__dict__[self.name]
