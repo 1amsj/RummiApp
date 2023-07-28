@@ -3,7 +3,7 @@ from typing import Type
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
-from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline
+from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline, NestedTabularInline
 from simple_history.admin import SimpleHistoryAdmin
 
 from core_backend.models import *
@@ -104,7 +104,6 @@ def basic_register(admin_model: Type[models.Model], readonly=(), extendable=Fals
 
 basic_register(Contact, historical=True)
 basic_register(Company, historical=True)
-basic_register(Language, historical=True)
 basic_register(Location)
 
 admin.site.register(User, UserAdmin)

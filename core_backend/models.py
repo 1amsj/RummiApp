@@ -196,23 +196,6 @@ class Company(SoftDeletableModel, HistoricalModel):
         self.notes.all().delete()
         pass
 
-
-class Language(SoftDeletableModel, HistoricalModel):
-    alpha2 = models.CharField(_('alpha2'), max_length=2)
-    alpha3 = models.CharField(_('alpha3'), max_length=3)
-    available = models.BooleanField(_('available'), default=True)
-    common = models.BooleanField(_('common'), default=False)
-    description = models.TextField(_('description'), null=True, blank=True)
-    name = models.CharField(_('name'), max_length=128)
-
-    class Meta:
-        verbose_name = _('language')
-        verbose_name_plural = _('languages')
-
-    def __str__(self):
-        return F"{self.name} [{self.alpha2}|{self.alpha3}] ({self.id})"
-
-
 class Location(SoftDeletableModel):
     address = models.TextField(_('address'), null=True, blank=True)
     unit_number = models.TextField(_('unit number'), null=True, blank=True)
