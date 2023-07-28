@@ -50,7 +50,8 @@ urlpatterns = [
     *path_optionals_xor('recipients/', ['<id:recipient_id>', '<str:business_name>'], views.ManageRecipients.as_view(), name='manage_recipients'),
     path('requesters/', views.ManageRequesters.as_view(), name='manage_requesters'),
     path('notes/', views.ManageNote.as_view(), name='manage_notes'),
-    
+    *path_optional('notifications/', '<id:notification_id>', views.ManageNotifications.as_view(), name='manage_notifications'),
+
     *path_optional('affiliations/', '<str:business_name>', views.ManageAffiliations.as_view(), name='manage_affiliations'),
     *path_optional('authorizations/', '<id:authorization_id>', views.ManageAuthorizations.as_view(), name='manage_authorizations'),
     *path_optionals_xor('bookings/', ['<id:booking_id>', '<str:business_name>'], views.ManageBooking.as_view(), name='manage_booking'),

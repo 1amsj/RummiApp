@@ -8,6 +8,13 @@
 
 ---
 
+## Commands
+These are the following commands that can be run with the `manage.py` file:
+* `python manage.py send_pending_notifications` - Sends all pending notifications to the recipients
+* `python manage.py setup_daily_booking_reminders` - Creates the notifications for the bookings that have events due today
+
+---
+
 ## Initial Setup
 
 First of all install:

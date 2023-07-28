@@ -118,7 +118,7 @@ ROOT_URLCONF = 'core_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(STATIC_ROOT, 'build')],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -147,6 +147,9 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', 'core_password'),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
+        'OPTIONS': {
+            'options': '-c client_encoding=utf8',
+        },
     }
 }
 

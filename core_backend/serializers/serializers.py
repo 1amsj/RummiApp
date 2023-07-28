@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, Contact, Event, \
-    Invoice, Ledger, Location, Operator, Payer, Provider, Recipient, Requester, \
+    Invoice, Ledger, Location, Notification, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
@@ -608,4 +608,18 @@ class AuthorizationSerializer(BaseSerializer):
                     queryset=EventSerializer.get_default_queryset(),
                 ),
             )
+        )
+
+
+class NotificationSerializer(BaseSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Notification.objects
+            .all()
+            .not_deleted()
         )

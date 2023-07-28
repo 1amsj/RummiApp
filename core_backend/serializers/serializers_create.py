@@ -2,13 +2,13 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, Event, \
-    Expense, Location, Note, Operator, Payer, Provider, Recipient, Requester, \
+    Expense, Location, Note, Notification, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, \
     CompanyWithParentSerializer, \
     ContactSerializer, ExpenseSerializer, LocationSerializer, NoteSerializer, \
-    PayerSerializer, ServiceNoProviderSerializer, UserSerializer
+    NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, UserSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import NoteUnsafeSerializer
 from core_backend.serializers.serializers_utils import extendable_serializer, generic_serializer
@@ -211,6 +211,32 @@ class NoteCreateSerializer(NoteSerializer):
         note = Note.objects.create(**data)
 
         return note.id
+
+
+class NotificationCreateSerializer(NotificationSerializer):
+    data = serializers.ReadOnlyField()
+
+    def create(self, validated_data=None, render_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        notification = Notification.objects.create(**data, data=render_data)
+        return notification.id
+
+
+class OperatorCreateSerializer(OperatorSerializer):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all())
+
+    def create(self, validated_data=None):
+        data = validated_data or self.validated_data
+
+        companies_data = data.pop('companies', None)
+
+        operator = Operator.objects.create(**data)
+
+        if companies_data:
+            operator.companies.add(*companies_data)
+
+        return operator
 
 
 class PayerCreateSerializer(PayerSerializer):

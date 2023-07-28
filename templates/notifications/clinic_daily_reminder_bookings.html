@@ -1,0 +1,19 @@
+<div>
+    <p>
+        Good morning!
+    </p>
+    <p>
+        These are the scheduled interpreters at your clinic for today ({{ date }}):
+    </p>
+    <ul>
+        {% for event in events %}
+            <li>
+                {{ event.start_at }},
+                patient {{ event.patient_name }},
+                provider {{ event.medical_provider_name }},
+                interpreter {{ event.interpreter_name }},
+                phone {{ event.interpreter_phone|default:"not provided" }}.
+            </li>
+        {% endfor %}
+    </ul>
+</div>

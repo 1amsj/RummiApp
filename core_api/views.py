@@ -15,25 +15,29 @@ from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, create_events_wrap, \
-    create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, \
+    create_operator_wrap, create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, \
+    handle_events_bulk, update_event_wrap, \
     update_provider_wrap, update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
     Expense, \
     ExtraQuerySet, Note, \
-    Operator, \
+    Notification, Operator, \
     Payer, \
     Provider, \
     Recipient, \
     Requester, Service, ServiceRoot, User
+from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, NoteSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, RecipientSerializer, \
+    ExpenseSerializer, NoteSerializer, NotificationSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, \
+    RecipientSerializer, \
     RequesterSerializer, ServiceRootBaseSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, BookingCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, \
-    ExpenseCreateSerializer, NoteCreateSerializer, PayerCreateSerializer, RecipientCreateSerializer, \
+    ExpenseCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, PayerCreateSerializer, \
+    RecipientCreateSerializer, \
     ServiceCreateSerializer, ServiceRootCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
@@ -280,10 +284,9 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         """
         # Create user
         # Extract roles data before the serializer deals with it
-        agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA,{
-            "companies": [],
-            "role": '',
-        })
+        agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA, None)
+
+        operator_data = request.data.pop(ApiSpecialKeys.OPERATOR_DATA, None)
 
         payer_data = request.data.pop(ApiSpecialKeys.PAYER_DATA, {
             "companies": [],
@@ -313,6 +316,14 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             )
 
             response["agent_id"] = agent_id
+
+        if operator_data:
+            operator_id = create_operator_wrap(
+                operator_data,
+                user_id=user_id,
+            )
+
+            response["operator_id"] = operator_id
 
         if payer_data:
             payer_id = create_payer_wrap(
@@ -1134,3 +1145,36 @@ class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSe
     def delete(request, authorization_id=None):
         Authorization.objects.get(id=authorization_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageNotifications(basic_view_manager(Notification, NotificationSerializer)):
+    @classmethod
+    @expect_does_not_exist(Notification)
+    def get(cls, request, notification_id=None):
+        if notification_id:
+            notification = NotificationSerializer.get_default_queryset().get(id=notification_id)
+            serialized = NotificationSerializer(notification)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+        queryset = NotificationSerializer.get_default_queryset()
+        queryset = cls.apply_filters(queryset, query_params)
+        serialized = NotificationSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        payload = data.get('payload')
+        template = data.get('template')
+
+        serializer = NotificationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        render_data = build_from_template(template, payload)
+
+        notification_id = serializer.create(render_data=render_data)
+
+        return Response(notification_id, status=status.HTTP_202_ACCEPTED)
