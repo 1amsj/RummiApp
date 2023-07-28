@@ -59,6 +59,7 @@ urlpatterns = [
     *path_optional('companies/', '<id:company_id>', views.ManageCompany.as_view(), name='manage_companies'),
     *path_optionals_xor('events/', ['<id:event_id>', '<str:business_name>'], views.ManageEvents.as_view(), name='manage_events'),
     *path_optional('expenses/', '<id:expense_id>', views.ManageExpenses.as_view(), name='manage_expenses'),
+    *path_optional('languages/', '<id:language_id>', views.ManageLanguages.as_view(), name='manage_languages'),
     *path_optional('services/', '<str:business_name>', views.ManageService.as_view(), name='manage_services'),
     *path_optional('service_roots/', '<id:service_root_id>', views.ManageServiceRoot.as_view(), name='manage_service_roots'),
 

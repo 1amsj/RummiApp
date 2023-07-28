@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, Contact, Event, \
-    Invoice, Ledger, Location, Notification, Operator, Payer, Provider, Recipient, Requester, \
+    Invoice, Language, Ledger, Location, Notification, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
@@ -141,6 +141,20 @@ class CompanySerializer(BaseSerializer):
 
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
+
+
+class LanguageSerializer(BaseSerializer):
+    class Meta:
+        model = Language
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Language.objects
+            .all()
+            .not_deleted()
+        )
 
 
 # Roles serializers

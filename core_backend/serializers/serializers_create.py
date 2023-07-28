@@ -2,12 +2,12 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, Event, \
-    Expense, Location, Note, Notification, Operator, Payer, Provider, Recipient, Requester, \
+    Expense, Language, Location, Note, Notification, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, \
     CompanyWithParentSerializer, \
-    ContactSerializer, ExpenseSerializer, LocationSerializer, NoteSerializer, \
+    ContactSerializer, ExpenseSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, UserSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import NoteUnsafeSerializer
@@ -202,6 +202,15 @@ class ExpenseCreateSerializer(ExpenseSerializer):
         data: dict = validated_data or self.validated_data
         expense = Expense.objects.create(**data)
         return expense.id
+
+
+class LanguageCreateSerializer(LanguageSerializer):
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+
+        language = Language.objects.create(**data)
+
+        return language.id
 
 
 class NoteCreateSerializer(NoteSerializer):

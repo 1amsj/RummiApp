@@ -14,14 +14,15 @@ from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, create_events_wrap, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
+    create_events_wrap, \
     create_operator_wrap, create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, \
     handle_events_bulk, update_event_wrap, \
     update_provider_wrap, update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
     Expense, \
-    ExtraQuerySet, Note, \
+    ExtraQuerySet, Language, Note, \
     Notification, Operator, \
     Payer, \
     Provider, \
@@ -31,18 +32,18 @@ from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, NoteSerializer, NotificationSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, \
+    ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, \
     RecipientSerializer, \
     RequesterSerializer, ServiceRootBaseSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
-    AuthorizationCreateSerializer, BookingCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, \
-    ExpenseCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, PayerCreateSerializer, \
+    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, \
+    ExpenseCreateSerializer, LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, PayerCreateSerializer, \
     RecipientCreateSerializer, \
     ServiceCreateSerializer, ServiceRootCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
     CategoryUpdateSerializer, CompanyUpdateSerializer, \
-    ExpenseUpdateSerializer, ProviderUpdateSerializer, \
+    ExpenseUpdateSerializer, LanguageUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
@@ -1144,6 +1145,50 @@ class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSe
     @expect_does_not_exist(Authorization)
     def delete(request, authorization_id=None):
         Authorization.objects.get(id=authorization_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ManageLanguages(basic_view_manager(Language, LanguageSerializer)):
+    @classmethod
+    def get(cls, request, language_id=None):
+        if language_id:
+            language = LanguageSerializer.get_default_queryset().get(id=language_id)
+            serialized = LanguageSerializer(language)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = LanguageSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = LanguageSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        serializer = LanguageCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        language_id = serializer.create()
+        return Response(language_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Language)
+    def put(request, language_id=None):
+        language = Language.objects.get(id=language_id)
+        serializer = LanguageUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(language)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Language)
+    def delete(request, language_id=None):
+        Language.objects.get(id=language_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

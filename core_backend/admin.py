@@ -104,6 +104,7 @@ def basic_register(admin_model: Type[models.Model], readonly=(), extendable=Fals
 
 basic_register(Contact, historical=True)
 basic_register(Company, historical=True)
+basic_register(Language, historical=True)
 basic_register(Location)
 
 admin.site.register(User, UserAdmin)
