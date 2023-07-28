@@ -2,12 +2,12 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
-from core_api.exceptions import BusinessNotProvidedException
-from core_backend.models import User
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
 from core_backend.models import Event
-from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, BookingCreateSerializer, \
-    EventCreateSerializer, OfferCreateSerializer, PayerCreateSerializer, \
+from core_backend.models import User
+from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
+    BookingCreateSerializer, \
+    EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
     RecipientCreateSerializer, RequesterCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, \
@@ -39,6 +39,24 @@ def create_agent_wrap(data,  business_name, user_id,):
         })
 
     return agent.id
+
+
+@transaction.atomic
+def create_operator_wrap(data, user_id):
+    # Handle operator role creation
+    try:
+        data['user'] = user_id
+        serializer = OperatorCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        operator = serializer.create()
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.OPERATOR_DATA: exc.detail,
+        })
+
+    return operator.id
 
 
 @transaction.atomic
@@ -136,7 +154,7 @@ def create_booking(data, business_name, user):
     serializer = BookingCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
     booking_id = serializer.create()
-    return booking_id;
+    return booking_id
 
 
 @transaction.atomic
@@ -245,7 +263,7 @@ def update_recipient_wrap(data, business_name, user_id, recipient_instance):
 def update_event_wrap(data, business_name, event_instance):
     if not business_name:
         raise BusinessNotProvidedException
-    
+
     try:
         serializer = EventUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
@@ -282,7 +300,7 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
         try:
             if not event_id:
                 data['booking'] = booking_id
-                
+
                 event_id = create_event(
                     data,
                     business_name,

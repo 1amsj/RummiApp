@@ -196,6 +196,23 @@ class Company(SoftDeletableModel, HistoricalModel):
         self.notes.all().delete()
         pass
 
+
+class Language(SoftDeletableModel, HistoricalModel):
+    alpha2 = models.CharField(_('alpha2'), max_length=2)
+    alpha3 = models.CharField(_('alpha3'), max_length=3)
+    available = models.BooleanField(_('available'), default=True)
+    common = models.BooleanField(_('common'), default=False)
+    description = models.TextField(_('description'), null=True, blank=True)
+    name = models.CharField(_('name'), max_length=128)
+
+    class Meta:
+        verbose_name = _('language')
+        verbose_name_plural = _('languages')
+
+    def __str__(self):
+        return F"{self.name} [{self.alpha2}|{self.alpha3}] ({self.id})"
+
+
 class Location(SoftDeletableModel):
     address = models.TextField(_('address'), null=True, blank=True)
     unit_number = models.TextField(_('unit number'), null=True, blank=True)
@@ -234,6 +251,10 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     def __str__(self):
             return F"{self.title} {self.first_name} {self.last_name} {self.suffix} - {self.username} ({self.id})"
 
+
+    @property
+    def full_name(self):
+        return F"{self.title or ''} {self.first_name} {self.last_name} {self.suffix or ''}".strip()
 
     @property
     def is_agent(self):
@@ -636,6 +657,32 @@ class Authorization(ExtendableModel, HistoricalModel, SoftDeletableModel):
         return F'{self.id} - {list(self.events.all().values_list("id", flat=True))} - {self.authorizer} - {self.company} - {self.status}'
 
 
+class Notification(HistoricalModel, SoftDeletableModel):
+    class Status(models.TextChoices):
+        PENDING = 'PENDING', _('Pending')
+        SENT = 'SENT', _('Sent')
+
+    class SendMethod(models.TextChoices):
+        EMAIL = 'EMAIL', _('Email')
+        FAX = 'FAX', _('Fax')
+
+    data = models.JSONField()
+    payload = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    priority = models.IntegerField(default=50)
+    send_method = models.CharField(max_length=32, choices=SendMethod.choices)
+    sent_at = models.DateTimeField(default=None, null=True, blank=True)
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING)
+    template = models.CharField(max_length=128)
+
+    class Meta:
+        verbose_name = _('notification')
+        verbose_name_plural = _('notifications')
+
+    def __str__(self):
+        return F'{self.id} - template {self.template} - status {self.status} - via {self.send_method} - priority {self.priority}'
+
+
 class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Status(models.TextChoices):
         REQUESTED = 'REQUESTED', _('Requested')
@@ -653,4 +700,3 @@ class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Meta:
         verbose_name = _('offer')
         verbose_name_plural = _('offers')
-

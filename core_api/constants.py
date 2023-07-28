@@ -18,6 +18,7 @@ class ApiSpecialKeys(str, Enum):
     BUSINESS = '_business'
     AFFILIATION_DATALIST = '_affiliation_datalist'
     AGENT_DATA = '_agent_data'
+    OPERATOR_DATA = '_operator_data'
     PAYER_DATA = '_payer_data'
     PROVIDER_DATA = '_provider_data'
     RECIPIENT_DATA = '_recipient_data'
@@ -43,3 +44,18 @@ API_QUERY_LOOKUP_MAP = {
     "array_in": "in",
     "isnull": "isnull",
 }
+
+# Non-generic constants
+INTERPRETATION_BUSINESS_NAME = 'interpretation'
+
+class AgentRoles(str, Enum):
+    MEDICAL_PROVIDER = 'medicalProvider'
+
+class BookingReminderTargets(str, Enum):
+    EXTRA_KEY = 'reminder_targets'
+    ALL = "all"
+    CLINIC = "clinic"
+    INTERPRETER = "interpreter"
+
+class CompanyTypes(str, Enum):
+    CLINIC = 'clinic'

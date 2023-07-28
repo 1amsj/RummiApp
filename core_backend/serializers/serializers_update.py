@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Location, Offer, Operator, Payer, \
+from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Expense, Language, Location, Offer, \
+    Operator, \
+    Payer, \
     Provider, \
     Recipient, \
     Requester, ServiceRoot, \
@@ -10,7 +12,7 @@ from core_backend.serializers.serializers import AuthorizationBaseSerializer, Co
     LocationSerializer, NoteSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, \
     EventCreateSerializer, \
-    ExpenseCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ServiceRootCreateSerializer, \
+    ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
@@ -142,7 +144,15 @@ class EventUpdateSerializer(EventCreateSerializer):
 
 
 class ExpenseUpdateSerializer(ExpenseCreateSerializer):
-    def update(self, instance: Event, validated_data=None):
+    def update(self, instance: Expense, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+
+class LanguageUpdateSerializer(LanguageCreateSerializer):
+    def update(self, instance: Language, validated_data=None):
         data: dict = validated_data or self.validated_data
         for (k, v) in data.items():
             setattr(instance, k, v)

@@ -8,6 +8,17 @@
 
 ---
 
+## Commands
+These are the following commands that can be run with the `manage.py` file:
+* `python manage.py send_pending_notifications` - Sends all pending notifications to the recipients
+* `python manage.py setup_daily_booking_reminders` - Creates the notifications for the bookings that have events due today
+* `python manage.py import_from_csv --contacts_file <path_to_contacts_csv> --locations_file <path_to_locations_csv> --companies_file <path_to_companies_csv` - Imports the contacts, locations and companies from the csv files.
+  * The contacts table must have the columns: `id`, `email`, `email_context`, `phone`, `phone_context`, `fax`, `fax_context`.
+  * The locations table must have the columns: `id`, `address`, `unit_number`, `city`, `state`, `country` (optional, defaults to "United States of America"), `zip`.
+  * The companies table must have the columns: `name`, `type`, `send_method`, `on_hold` ("yes" or "no"), and `contact_ids` and `location_ids` which are comma separated lists of the ids of the previously defined contacts and locations respectively.
+
+---
+
 ## Initial Setup
 
 First of all install:
