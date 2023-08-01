@@ -270,13 +270,15 @@ class OfferUpdateSerializer(OfferCreateSerializer):
     service = serializers.PrimaryKeyRelatedField(read_only=True, required=False)
     status = serializers.CharField(required=True)
 
-    def update(self, instance: Offer, validated_data=None):
+    def update(self, instance: Offer, business_name, validated_data=None):
         data: dict = validated_data or self.validated_data
         data.pop('booking', None)
         data.pop('service', None)
-        data.pop('extra', None)
+        extras = data.pop('extra', None)
 
         for (k, v) in data.items():
             setattr(instance, k, v)
 
         instance.save()
+
+        manage_extra_attrs(business_name, instance, extras)

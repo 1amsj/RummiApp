@@ -409,14 +409,3 @@ class OfferCreateSerializer(extendable_serializer(Offer)):
         manage_extra_attrs(business, offer, extras)
 
         return offer.id
-
-    def update(self, instance: Offer, business, validated_data=None):
-        data: dict = validated_data or self.validated_data
-        extras = data.pop('extra', {})
-
-        for (k, v) in data.items():
-            setattr(instance, k, v)
-        instance.save()
-
-        manage_extra_attrs(business, instance, extras)
-        
