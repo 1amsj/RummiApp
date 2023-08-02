@@ -219,7 +219,7 @@ LOGGING = {
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
+            'formatter': 'simple'
         },
     },
     'loggers': {
