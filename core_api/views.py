@@ -32,12 +32,14 @@ from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, \
+    ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, PayerSerializer, \
+    ProviderSerializer, \
     RecipientSerializer, \
     RequesterSerializer, ServiceRootBaseSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, \
-    ExpenseCreateSerializer, LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, PayerCreateSerializer, \
+    ExpenseCreateSerializer, LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
+    PayerCreateSerializer, \
     RecipientCreateSerializer, \
     ServiceCreateSerializer, ServiceRootCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
@@ -150,11 +152,12 @@ def get_version(request):
 def search_bookings(request):
     # This view was made for the interpretation business alone and is not meant to be used in a generic application
     # without making the proper modifications
+
     person_query = Q(is_deleted=False)
     if first_name := request.GET.get('first_name'):
-        person_query = person_query and Q(first_name__icontains=first_name)
+        person_query &= Q(first_name__icontains=first_name)
     if last_name := request.GET.get('last_name'):
-        person_query = person_query and Q(last_name__icontains=last_name)
+        person_query &= Q(last_name__icontains=last_name)
 
     eligible_users = UserSerializer.get_default_queryset().filter(person_query)
     eligible_services = ServiceSerializer.get_default_queryset().filter(
@@ -170,18 +173,18 @@ def search_bookings(request):
         affiliates__in=eligible_affiliations,
     )
 
-    queryset = BookingSerializer.get_default_queryset().filter(
-        is_deleted=False,
-        services__in=eligible_services,
-        events__in=eligible_events,
-    )
+    booking_query = Q(is_deleted=False) & (Q(services__in=eligible_services) | Q(events__in=eligible_events))
+
+    queryset = BookingSerializer.get_default_queryset().filter(booking_query).distinct('id')
 
     if date := request.GET.get('date'):
-        queryset = queryset.filter_by_extra(
+        queryset_doi_filtered = queryset.filter_by_extra(
+            related_prefix='events__',
             date_of_injury__contains=date,
         )
+        queryset_event_date_filtered = queryset.filter(events__start_at__contains=date)
 
-    queryset = queryset.distinct('id')
+        queryset = queryset_doi_filtered.union(queryset_event_date_filtered)
 
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.data)
