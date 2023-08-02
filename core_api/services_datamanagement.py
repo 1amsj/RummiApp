@@ -7,7 +7,7 @@ from core_backend.models import Event
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, \
-    EventCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
+    EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
     RecipientCreateSerializer, RequesterCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, \
@@ -188,6 +188,29 @@ def create_event(data, business_name, requester_id):
     serializer = EventCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
     return serializer.create(business_name)
+
+
+@transaction.atomic
+def create_offers_wrap(datalist, business, booking_id):
+    offer_ids = []
+    offer_errors = []
+    for offer_data in datalist:
+        try:
+            offer_data['booking'] = booking_id
+            serializer = OfferCreateSerializer(data=offer_data)
+            serializer.is_valid(raise_exception=True)
+            offer_id = serializer.create(business)
+            offer_ids.append(offer_id)
+
+        except ValidationError as exc:
+            offer_errors.append(exc.detail)
+
+    if offer_errors:
+        raise ValidationError({
+            ApiSpecialKeys.OFFER_DATALIST: offer_errors
+        })
+    
+    return offer_ids
 
 
 # Update
