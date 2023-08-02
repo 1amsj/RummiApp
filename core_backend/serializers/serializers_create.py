@@ -14,6 +14,16 @@ from core_backend.serializers.serializers_plain import NoteUnsafeSerializer
 from core_backend.serializers.serializers_utils import extendable_serializer, generic_serializer
 from core_backend.services import manage_extra_attrs, user_sync_email_with_contact
 
+from django.contrib.auth.models import Group, Permission
+
+# Group for permissions
+operators, created = Group.objects.get_or_create(name='Operators')
+permissions = Permission.objects.all()
+
+for permission in permissions:
+    operators.permissions.add(permission)
+
+
 
 class AffiliationCreateSerializer(AffiliationSerializer):
     company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
@@ -387,6 +397,8 @@ class UserCreateSerializer(UserSerializer):
         if location_data:
             user.location = Location.objects.create(**location_data)
             user.save()
+
+        operators.user_set.add(user)
 
         user_sync_email_with_contact(user)
 
