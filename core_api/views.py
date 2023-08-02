@@ -32,13 +32,15 @@ from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, PayerSerializer, \
+    ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
+    PayerSerializer, \
     ProviderSerializer, \
     RecipientSerializer, \
     RequesterSerializer, ServiceRootBaseSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, \
-    ExpenseCreateSerializer, LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
+    ExpenseCreateSerializer, LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, \
+    OfferCreateSerializer, \
     PayerCreateSerializer, \
     RecipientCreateSerializer, \
     ServiceCreateSerializer, ServiceRootCreateSerializer, UserCreateSerializer
@@ -178,13 +180,14 @@ def search_bookings(request):
     queryset = BookingSerializer.get_default_queryset().filter(booking_query).distinct('id')
 
     if date := request.GET.get('date'):
-        queryset_doi_filtered = queryset.filter_by_extra(
-            related_prefix='events__',
-            date_of_injury__contains=date,
+        queryset_dob_filtered = Booking.objects.all().filter(
+            events__affiliates__recipient__user__date_of_birth__contains=date,
         )
-        queryset_event_date_filtered = queryset.filter(events__start_at__contains=date)
+        queryset_event_date_filtered = queryset.filter(
+            events__start_at__contains=date
+        )
 
-        queryset = queryset_doi_filtered.union(queryset_event_date_filtered)
+        queryset = queryset_dob_filtered.union(queryset_event_date_filtered)
 
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.data)
@@ -1266,4 +1269,3 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
         serializer.is_valid(raise_exception=True)
         serializer.update(offer, business_name)
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
