@@ -10,7 +10,7 @@ class DailyUniqueIdentifierField(models.CharField):
             
             # Get the last object with the same date prefix
             querySet = model_instance.__class__.objects.filter(**{
-                F"{self.name}__startswith": date.strftime('%Y%m%d')
+                F"{self.name}__startswith": date.strftime('%y%m%d')
             })
             last_object = querySet.order_by(F"-{self.name}").first()
 
