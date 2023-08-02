@@ -24,42 +24,34 @@ class Command(BaseCommand):
         # Contacts
         contacts_file = kwargs['contacts_file']
         if not contacts_file:
-            self.stdout.write(
-                self.style.ERROR(
-                    'Please provide the path to the CSV file for contacts using --contacts_file option'
-                )
-            )
-            return
+            contacts_dict = {}
 
-        try:
-            with open(contacts_file, 'r') as file:
-                contacts_dict = self.create_contacts_from_csv_file(file)
-        except FileNotFoundError:
-            self.stdout.write(self.style.ERROR(f'File not found at {contacts_file}'))
-            raise
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(f'An error occurred: {str(e)}'))
-            raise
+        else:
+            try:
+                with open(contacts_file, 'r') as file:
+                    contacts_dict = self.create_contacts_from_csv_file(file)
+            except FileNotFoundError:
+                self.stdout.write(self.style.ERROR(f'File not found at {contacts_file}'))
+                raise
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f'An error occurred: {str(e)}'))
+                raise
 
         # Locations
         locations_file = kwargs['locations_file']
         if not locations_file:
-            self.stdout.write(
-                self.style.ERROR(
-                    'Please provide the path to the CSV file for locations using --locations_file option'
-                )
-            )
-            return
+            locations_dict = {}
 
-        try:
-            with open(locations_file, 'r') as file:
-                locations_dict = self.create_locations_from_csv_file(file)
-        except FileNotFoundError:
-            self.stdout.write(self.style.ERROR(f'File not found at {locations_file}'))
-            raise
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(f'An error occurred: {str(e)}'))
-            raise
+        else:
+            try:
+                with open(locations_file, 'r') as file:
+                    locations_dict = self.create_locations_from_csv_file(file)
+            except FileNotFoundError:
+                self.stdout.write(self.style.ERROR(f'File not found at {locations_file}'))
+                raise
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f'An error occurred: {str(e)}'))
+                raise
 
         # Companies
         companies_file = kwargs['companies_file']
