@@ -538,6 +538,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
         self.events.all().delete()
         self.expenses.all().delete()
         self.notes.all().delete()
+        self.offers.all().delete()
 
 
 class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
@@ -680,3 +681,22 @@ class Notification(HistoricalModel, SoftDeletableModel):
 
     def __str__(self):
         return F'{self.id} - template {self.template} - status {self.status} - via {self.send_method} - priority {self.priority}'
+
+
+class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
+    class Status(models.TextChoices):
+        REQUESTED = 'REQUESTED', _('Requested')
+        AVAILABLE = 'AVAILABLE', _('Available')
+        NOT_AVAILABLE = 'NOT_AVAILABLE', _('Not Available')
+        PENDING_OFFER = 'PENDING_OFFER', _('Pending Offer')
+        ACCEPTED = 'ACCEPTED', _('Accepted')
+        REJECTED = 'REJECTED', _('Rejected')
+
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.REQUESTED)
+    last_updated_at = models.DateTimeField(auto_now=True)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='offers')
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name='offers')
+
+    class Meta:
+        verbose_name = _('offer')
+        verbose_name_plural = _('offers')

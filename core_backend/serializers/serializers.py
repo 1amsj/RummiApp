@@ -3,7 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, Contact, Event, \
-    Invoice, Language, Ledger, Location, Notification, Operator, Payer, Provider, Recipient, Requester, \
+    Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
     Service, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
@@ -433,6 +433,24 @@ class RequesterSerializer(user_subtype_serializer(Requester)):
         )
 
 
+
+class OfferSerializer(BaseSerializer):
+    booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
+    service = ServiceSerializer()
+
+    class Meta:
+        model = Offer
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Offer.objects
+            .all()
+            .not_deleted()
+        )
+
+
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     categories = CategorySerializer(many=True)
     children = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Booking.objects.all().not_deleted('business'))
@@ -443,6 +461,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     parent = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'), allow_null=True)
     services = ServiceSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
+    offers = OfferSerializer(many=True, default=[])
     service_root = ServiceRootBaseSerializer(allow_null=True)
 
     class Meta:
@@ -467,6 +486,10 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
                 Prefetch(
                     'notes',
                     queryset=NoteSerializer.get_default_queryset()
+                ),
+                Prefetch(
+                    'offers',
+                    queryset=OfferSerializer.get_default_queryset(),
                 ),
                 Prefetch(
                     'expenses',
@@ -553,7 +576,7 @@ class BookingSerializer(BookingNoEventsSerializer):
                 Prefetch(
                     'events',
                     queryset=EventNoBookingSerializer.get_default_queryset(),
-                )
+                ),
             )
         )
 

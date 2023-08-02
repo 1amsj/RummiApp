@@ -37,7 +37,6 @@ env/
 venv/
 ENV/
 .vscode
-package.json
 pyvenv.cfg
 
 # Others
