@@ -213,8 +213,8 @@ LOGGING = {
         'file': {
             'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': './logs/info.log',
-             'formatter': 'verbose'
+            'filename': os.path.join(os.path.dirname(os.path.realpath(__file__)), '../logs/info.log'),
+            'formatter': 'verbose'
         },
         'console': {
             'level': 'INFO',
