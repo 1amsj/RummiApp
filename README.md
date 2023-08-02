@@ -16,6 +16,9 @@ These are the following commands that can be run with the `manage.py` file:
   * The contacts table must have the columns: `id`, `email`, `email_context`, `phone`, `phone_context`, `fax`, `fax_context`.
   * The locations table must have the columns: `id`, `address`, `unit_number`, `city`, `state`, `country` (optional, defaults to "United States of America"), `zip`.
   * The companies table must have the columns: `name`, `type`, `send_method`, `on_hold` ("yes" or "no"), and `contact_ids` and `location_ids` which are comma separated lists of the ids of the previously defined contacts and locations respectively.
+* `python manage.py import_languages_from_csv <path_to_csv>` - Imports the languages from the csv file.
+  * The csv file must have the columns (please note that they are case-sensitive): `Show` ("TRUE" or empty), `Common` ("TRUE" or empty), `alpha2`, `Alpha3`, `English Name`, `English Description`.
+  * When running the script, if there's another entry in the database that matches a row's `alpha2`, `Alpha3` and `English Name` columns, the script will update that entry with the new data.
 
 ---
 
