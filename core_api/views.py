@@ -60,11 +60,11 @@ def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
         def has_permission(self, request, view):
             method = request.method
             user = request.user
-            return (method == 'GET' and user.has_perm(F'core_api.view_{model_name}')) \
-                or (method == 'POST' and user.has_perm(F'core_api.add_{model_name}')) \
-                or (method == 'PUT' and user.has_perm(F'core_api.change_{model_name}')) \
-                or (method == 'PATCH' and user.has_perm(F'core_api.change_{model_name}')) \
-                or (method == 'DELETE' and user.has_perm(F'core_api.delete_{model_name}'))
+            return (method == 'GET' and user.has_perm(F'core_backend.view_{model_name}')) \
+                or (method == 'POST' and user.has_perm(F'core_backend.add_{model_name}')) \
+                or (method == 'PUT' and user.has_perm(F'core_backend.change_{model_name}')) \
+                or (method == 'PATCH' and user.has_perm(F'core_backend.change_{model_name}')) \
+                or (method == 'DELETE' and user.has_perm(F'core_backend.delete_{model_name}'))
 
     return CanManageModel
 
