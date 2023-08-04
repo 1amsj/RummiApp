@@ -17,12 +17,14 @@ from core_backend.services import manage_extra_attrs, user_sync_email_with_conta
 from django.contrib.auth.models import Group, Permission
 
 # Group for permissions
-def create_group(name):
-    group, created = Group.objects.get_or_create(name=name)
-    permissions = Permission.objects.all()
-
-    for permission in permissions:
-        group.permissions.add(permission)
+def get_or_create_operators_group():
+    group, created = Group.objects.get_or_create(name='Operators')
+    
+    if created:
+        permissions = Permission.objects.all()
+        group.permissions.set(permissions)
+        
+    return group
 
 
 
@@ -399,9 +401,8 @@ class UserCreateSerializer(UserSerializer):
             user.location = Location.objects.create(**location_data)
             user.save()
 
-        create_group('Operators')
-        operators = Group.objects.get(name='Operators')
-        user.groups.add(operators)
+        operators_group = get_or_create_operators_group()
+        user.groups.add(operators_group)
 
         user_sync_email_with_contact(user)
 
