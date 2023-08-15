@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Expense, Language, Location, Offer, \
+from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Expense, Language, Location, \
+    Offer, \
     Operator, \
     Payer, \
     Provider, \
@@ -12,7 +13,8 @@ from core_backend.serializers.serializers import AuthorizationBaseSerializer, Co
     LocationSerializer, NoteSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, \
     EventCreateSerializer, \
-    ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ServiceRootCreateSerializer, \
+    ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, \
+    ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
@@ -52,9 +54,9 @@ class BookingUpdateSerializer(BookingCreateSerializer):
         for (k, v) in data.items():
             setattr(instance, k, v)
         instance.save()
+        instance.children.set(children)
 
         sync_m2m(instance.categories, categories)
-        sync_m2m(instance.children, children)
         sync_m2m(instance.companies, companies)
         sync_m2m(instance.operators, operators)
         sync_m2m(instance.services, services)
