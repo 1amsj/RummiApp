@@ -213,7 +213,7 @@ class Language(SoftDeletableModel, HistoricalModel):
         return F"{self.name} [{self.alpha2}|{self.alpha3}] ({self.id})"
 
 
-class Location(SoftDeletableModel):
+class Location(SoftDeletableModel, HistoricalModel):
     address = models.TextField(_('address'), null=True, blank=True)
     unit_number = models.TextField(_('unit number'), null=True, blank=True)
     city = models.TextField(_('city'), null=True, blank=True)
@@ -442,7 +442,7 @@ class Business(SoftDeletableModel):
         self.services.all().delete()
 
 
-class Category(SoftDeletableModel):
+class Category(SoftDeletableModel, HistoricalModel):
     description = models.CharField(_('description'), max_length=256)
     name = models.CharField(_('name'), max_length=64)
 
@@ -457,7 +457,7 @@ class Category(SoftDeletableModel):
         pass
 
 
-class ServiceRoot(SoftDeletableModel):
+class ServiceRoot(SoftDeletableModel, HistoricalModel):
     categories = models.ManyToManyField(Category, related_name='roots', blank=True)
     description = models.TextField(_('description'), blank=True, default='')
     name = models.TextField(_('name'))
@@ -479,7 +479,7 @@ class ServiceRoot(SoftDeletableModel):
             self.services.all().delete()
 
 
-class Service(ExtendableModel, SoftDeletableModel):
+class Service(ExtendableModel, HistoricalModel, SoftDeletableModel):
     class RateType(models.TextChoices):
         FLAT = 'FLAT', _('Flat')
         PER_ASSIGNATION = 'PER_ASSIGNATION', _('Per Assignation')

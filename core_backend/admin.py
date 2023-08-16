@@ -21,7 +21,7 @@ class ExtendableAdmin(NestedModelAdmin):
     inlines = [ExtraInline]
 
 
-class UserAdmin(NestedModelAdmin, BaseUserAdmin, SimpleHistoryAdmin):
+class UserAdmin(SimpleHistoryAdmin, NestedModelAdmin, BaseUserAdmin):
     readonly_fields = ('is_operator', 'is_payer', 'is_provider', 'is_recipient', 'is_requester')
     fieldsets = (
         *BaseUserAdmin.fieldsets[:1],
@@ -66,7 +66,7 @@ def stacked_inline(inline_model: Type[models.Model], extendable=False):
     return Stacked
 
 
-def basic_register(admin_model: Type[models.Model], readonly=(), extendable=False, historical=False, admin_inlines: list = None):
+def basic_register(admin_model: Type[models.Model], readonly=(), extendable=False, historical=True, admin_inlines: list = None):
     parents = [SimpleHistoryAdmin] if historical else []
 
     class BasicAdmin(NestedModelAdmin, *parents):
@@ -102,32 +102,32 @@ def basic_register(admin_model: Type[models.Model], readonly=(), extendable=Fals
     admin.site.register(admin_model, BasicAdmin)
 
 
-basic_register(Contact, historical=True)
-basic_register(Company, historical=True)
-basic_register(Language, historical=True)
+basic_register(Contact)
+basic_register(Company)
+basic_register(Language)
 basic_register(Location)
 
 admin.site.register(User, UserAdmin)
 basic_register(Agent, extendable=True)
-basic_register(Operator, historical=True)
-basic_register(Payer, historical=True)
+basic_register(Operator)
+basic_register(Payer)
 basic_register(Provider, extendable=True, admin_inlines=[stacked_inline(Service, extendable=True)])
 basic_register(Recipient, extendable=True, admin_inlines=[stacked_inline(Affiliation, extendable=True)])
-basic_register(Affiliation, extendable=True, historical=True)
-basic_register(Requester, historical=True)
+basic_register(Affiliation, extendable=True)
+basic_register(Requester)
 
-basic_register(Business)
+basic_register(Business, historical=False)
 basic_register(Category)
 basic_register(Service, extendable=True)
 basic_register(ServiceRoot, admin_inlines=[stacked_inline(Service, extendable=True)])
 basic_register(Booking, extendable=True, admin_inlines=[stacked_inline(Ledger), stacked_inline(Expense, extendable=True), stacked_inline(Event, extendable=True)])
-basic_register(Event, extendable=True, historical=True, admin_inlines=[stacked_inline(Authorization.events.through)])
-basic_register(Expense, historical=True)
-basic_register(Offer, historical=True)
+basic_register(Event, extendable=True, admin_inlines=[stacked_inline(Authorization.events.through)])
+basic_register(Expense)
+basic_register(Offer)
 
-basic_register(Authorization, historical=True, readonly=('last_updated_at',))
-basic_register(Extra, historical=True)
-basic_register(Note, historical=True)
-basic_register(Notification, historical=True)
+basic_register(Authorization, readonly=('last_updated_at',))
+basic_register(Extra)
+basic_register(Note)
+basic_register(Notification)
 
 # admin.site.register(Rule)
