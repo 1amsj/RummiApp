@@ -16,8 +16,8 @@ from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerial
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
     create_events_wrap, create_offers_wrap, \
-    create_operator_wrap, create_payer_wrap, create_recipient_wrap, create_requester_wrap, create_user, \
-    handle_events_bulk, update_event_wrap, \
+    create_operator_wrap, create_payer_wrap, create_recipient_wrap, create_reports_wrap, create_requester_wrap, create_user, \
+    handle_events_bulk, handle_reports_bulk, update_event_wrap, \
     update_provider_wrap, update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
@@ -782,6 +782,7 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         data = request.data
         user: User = request.user
         requester_id = user.as_requester.id if user.is_requester else None
+        report_datalist = request.data.pop(ApiSpecialKeys.REPORT_DATALIST, None)
 
         if type(data) is list:
             # Create, update or delete events in bulk
@@ -799,6 +800,10 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
             requester_id
         )
 
+        if report_datalist:
+            create_reports_wrap(report_datalist, event_id)
+            
+
         return Response(event_id, status=status.HTTP_201_CREATED)
 
     @staticmethod
@@ -806,6 +811,9 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @expect_does_not_exist(Event)
     def put(request, event_id=None):
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
+
+        report_datalist = request.data.pop(ApiSpecialKeys.REPORT_DATALIST, None)
+
         event = Event.objects.get(id=event_id)
 
         update_event_wrap(
@@ -813,6 +821,12 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
             business_name,
             event_instance=event,
         )
+
+        if report_datalist:
+            handle_reports_bulk(
+                report_datalist,
+                event_id=event_id
+            )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

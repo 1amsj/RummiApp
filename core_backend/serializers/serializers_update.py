@@ -1,21 +1,12 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Expense, Language, Location, \
-    Offer, \
-    Operator, \
-    Payer, \
-    Provider, \
-    Recipient, \
-    Requester, ServiceRoot, \
-    User
+from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Expense, Language, \
+    Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, ServiceRoot, User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyWithParentSerializer, \
-    ContactSerializer, \
-    LocationSerializer, NoteSerializer
+    ContactSerializer, LocationSerializer, NoteSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, \
-    EventCreateSerializer, \
-    ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, \
-    ServiceRootCreateSerializer, \
-    UserCreateSerializer
+    EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, \
+    RecipientCreateSerializer, ReportCreateSerializer, ServiceRootCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
     NoteUnsafeSerializer
@@ -284,3 +275,13 @@ class OfferUpdateSerializer(OfferCreateSerializer):
         instance.save()
 
         manage_extra_attrs(business_name, instance, extras)
+
+
+class ReportUpdateSerializer(ReportCreateSerializer):
+    def update(self, instance: Report, validated_data=None):
+        data: dict = validated_data or self.validated_data
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+
+        instance.save()

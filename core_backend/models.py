@@ -691,9 +691,9 @@ class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
 
 class Report(HistoricalModel, ExtendableModel, SoftDeletableModel):
     status = models.CharField(max_length=32, default='Unreported')
-    arrival_time = models.DateField(_('Arrival Time'), null=True, blank=True)
-    start_time = models.DateField(_('Start Time'), null=True, blank=True)
-    end_time = models.DateField(_('End Time'), null=True, blank=True)
+    arrive_at = models.DateField(_('Arrival Time'), null=True, blank=True)
+    start_at = models.DateField(_('Start Time'), null=True, blank=True)
+    end_at = models.DateField(_('End Time'), null=True, blank=True)
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='reports')
     
     class Meta:

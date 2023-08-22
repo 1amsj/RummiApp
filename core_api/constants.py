@@ -15,16 +15,17 @@ class ApiSpecialKeys(str, Enum):
     DELETED_FLAG = '_deleted'
 
     # Appended data
-    BUSINESS = '_business'
     AFFILIATION_DATALIST = '_affiliation_datalist'
     AGENT_DATA = '_agent_data'
+    BUSINESS = '_business'
+    EVENT_DATALIST = '_event_datalist'
+    OFFER_DATALIST = '_offer_datalist'
     OPERATOR_DATA = '_operator_data'
     PAYER_DATA = '_payer_data'
     PROVIDER_DATA = '_provider_data'
     RECIPIENT_DATA = '_recipient_data'
+    REPORT_DATALIST = '_report_datalist'
     REQUESTER_DATA = '_requester_data'
-    EVENT_DATALIST = '_event_datalist'
-    OFFER_DATALIST = '_offer_datalist'
 
 
 FIELDS_BLACKLIST = [key for key in ApiSpecialKeys]
