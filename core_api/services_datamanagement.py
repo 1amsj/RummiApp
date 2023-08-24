@@ -236,13 +236,13 @@ def create_reports_wrap(datalist, event_id):
     return report_ids
 
 
-def create_report(data, event_id):
+def create_report(data, business, event_id):
     if not data.get('event'):
         data['event'] = event_id
 
     serializer = ReportCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
-    return serializer.create()
+    return serializer.create(business)
 
 
 # Update
@@ -325,6 +325,8 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
     for data in datalist:
         event_id = data.pop('id', None)
         deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+        report_datalist = data.pop(ApiSpecialKeys.REPORT_DATALIST, None)
+        print("🚀 ~ file: services_datamanagement.py:329 ~ report_datalist:", report_datalist)
 
         if not event_id and deleted_flag:
             raise BadRequestException('Event flagged as deleted but no ID provided')
@@ -338,12 +340,28 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
                     business_name,
                     requester_id
                 )
+
+                if report_datalist:
+                    handle_reports_bulk(
+                        report_datalist,
+                        business_name,
+                        event_id=event_id
+                    )
+
             elif not deleted_flag:
                 update_event_wrap(
                     data,
                     business_name,
                     event_instance=Event.objects.get(id=event_id)
                 )
+
+                if report_datalist:
+                    handle_reports_bulk(
+                        report_datalist,
+                        business_name,
+                        event_id=event_id
+                    )
+
             else:
                 Event.objects.get(id=event_id).delete()
 
@@ -362,11 +380,11 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
 
 
 @transaction.atomic
-def update_report_wrap(data, report_instance):
+def update_report_wrap(data, report_instance, business):
     try:
         serializer = ReportUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.update(report_instance)
+        serializer.update(report_instance, business)
 
     except ValidationError as exc:
         # Wrap errors
@@ -377,7 +395,7 @@ def update_report_wrap(data, report_instance):
 
 # Bulk
 @transaction.atomic
-def handle_reports_bulk(datalist: list, event_id):
+def handle_reports_bulk(datalist: list, business, event_id):
     """
     Create, update or delete the reports in bulk, depending on whether the payload includes an ID or not
     """
@@ -397,17 +415,19 @@ def handle_reports_bulk(datalist: list, event_id):
             raise BadRequestException('Event flagged as deleted but no ID provided')
 
         try:
-            if not report_id:
-                data['event'] = event_id
+            data['event'] = event_id
 
+            if not report_id:
                 report_id = create_report(
                     data,
+                    business,
                     event_id
                 )
             elif not deleted_flag:
                 update_report_wrap(
                     data,
-                    report_instance=Report.objects.get(id=report_id)
+                    report_instance=Report.objects.get(id=report_id),
+                    business=business
                 )
             else:
                 Report.objects.get(id=report_id).delete()

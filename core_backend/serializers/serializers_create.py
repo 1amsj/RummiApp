@@ -434,9 +434,11 @@ class ReportCreateSerializer(extendable_serializer(Report)):
         model = Report
         fields = '__all__'
 
-    def create(self, validated_data=None) -> int:
+    def create(self, business, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
+        extras = data.pop('extra', {})
         
         report = Report.objects.create(**data)
+        manage_extra_attrs(business, report, extras)
 
         return report.id

@@ -278,10 +278,13 @@ class OfferUpdateSerializer(OfferCreateSerializer):
 
 
 class ReportUpdateSerializer(ReportCreateSerializer):
-    def update(self, instance: Report, validated_data=None):
+    def update(self, instance: Report, business_name, validated_data=None):
         data: dict = validated_data or self.validated_data
+        extras = data.pop('extra', None)
 
         for (k, v) in data.items():
             setattr(instance, k, v)
 
         instance.save()
+
+        manage_extra_attrs(business_name, instance, extras)

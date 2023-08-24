@@ -15,40 +15,29 @@ from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
-    create_events_wrap, create_offers_wrap, \
-    create_operator_wrap, create_payer_wrap, create_recipient_wrap, create_reports_wrap, create_requester_wrap, create_user, \
-    handle_events_bulk, handle_reports_bulk, update_event_wrap, \
-    update_provider_wrap, update_recipient_wrap, update_user
+    create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_recipient_wrap, \
+    create_reports_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, update_provider_wrap, \
+    update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
-    Expense, \
-    ExtraQuerySet, Language, Note, \
-    Notification, Offer, Operator, \
-    Payer, \
-    Provider, \
-    Recipient, \
-    Requester, Service, ServiceRoot, User
+    Expense, ExtraQuerySet, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, Service, \
+    ServiceRoot, User
 from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
-    PayerSerializer, \
-    ProviderSerializer, \
-    RecipientSerializer, \
-    RequesterSerializer, ServiceRootBaseSerializer, ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
+    PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
+    ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
-    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, \
-    ExpenseCreateSerializer, LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, \
-    OfferCreateSerializer, \
-    PayerCreateSerializer, \
-    RecipientCreateSerializer, \
-    ServiceCreateSerializer, ServiceRootCreateSerializer, UserCreateSerializer
+    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
+    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
+    PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, \
+    UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
-    CategoryUpdateSerializer, CompanyUpdateSerializer, \
-    ExpenseUpdateSerializer, LanguageUpdateSerializer, OfferUpdateSerializer, ProviderUpdateSerializer, \
-    RecipientUpdateSerializer, ServiceRootUpdateSerializer
+    CategoryUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
+    OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
 
@@ -812,8 +801,6 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     def put(request, event_id=None):
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
 
-        report_datalist = request.data.pop(ApiSpecialKeys.REPORT_DATALIST, None)
-
         event = Event.objects.get(id=event_id)
 
         update_event_wrap(
@@ -821,12 +808,6 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
             business_name,
             event_instance=event,
         )
-
-        if report_datalist:
-            handle_reports_bulk(
-                report_datalist,
-                event_id=event_id
-            )
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

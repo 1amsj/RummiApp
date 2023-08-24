@@ -523,7 +523,7 @@ class ReportSerializer(BaseSerializer):
     @staticmethod
     def get_default_queryset():
         return (
-            Report.objects.all()
+            Report.objects.all().not_deleted()
         )
 
 

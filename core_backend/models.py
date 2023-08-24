@@ -691,17 +691,15 @@ class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
 
 class Report(HistoricalModel, ExtendableModel, SoftDeletableModel):
     status = models.CharField(max_length=32, default='Unreported')
-    arrive_at = models.DateField(_('Arrival Time'), null=True, blank=True)
-    start_at = models.DateField(_('Start Time'), null=True, blank=True)
-    end_at = models.DateField(_('End Time'), null=True, blank=True)
+    arrive_at = models.DateTimeField(_('Arrival Time'), null=True, blank=True)
+    start_at = models.DateTimeField(_('Start Time'), null=True, blank=True)
+    end_at = models.DateTimeField(_('End Time'), null=True, blank=True)
+    observations = models.TextField(blank=True, default='')
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='reports')
     
     class Meta:
         verbose_name = _('report')
         verbose_name_plural = _('reports')
-
-    def delete_related(self):
-        self.notes.all().delete()
 
 
 class Note(SoftDeletableModel):
@@ -714,7 +712,6 @@ class Note(SoftDeletableModel):
     payer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    report = models.ForeignKey(Report, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
 
     class Meta:
         verbose_name = _('note')
