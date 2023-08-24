@@ -259,7 +259,7 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
 
 
 class ProviderSerializer(user_subtype_serializer(Provider)):
-    companies = CompanyWithParentSerializer(many=True)
+    companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
     services = ServiceNoProviderSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
 
@@ -274,10 +274,6 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
             .all()
             .not_deleted('user')
             .prefetch_related(
-                Prefetch(
-                    'companies',
-                    queryset=CompanyWithParentSerializer.get_default_queryset()
-                ),
                 Prefetch(
                     'notes',
                     queryset=NoteSerializer.get_default_queryset()
