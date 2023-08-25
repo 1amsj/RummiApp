@@ -2,7 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, Event, \
-    Expense, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
+    Expense, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, \
@@ -425,3 +425,20 @@ class OfferCreateSerializer(extendable_serializer(Offer)):
         manage_extra_attrs(business, offer, extras)
 
         return offer.id
+
+
+class ReportCreateSerializer(extendable_serializer(Report)):
+    event = serializers.PrimaryKeyRelatedField(queryset=Event.objects.all())
+
+    class Meta:
+        model = Report
+        fields = '__all__'
+
+    def create(self, business, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+        extras = data.pop('extra', None)
+        
+        report = Report.objects.create(**data)
+        manage_extra_attrs(business, report, extras)
+
+        return report.id

@@ -573,6 +573,9 @@ class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
     @property
     def is_online(self):
         return bool(self.meeting_url)
+    
+    def delete_related(self):
+        self.reports.all().delete()
 
 
 # Billing models
@@ -616,22 +619,6 @@ class Invoice(models.Model):
     class Meta:
         verbose_name = _('invoice')
         verbose_name_plural = _('invoices')
-
-
-class Note(SoftDeletableModel):
-    created_at = models.DateTimeField(auto_now_add=True)
-    last_updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True)
-    text = models.TextField(blank=True, default='')
-    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    payer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-
-    class Meta:
-        verbose_name = _('note')
-        verbose_name_plural = _('notes')
 
 
 class Authorization(ExtendableModel, HistoricalModel, SoftDeletableModel):
@@ -701,3 +688,32 @@ class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Meta:
         verbose_name = _('offer')
         verbose_name_plural = _('offers')
+
+
+class Report(HistoricalModel, ExtendableModel, SoftDeletableModel):
+    status = models.CharField(max_length=32, default='Unreported')
+    arrive_at = models.DateTimeField(_('Arrival Time'), null=True, blank=True)
+    start_at = models.DateTimeField(_('Start Time'), null=True, blank=True)
+    end_at = models.DateTimeField(_('End Time'), null=True, blank=True)
+    observations = models.TextField(blank=True, default='')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='reports')
+    
+    class Meta:
+        verbose_name = _('report')
+        verbose_name_plural = _('reports')
+
+
+class Note(SoftDeletableModel):
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True)
+    text = models.TextField(blank=True, default='')
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    payer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+
+    class Meta:
+        verbose_name = _('note')
+        verbose_name_plural = _('notes')

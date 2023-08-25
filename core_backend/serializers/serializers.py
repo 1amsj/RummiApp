@@ -3,8 +3,8 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, Contact, Event, \
-    Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
-    Service, ServiceRoot
+    Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
+    Service, ServiceRoot, SoftDeletionQuerySet
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
     ExtraAttrSerializer, \
@@ -511,6 +511,18 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
         )
 
 
+class ReportSerializer(BaseSerializer):
+    class Meta:
+        model = Report
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Report.objects.all().not_deleted()
+        )
+
+
 class EventNoBookingSerializer(extendable_serializer(Event)):
     affiliates = AffiliationSerializer(many=True)
     agents = AgentSerializer(many=True)
@@ -518,6 +530,7 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
     payer = PayerSerializer(required=False)
     payer_company = CompanyWithParentSerializer(required=False)
+    reports = ReportSerializer(many=True)
     requester = RequesterSerializer()
 
     class Meta:
@@ -550,6 +563,10 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
                 Prefetch(
                     'payer_company',
                     queryset=CompanyWithParentSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'reports',
+                    queryset=ReportSerializer.get_default_queryset(),
                 ),
                 Prefetch(
                     'requester',

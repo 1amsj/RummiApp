@@ -3,14 +3,14 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Event
+from core_backend.models import Event, Report
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
-    RecipientCreateSerializer, RequesterCreateSerializer, UserCreateSerializer
+    RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
-    RecipientUpdateSerializer, \
+    RecipientUpdateSerializer, ReportUpdateSerializer, \
     UserUpdateSerializer
 
 
@@ -213,6 +213,38 @@ def create_offers_wrap(datalist, business, booking_id):
     return offer_ids
 
 
+@transaction.atomic
+def create_reports_wrap(datalist, event_id):
+    report_ids = []
+    report_errors = []
+    for report_data in datalist:
+        try:
+            report_data['event'] = event_id
+            serializer = ReportCreateSerializer(data=report_data)
+            serializer.is_valid(raise_exception=True)
+            report_id = serializer.create()
+            report_ids.append(report_id)
+
+        except ValidationError as exc:
+            report_errors.append(exc.detail)
+
+    if report_errors:
+        raise ValidationError({
+            ApiSpecialKeys.REPORT_DATALIST: report_errors
+        })
+    
+    return report_ids
+
+
+def create_report(data, business, event_id):
+    if not data.get('event'):
+        data['event'] = event_id
+
+    serializer = ReportCreateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    return serializer.create(business)
+
+
 # Update
 @transaction.atomic
 def update_user(data, user_instance):
@@ -283,7 +315,7 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
     Create, update or delete the events in bulk, depending on whether the payload includes an ID or not
     """
     # TODO It is noteworthy that currently this is not a true bulk operation.
-    #  Also, events get created event even if an error was found before,
+    #  Also, events get created even if an error was found before,
     #  this might make the transaction rollback expensive.
 
     event_ids = []
@@ -293,6 +325,8 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
     for data in datalist:
         event_id = data.pop('id', None)
         deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+        report_datalist = data.pop(ApiSpecialKeys.REPORT_DATALIST, None)
+        print("🚀 ~ file: services_datamanagement.py:329 ~ report_datalist:", report_datalist)
 
         if not event_id and deleted_flag:
             raise BadRequestException('Event flagged as deleted but no ID provided')
@@ -306,12 +340,28 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
                     business_name,
                     requester_id
                 )
+
+                if report_datalist:
+                    handle_reports_bulk(
+                        report_datalist,
+                        business_name,
+                        event_id=event_id
+                    )
+
             elif not deleted_flag:
                 update_event_wrap(
                     data,
                     business_name,
                     event_instance=Event.objects.get(id=event_id)
                 )
+
+                if report_datalist:
+                    handle_reports_bulk(
+                        report_datalist,
+                        business_name,
+                        event_id=event_id
+                    )
+
             else:
                 Event.objects.get(id=event_id).delete()
 
@@ -327,3 +377,70 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
         raise ValidationError(event_errors)
 
     return event_ids
+
+
+@transaction.atomic
+def update_report_wrap(data, report_instance, business):
+    try:
+        serializer = ReportUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(report_instance, business)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.REPORT_DATALIST: exc.detail,
+        })
+
+
+# Bulk
+@transaction.atomic
+def handle_reports_bulk(datalist: list, business, event_id):
+    """
+    Create, update or delete the reports in bulk, depending on whether the payload includes an ID or not
+    """
+    # TODO It is noteworthy that currently this is not a true bulk operation.
+    #  Also, reports get created even if an error was found before,
+    #  this might make the transaction rollback expensive.
+
+    report_ids = []
+    report_errors = []
+    error_found = False
+
+    for data in datalist:
+        report_id = data.pop('id', None)
+        deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if not report_id and deleted_flag:
+            raise BadRequestException('Event flagged as deleted but no ID provided')
+
+        try:
+            data['event'] = event_id
+
+            if not report_id:
+                report_id = create_report(
+                    data,
+                    business,
+                    event_id
+                )
+            elif not deleted_flag:
+                update_report_wrap(
+                    data,
+                    report_instance=Report.objects.get(id=report_id),
+                    business=business
+                )
+            else:
+                Report.objects.get(id=report_id).delete()
+
+            # Append empty error to object so that the indexes of the errors correspond to the indexes of the data
+            report_errors.append({})
+            report_ids.append(report_id)
+
+        except ValidationError as exc:
+            error_found = True
+            report_errors.append(exc.detail)
+
+    if error_found:
+        raise ValidationError(report_errors)
+
+    return report_ids
