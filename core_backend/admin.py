@@ -124,7 +124,7 @@ basic_register(Booking, extendable=True, admin_inlines=[stacked_inline(Ledger), 
 basic_register(Event, extendable=True, admin_inlines=[stacked_inline(Authorization.events.through)])
 basic_register(Expense)
 basic_register(Offer)
-basic_register(Report, historical=True)
+basic_register(Report)
 
 basic_register(Authorization, readonly=('last_updated_at',))
 basic_register(Extra)
