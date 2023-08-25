@@ -436,7 +436,7 @@ class ReportCreateSerializer(extendable_serializer(Report)):
 
     def create(self, business, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
-        extras = data.pop('extra', {})
+        extras = data.pop('extra', None)
         
         report = Report.objects.create(**data)
         manage_extra_attrs(business, report, extras)
