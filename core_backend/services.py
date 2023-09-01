@@ -1,11 +1,12 @@
 from functools import lru_cache
-from typing import Iterator, Tuple, Type, Union
+from typing import Iterator, Set, Tuple, Type, Union
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 import core_backend.models as app_models
 from core_api.constants import FIELDS_BLACKLIST
+from core_api.exceptions import BusinessNotProvidedException
 from core_backend.datastructures import QueryParams
 from core_backend.exceptions import ModelNotExtendableException
 
@@ -13,6 +14,11 @@ from core_backend.exceptions import ModelNotExtendableException
 def is_extendable(model: Type[models.Model]) -> bool:
     """Checks if a model is a subtype of ExtendableModel"""
     return issubclass(model, app_models.ExtendableModel)
+
+
+def is_soft_deletable(model: Type[models.Model]) -> bool:
+    """Checks if a model is a subtype of SoftDeletableModel"""
+    return issubclass(model, app_models.SoftDeletableModel)
 
 
 def assert_extendable(model: Type[models.Model]):
@@ -67,7 +73,10 @@ def filter_extra_attrs(model: Type[models.Model], fields: dict) -> dict:
     }
 
 
-def manage_extra_attrs(business: Union[str, app_models.Business], inst: models.Model, fields: dict):
+def manage_extra_attrs(business: Union[None, str, app_models.Business], inst: models.Model, fields: dict):
+    if not business:
+        raise BusinessNotProvidedException
+
     if isinstance(business, str):
         business = app_models.Business.objects.get(name=business)
     model = inst.__class__
@@ -100,3 +109,70 @@ def filter_params(model: Type[models.Model], params: QueryParams) -> Tuple[Query
             (base_params if f in field_names else extra_params)[f] = p
 
     return base_params, extra_params, nested_params
+
+
+def sync_sets(original_set, new_set, add, remove):
+    original_set = set(original_set)
+    new_set = set(new_set)
+
+    deleted = original_set.difference(new_set)
+    if deleted:
+        remove(deleted)
+
+    created = new_set.difference(original_set)
+    if created:
+        add(created)
+
+
+
+def sync_m2m(manager, new_set, field='id'):
+    """Sync a many-to-many relationship based on the ids"""
+    return sync_sets(
+        original_set=manager.all().values_list(field, flat=True),
+        new_set=new_set,
+        add=lambda s: manager.add(*s),
+        remove=lambda s: manager.remove(*s),
+    )
+
+
+def fetch_updated_from_validated_data(
+        obj_type: Type[models.Model],
+        dataset,
+        current_ids: Set[int],
+) -> Tuple[Set[models.Model], Set[models.Model], Set[int]]:
+    created, updated, deleted = [], [], []
+    ids_list = set()
+
+    for data in dataset:
+        obj_id = data.get('id', None)
+        if not obj_id:
+            # Created
+            obj = obj_type(**data)
+            created.append(obj)
+            continue
+        
+        # Updated
+        obj = obj_type.objects.get(id=obj_id)
+        for (k, v) in data.items():
+            setattr(obj, k, v)
+        updated.append(obj)
+
+        ids_list.add(obj_id)
+
+    # Deleted
+    usable_current_ids = set()
+
+    for (id, ) in current_ids:
+        usable_current_ids.add(id)
+
+    deleted = usable_current_ids.difference(ids_list)
+
+    return created, updated, deleted
+
+
+def user_sync_email_with_contact(user: app_models.User):
+    if (not user.email
+            or (user.contacts and user.contacts.filter(email=user.email).exists())):
+        return
+    contact = app_models.Contact.objects.create(email=user.email)
+    user.contacts.add(contact)

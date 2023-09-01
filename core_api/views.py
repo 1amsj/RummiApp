@@ -1,7 +1,7 @@
 from typing import Type, Union
 
 from django.db import models, transaction
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from rest_framework import generics, serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
@@ -9,22 +9,53 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
+from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
+from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
+    create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_recipient_wrap, \
+    create_reports_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, update_provider_wrap, \
+    update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
-from core_backend.models import Affiliation, Agent, Booking, Business, Company, Event, ExtraQuerySet, Operator, Payer, \
-    Provider, \
-    Recipient, \
-    Requester, Service, User
-from core_backend.serializers import AffiliationSerializer, AgentSerializer, BookingCreateSerializer, BookingSerializer, \
-    CompanyCreateSerializer, \
-    CompanySerializer, \
-    EventCreateSerializer, EventSerializer, OperatorSerializer, \
-    PayerSerializer, \
-    ProviderSerializer, ProviderServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceCreateSerializer, \
-    ServiceSerializer, UserCreateSerializer, UserSerializer
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
+    Expense, ExtraQuerySet, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, Service, \
+    ServiceRoot, User
+from core_backend.notification_builders import build_from_template
+from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
+    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
+    CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
+    ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
+    PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
+    ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
+from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
+    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
+    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
+    PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, \
+    UserCreateSerializer
+from core_backend.serializers.serializers_patch import EventPatchSerializer
+from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
+    CategoryUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
+    OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services import filter_params, is_extendable
+from core_backend.settings import VERSION_FILE_DIR
+
+
+def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
+    class CanManageModel(BasePermission):
+        message = 'You do not have permission to perform this operation'
+
+        def has_permission(self, request, view):
+            method = request.method
+            user = request.user
+            return (method == 'GET' and user.has_perm(F'core_backend.view_{model_name}')) \
+                or (method == 'POST' and user.has_perm(F'core_backend.add_{model_name}')) \
+                or (method == 'PUT' and user.has_perm(F'core_backend.change_{model_name}')) \
+                or (method == 'PATCH' and user.has_perm(F'core_backend.change_{model_name}')) \
+                or (method == 'DELETE' and user.has_perm(F'core_backend.delete_{model_name}'))
+
+    return CanManageModel
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -32,15 +63,25 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.filter(is_deleted=False)
     permission_classes = (AllowAny,)
     serializer_class = RegisterSerializer
 
 
 class UserViewSet(generics.ListAPIView):
-    queryset = User.objects.all()
+    queryset = User.objects.filter(is_deleted=False)
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
+
+
+@api_view(['POST'])
+@transaction.atomic
+@permission_classes([AllowAny])
+def register_user(request):
+    serializer = UserCreateSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = serializer.create()
+    return Response(user.id, status=status.HTTP_201_CREATED)
 
 
 @api_view(['GET'])
@@ -56,7 +97,7 @@ def get_routes(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def manage_users(request):
-    users = User.objects.all()
+    users = User.objects.filter(is_deleted=False)
 
     # Get filters
     email = request.query_params.get('email')
@@ -88,19 +129,57 @@ def test_end_point(request):
     return Response({}, status.HTTP_400_BAD_REQUEST)
 
 
-def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
-    class CanManageModel(BasePermission):
-        message = 'You do not have permission to perform this operation'
+@api_view(['GET'])
+def get_version(request):
+    try:
+        with open(VERSION_FILE_DIR, 'r') as f:
+            return Response(f.readline().strip('\n'))
+    except FileNotFoundError:
+        return Response("unknown")
 
-        def has_permission(self, request, view):
-            method = request.method
-            user = request.user
-            return (method == 'GET' and user.has_perm(F'core_api.view_{model_name}')) \
-                or (method == 'POST' and user.has_perm(F'core_api.add_{model_name}')) \
-                or (method == 'PUT' and user.has_perm(F'core_api.change_{model_name}')) \
-                or (method == 'DELETE' and user.has_perm(F'core_api.delete_{model_name}'))
 
-    return CanManageModel
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, can_manage_model_basic_permissions(Business._meta.model_name)])
+def search_bookings(request):
+    # This view was made for the interpretation business alone and is not meant to be used in a generic application
+    # without making the proper modifications
+
+    person_query = Q(is_deleted=False)
+    if first_name := request.GET.get('first_name'):
+        person_query &= Q(first_name__icontains=first_name)
+    if last_name := request.GET.get('last_name'):
+        person_query &= Q(last_name__icontains=last_name)
+
+    eligible_users = UserSerializer.get_default_queryset().filter(person_query)
+    eligible_services = ServiceSerializer.get_default_queryset().filter(
+        is_deleted=False,
+        provider__user__in=eligible_users,
+    )
+    eligible_affiliations = AffiliationSerializer.get_default_queryset().filter(
+        is_deleted=False,
+        recipient__user__in=eligible_users,
+    )
+    eligible_events = EventSerializer.get_default_queryset().filter(
+        is_deleted=False,
+        affiliates__in=eligible_affiliations,
+    )
+
+    booking_query = Q(is_deleted=False) & (Q(services__in=eligible_services) | Q(events__in=eligible_events))
+
+    queryset = BookingSerializer.get_default_queryset().filter(booking_query).distinct('id')
+
+    if date := request.GET.get('date'):
+        queryset_dob_filtered = Booking.objects.all().filter(
+            events__affiliates__recipient__user__date_of_birth__contains=date,
+        )
+        queryset_event_date_filtered = queryset.filter(
+            events__start_at__contains=date
+        )
+
+        queryset = queryset_dob_filtered.union(queryset_event_date_filtered)
+
+    serialized = BookingSerializer(queryset, many=True)
+    return Response(serialized.data)
 
 
 def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.ModelSerializer]):
@@ -123,12 +202,16 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
 
             queryset = cls.apply_nested_filters(queryset, nested_params)
 
-            return queryset
+            return queryset.distinct()
+
+        @classmethod
+        def filter_related_per_deleted(cls, queryset: QuerySet[model]):
+            pass
 
         @classmethod
         def get(cls, request):
             query_params = prepare_query_params(request.GET)
-            queryset = cls.apply_filters(model.objects.all(), query_params)
+            queryset = cls.apply_filters(model.objects.filter(is_deleted=False), query_params)
             serialized = serializer(queryset, many=True)
             return Response(serialized.data)
 
@@ -160,6 +243,12 @@ def user_subtype_view_manager(model: Type[models.Model], serializer: Type[serial
 
             return queryset
 
+        @classmethod
+        def filter_related_per_deleted(cls, queryset: QuerySet[model]):
+            return queryset.filter(
+                user__in=User.objects.not_deleted(),
+            )
+
     return ManageUserSubtypeModel
 
 
@@ -168,28 +257,252 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
     @expect_does_not_exist(User)
     def get(cls, request, user_id=None):
         if user_id:
-            serialized = UserSerializer(User.objects.get(id=user_id))
+            user = User.objects.all().get(id=user_id)
+            serialized = UserSerializer(user)
             return Response(serialized.data)
 
-        return super(ManageUsers, ManageUsers).get(request)
+        query_params = prepare_query_params(request.GET)
+
+        queryset = UserSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = UserSerializer(queryset, many=True)
+        return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
-    def post(request):
-        serializer = UserCreateSerializer(data=request.data)
+    def post(request, business_name=None):
+        """
+        Create a new user, by default assign them a recipient role and an affiliation to null
+        Said assignment can be avoided by setting _recipient_data and (or both) _affiliation_datalist to empty ({} or [])
+        respectively
+        """
+        # Create user
+        # Extract roles data before the serializer deals with it
+        agent_data = request.data.pop(ApiSpecialKeys.AGENT_DATA, None)
+
+        operator_data = request.data.pop(ApiSpecialKeys.OPERATOR_DATA, None)
+
+        payer_data = request.data.pop(ApiSpecialKeys.PAYER_DATA, {
+            "companies": [],
+            "method": '',
+        })
+
+        recipient_data = request.data.pop(ApiSpecialKeys.RECIPIENT_DATA, {
+            "companies": [],
+            "notes": [],
+        })
+
+        requester_data = request.data.pop(ApiSpecialKeys.REQUESTER_DATA, {
+            "companies": [],
+        })
+
+        user_id = create_user(
+            request.data
+        )
+
+        response = {"user_id": user_id}
+
+        if agent_data:
+            agent_id = create_agent_wrap(
+                data=agent_data,
+                user_id=user_id,
+                business_name=business_name,
+            )
+
+            response["agent_id"] = agent_id
+
+        if operator_data:
+            operator_id = create_operator_wrap(
+                operator_data,
+                user_id=user_id,
+            )
+
+            response["operator_id"] = operator_id
+
+        if payer_data:
+            payer_id = create_payer_wrap(
+                payer_data,
+                user_id=user_id,
+            )
+
+            response["payer_id"] = payer_id
+
+        if recipient_data:
+            # Create recipient and affiliation
+            # Extract affiliation data before the serializer deals with it
+            affiliation_datalist = recipient_data.pop(ApiSpecialKeys.AFFILIATION_DATALIST, [{"company": None}])
+
+            recipient_id = create_recipient_wrap(
+                recipient_data,
+                business_name,
+                user_id=user_id
+            )
+
+            affiliation_ids = create_affiliations_wrap(
+                affiliation_datalist,
+                business_name,
+                recipient_id=recipient_id
+            )
+
+            response["recipient_id"] = recipient_id
+            response["affiliation_ids"] = affiliation_ids
+
+        if requester_data:
+            requester_id = create_requester_wrap(
+                requester_data,
+                business_name,
+                user_id=user_id
+            )
+
+            response["requester_id"] = requester_id
+
+
+        # Respond with complex ids object
+        return Response(response, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(User)
+    @expect_does_not_exist(Contact)
+    @expect_does_not_exist(Recipient)
+    def put(request, user_id=None):
+        """
+        Update a user; if _provider_data or _recipient_data provided, update them too
+        """
+        # Update user
+        # Extract management data before the serializer deals with it
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS, None)
+        provider_data = request.data.pop(ApiSpecialKeys.PROVIDER_DATA, None)
+        recipient_data = request.data.pop(ApiSpecialKeys.RECIPIENT_DATA, None)
+
+        user = User.objects.get(id=user_id)
+        update_user(
+            request.data,
+            user_instance=user
+        )
+
+        # Update provider
+        if provider_data:
+            update_provider_wrap(
+                provider_data,
+                business_name,
+                user_id,
+                provider_instance=user.as_provider
+            )
+
+        # Update recipient
+        if recipient_data:
+            update_recipient_wrap(
+                recipient_data,
+                business_name,
+                user_id,
+                recipient_instance=user.as_recipient
+            )
+
+        # Done
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    def delete(request, user_id=None):
+        user = User.objects.get(id=user_id)
+        user.is_deleted = True
+        user.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Agent)
+    def post(request, business_name=None):
+        serializer = AgentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.create()
-        return Response(user.id, status=status.HTTP_201_CREATED)
+        agent = serializer.create(business_name)
+        return Response(agent.id, status=status.HTTP_201_CREATED)
+
+    @classmethod
+    def get(cls, request, buisiness_name=None, agent_id=None):
+        if agent_id:
+            agent = Agent.objects.all().not_deleted('user').get(id=agent_id)
+            serialized = AgentSerializer(agent)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = AgentSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = AgentSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
+    @staticmethod
+    def apply_nested_filters(queryset, nested_params):
+        if nested_params.is_empty():
+            return queryset
+
+        service_params, extra_params, _ = filter_params(Service, nested_params.get('services', {}))
+        if not service_params.is_empty():
+            queryset = queryset.filter(**service_params.to_dict('services__'))
+
+        if not extra_params.is_empty():
+            queryset = queryset.filter_by_extra(related_prefix='services__', **extra_params.to_dict())
+
+        return queryset
+
+    @classmethod
+    @expect_does_not_exist(Operator)
+    def get(cls, request, business_name=None, operator_id=None):
+        if operator_id:
+            operator = Operator.objects.all().not_deleted('user').get(id=operator_id)
+            serialized = OperatorSerializer(operator)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = OperatorSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = OperatorSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Payer)
+    def post(request):
+        serializer = PayerCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        payer = serializer.create()
+        return Response(payer.id, status=status.HTTP_201_CREATED)
+
+    @classmethod
+    def get(cls, request, buisiness_name=None, payer_id=None):
+        if payer_id:
+            payer = Payer.objects.all().not_deleted('user').get(id=payer_id)
+            serialized = PayerSerializer(payer)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = PayerSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = PayerSerializer(queryset, many=True)
+        return Response(serialized.data)
 
 
-ManageAgents = user_subtype_view_manager(Agent, AgentSerializer)
 
-ManageOperators = user_subtype_view_manager(Operator, OperatorSerializer)
-
-ManagePayers = user_subtype_view_manager(Payer, PayerSerializer)
-
-
-class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSerializer)):
+class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     @staticmethod
     def apply_nested_filters(queryset, nested_params):
         if nested_params.is_empty():
@@ -208,21 +521,87 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderServiceSeriali
     @expect_does_not_exist(Provider)
     def get(cls, request, business_name=None, provider_id=None):
         if provider_id:
-            serialized = ProviderServiceSerializer(Provider.objects.get(id=provider_id))
+            provider = Provider.objects.all().not_deleted('user').get(id=provider_id)
+            serialized = ProviderSerializer(provider)
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
-        queryset = Provider.objects.all().prefetch_related('services', 'services__extra')
+
+        queryset = ProviderSerializer.get_default_queryset()
+
         queryset = cls.apply_filters(queryset, query_params)
-        if business_name:
-            queryset = queryset.filter(extra__business__name=business_name)
+
         serialized = ProviderSerializer(queryset, many=True)
         return Response(serialized.data)
 
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Provider)
+    def put(request, provider_id=None):
+        provider = Provider.objects.get(id=provider_id)
+        business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        serializer = ProviderUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(provider, business)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-ManageRecipients = user_subtype_view_manager(Recipient, RecipientSerializer)
 
-ManageRequesters = user_subtype_view_manager(Requester, RequesterSerializer)
+class ManageRecipients(user_subtype_view_manager(Recipient, RecipientSerializer)):
+    @classmethod
+    def get(cls, request, business_name=None, recipient_id=None):
+        if recipient_id:
+            recipient = Recipient.objects.all().not_deleted('user').get(id=recipient_id)
+            serialized = RecipientSerializer(recipient)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = RecipientSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = RecipientSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Recipient)
+    def post(request, business_name=None):
+        serializer = RecipientCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recipient = serializer.create(business_name)
+        return Response(recipient.id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Recipient)
+    def put(request, recipient_id=None):
+        recipient = Recipient.objects.get(id=recipient_id)
+        business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        serializer = RecipientUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(recipient, business)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageRequesters(user_subtype_view_manager(Requester, RequesterSerializer)):
+    @classmethod
+    @expect_does_not_exist(Requester)
+    def get(cls, request, business_name=None, requester_id=None):
+        if requester_id:
+            requester = Requester.objects.all().not_deleted('user').get(id=requester_id)
+            serialized = RequesterSerializer(requester)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = RequesterSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = RequesterSerializer(queryset, many=True)
+        return Response(serialized.data)
 
 
 class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer)):
@@ -254,41 +633,330 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
 
         return queryset
 
+    @classmethod
+    @expect_does_not_exist(Affiliation)
+    def get(cls, request, affiliation_id=None):
+        if affiliation_id:
+            affiliation = Affiliation.objects.all().not_deleted('user').get(id=affiliation_id)
+            serialized = AffiliationSerializer(affiliation)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = AffiliationSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = AffiliationSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Affiliation)
+    def post(request, business_name=None):
+        serializer = AffiliationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        affiliation = serializer.create(business_name)
+        return Response(affiliation.id, status=status.HTTP_201_CREATED)
+
 
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
+    @classmethod
+    def get(cls, request, business_name=None, booking_id=None):
+        if booking_id:
+            booking = Booking.objects.all().not_deleted('business').get(id=booking_id)
+            serialized = BookingSerializer(booking)
+            return Response(serialized.data)
+
+        include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
+        query_params = prepare_query_params(request.GET)
+
+        serializer = BookingSerializer if include_events else BookingNoEventsSerializer
+
+        queryset = serializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
     def post(request, business_name):
-        data = request.data
-        data['business'] = business_name
-        if not data.get('operators'):
-            user: User = request.user
-            data['operators'] = [user.as_operator.id] if user.is_operator else None
+        event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
+        offer_datalist = request.data.pop(ApiSpecialKeys.OFFER_DATALIST, [])
+        booking_id = create_booking(request.data, business_name, request.user)
 
-        serializer = BookingCreateSerializer(data=data)
+        event_ids = create_events_wrap(
+            datalist=event_datalist,
+            business=business_name,
+            booking_id=booking_id,
+        )
+
+        offer_ids = create_offers_wrap(
+            datalist=offer_datalist,
+            business=business_name,
+            booking_id=booking_id,
+        )
+
+
+        return Response({
+            "booking_id": booking_id,
+            "event_ids": event_ids,
+            "offer_ids": offer_ids,
+        }, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Booking)
+    def put(request, booking_id=None):
+        booking = Booking.objects.get(id=booking_id)
+        business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
+        requester = request.data.pop('requester', None)
+
+        handle_events_bulk(event_datalist, business, requester, booking_id)
+
+        serializer = BookingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        booking_id = serializer.create()
-        return Response(booking_id, status=status.HTTP_201_CREATED)
+        serializer.update(booking, business)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, booking_id=None):
+        booking = Booking.objects.get(id=booking_id)
+        booking.is_deleted = True
+        booking.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ManageEvents(basic_view_manager(Event, EventSerializer)):
+    @classmethod
+    @expect_does_not_exist(Event)
+    def get(cls, request, business_name=None, event_id=None):
+        if event_id:
+            event = EventSerializer.get_default_queryset().get(id=event_id)
+            serialized = EventSerializer(event)
+            return Response(serialized.data)
+
+        include_booking = request.GET.get(ApiSpecialKeys.INCLUDE_BOOKING, False)
+        query_params = prepare_query_params(request.GET)
+
+        serializer = EventSerializer if include_booking else EventNoBookingSerializer
+
+        queryset = serializer.get_default_queryset()
+
+        if business_name:
+            queryset = queryset.filter(booking__business__name=business_name)
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request, business_name=None):
+        """
+        Create a new event.
+        If the payload is an array of objects, the events will be created/updated depending on whether they provide
+        their ID or not
+        """
+        data = request.data
+        user: User = request.user
+        requester_id = user.as_requester.id if user.is_requester else None
+        report_datalist = request.data.pop(ApiSpecialKeys.REPORT_DATALIST, None)
+
+        if type(data) is list:
+            # Create, update or delete events in bulk
+            event_ids = handle_events_bulk(
+                data,
+                business_name,
+                requester_id
+            )
+            return Response(event_ids, status=status.HTTP_201_CREATED)
+
+        # Create a single event
+        event_id = create_event(
+            data,
+            business_name,
+            requester_id
+        )
+
+        if report_datalist:
+            create_reports_wrap(report_datalist, event_id)
+            
+
+        return Response(event_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def put(request, event_id=None):
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
+
+        event = Event.objects.get(id=event_id)
+
+        update_event_wrap(
+            request.data,
+            business_name,
+            event_instance=event,
+        )
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @classmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def patch(cls, request, business_name=None):
+        data = request.data
+
+        # Extract query keys
+        try:
+            patch_query = data.pop(ApiSpecialKeys.PATCH_QUERY)
+        except KeyError:
+            raise BadRequestException('Missing patch query')
+
+        # Get target queryset
+        query_params = prepare_query_params(patch_query)
+        queryset = EventSerializer.get_default_queryset()
+        queryset = cls.apply_filters(queryset, query_params)
+
+        # Apply patch to each event
+        for event in queryset:
+            serializer = EventPatchSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            serializer.patch(event, business_name)
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, event_id=None):
+        Event.objects.get(id=event_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
+    @classmethod
+    @expect_does_not_exist(Expense)
+    def get(cls, request, business_name=None, expense_id=None):
+        if expense_id:
+            expense = Expense.objects.all().not_deleted('booking').get(id=expense_id)
+            serialized = ExpenseSerializer(expense)
+            return Response(serialized.data)
+        try:
+            query_params = prepare_query_params(request.GET)
+
+            queryset = ExpenseSerializer.get_default_queryset()
+
+            queryset = cls.apply_filters(queryset, query_params)
+
+            serialized = ExpenseSerializer(queryset, many=True)
+            return Response(serialized.data)
+        except:
+            raise NotImplementedError('fetching multiple expenses')
+
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
     def post(request):
         data = request.data
-        if not data.get('requester'):
-            user: User = request.user
-            data['requester'] = user.as_requester.id if user.is_requester else None
-
-        serializer = EventCreateSerializer(data=data)
+        serializer = ExpenseCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        event_id = serializer.create()
-        return Response(event_id, status=status.HTTP_201_CREATED)
+        expense_id = serializer.create()
+        return Response(expense_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def put(request, expense_id=None):
+        expense = Expense.objects.get(id=expense_id)
+        serializer = ExpenseUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(expense)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def delete(request, expense_id=None):
+        Expense.objects.get(id=expense_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ManageCompany(basic_view_manager(Company, CompanySerializer)):
+class ManageCategories(basic_view_manager(Category, CategorySerializer)):
+    @classmethod
+    def get(cls, request, business_name=None, category_id=None):
+        if category_id:
+            category = Category.objects.all().get(id=category_id)
+            serialized = CategorySerializer(category)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = CategorySerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = CategorySerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        serializer = CategoryCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        category_id = serializer.create()
+        return Response(category_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def put(request, category_id=None):
+        category = Category.objects.get(id=category_id)
+        serializer = CategoryUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(category)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def delete(request, category_id=None):
+        Category.objects.get(id=category_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
+    @classmethod
+    @expect_does_not_exist(Company)
+    def get(cls, request, company_id=None):
+        include_roles = request.GET.get(ApiSpecialKeys.INCLUDE_ROLES, False)
+        serializer = CompanyWithRolesSerializer if include_roles else CompanyWithParentSerializer
+
+        if company_id:
+            company = Company.objects.all().get(id=company_id)
+            serialized = serializer(company)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+        queryset = serializer.get_default_queryset()
+        queryset = cls.apply_filters(queryset, query_params)
+        serialized = serializer(queryset, many=True)
+
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -298,8 +966,45 @@ class ManageCompany(basic_view_manager(Company, CompanySerializer)):
         company_id = serializer.create()
         return Response(company_id, status=status.HTTP_201_CREATED)
 
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Company)
+    @expect_does_not_exist(Contact)
+    def put(request, company_id=None):
+        company = Company.objects.get(id=company_id)
+        serializer = CompanyUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(company)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Event)
+    def delete(request, company_id=None):
+        company = Company.objects.get(id=company_id)
+        company.is_deleted = True
+        company.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class ManageService(basic_view_manager(Service, ServiceSerializer)):
+    @classmethod
+    @expect_does_not_exist(Service)
+    def get(cls, request, service_id=None):
+        if service_id:
+            service = Service.objects.all().get(id=service_id)
+            serialized = ServiceSerializer(service)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = ServiceSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = ServiceSerializer(queryset, many=True)
+        return Response(serialized.data)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -311,3 +1016,255 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
         serializer.is_valid(raise_exception=True)
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
+
+
+class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSerializer)):
+    @classmethod
+    def get(cls, request, business_name=None, service_root_id=None):
+        if service_root_id:
+            service_root = ServiceRoot.objects.all().get(id=service_root_id)
+            serialized = ServiceRootBaseSerializer(service_root)
+            return Response(serialized.data)
+        query_params = prepare_query_params(request.GET)
+
+        queryset = ServiceRootNoBookingSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = ServiceRootNoBookingSerializer(queryset, many=True)
+        return Response(serialized.data)
+    
+    @staticmethod
+    def post(request):
+        data = request.data
+        serializer = ServiceRootCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        service_id = serializer.create()
+        return Response(service_id, status=status.HTTP_201_CREATED)
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def put(request, service_root_id=None):
+        service_root = ServiceRoot.objects.get(id=service_root_id)
+        serializer = ServiceRootUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(service_root)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Expense)
+    def delete(request, service_root_id=None):
+        ServiceRoot.objects.get(id=service_root_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageNote(basic_view_manager(Note, NoteSerializer)):
+    @classmethod
+    def get(cls, request):
+        query_params = prepare_query_params(request.GET)
+
+        serializer = NoteSerializer
+
+        queryset = serializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    def post(request):
+        data = request.data
+        user: User = request.user
+        data['owner'] = user
+        serializer = NoteCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        note_id = serializer.create()
+        return Response(note_id, status=status.HTTP_201_CREATED)
+
+
+class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSerializer)):
+    @staticmethod
+    def apply_nested_filters(queryset, nested_params):
+        # Only supports filtering by event and its extras
+
+        if nested_params.is_empty():
+            return queryset
+
+        event_params, extra_params, _ = filter_params(Event, nested_params.get('events', {}))
+        if not event_params.is_empty():
+            queryset = queryset.filter(**event_params.to_dict('events__'))
+
+        if not extra_params.is_empty():
+            queryset = queryset.filter_by_extra(related_prefix='events__', **extra_params.to_dict())
+
+        return queryset
+
+    @classmethod
+    @expect_does_not_exist(Authorization)
+    def get(cls, request, authorization_id=None):
+        if authorization_id:
+            authorization = AuthorizationSerializer.get_default_queryset().get(id=authorization_id)
+            serialized = AuthorizationSerializer(authorization)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = AuthorizationSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = AuthorizationSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        events_query = data.pop(ApiSpecialKeys.EVENTS_QUERY, None)
+
+        if events_query:
+            # If events query is present, fetch from a query which events to relate to the authorization
+            #  using the same method ManageEvents uses
+            query_params = prepare_query_params(events_query)
+            queryset = EventSerializer.get_default_queryset()
+            queryset = ManageEvents.apply_filters(queryset, query_params)
+
+            data['events'] = queryset.values_list('id', flat=True)
+
+        serializer = AuthorizationCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        authorization_id = serializer.create()
+        return Response(authorization_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Authorization)
+    def put(request, authorization_id=None):
+        authorization = Authorization.objects.get(id=authorization_id)
+        serializer = AuthorizationUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(authorization)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Authorization)
+    def delete(request, authorization_id=None):
+        Authorization.objects.get(id=authorization_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ManageLanguages(basic_view_manager(Language, LanguageSerializer)):
+    @classmethod
+    def get(cls, request, language_id=None):
+        if language_id:
+            language = LanguageSerializer.get_default_queryset().get(id=language_id)
+            serialized = LanguageSerializer(language)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = LanguageSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = LanguageSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        serializer = LanguageCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        language_id = serializer.create()
+        return Response(language_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Language)
+    def put(request, language_id=None):
+        language = Language.objects.get(id=language_id)
+        serializer = LanguageUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(language)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Language)
+    def delete(request, language_id=None):
+        Language.objects.get(id=language_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ManageNotifications(basic_view_manager(Notification, NotificationSerializer)):
+    @classmethod
+    @expect_does_not_exist(Notification)
+    def get(cls, request, notification_id=None):
+        if notification_id:
+            notification = NotificationSerializer.get_default_queryset().get(id=notification_id)
+            serialized = NotificationSerializer(notification)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+        queryset = NotificationSerializer.get_default_queryset()
+        queryset = cls.apply_filters(queryset, query_params)
+        serialized = NotificationSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    def post(request):
+        data = request.data
+        payload = data.get('payload')
+        template = data.get('template')
+
+        serializer = NotificationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        render_data = build_from_template(template, payload)
+
+        notification_id = serializer.create(render_data=render_data)
+
+        return Response(notification_id, status=status.HTTP_202_ACCEPTED)
+
+
+class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
+    @classmethod
+    def get(cls, request):
+        query_params = prepare_query_params(request.GET)
+
+        serializer = OfferSerializer
+
+        queryset = serializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = serializer(queryset, many=True)
+        return Response(serialized.data)
+    
+    @staticmethod
+    @transaction.atomic
+    def post(request, business_name=None):
+        data = request.data
+        serializer = OfferCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        offer_id = serializer.create(business_name)
+        return Response(offer_id, status=status.HTTP_201_CREATED)
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(Offer)
+    def put(request, offer_id=None):
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS);
+        offer = Offer.objects.get(id=offer_id)
+        serializer = OfferUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(offer, business_name)
+        return Response(status=status.HTTP_204_NO_CONTENT)

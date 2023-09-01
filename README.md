@@ -8,6 +8,21 @@
 
 ---
 
+## Commands
+These are the following commands that can be run with the `manage.py` file:
+* `python manage.py send_pending_notifications` - Sends all pending notifications to the recipients
+* `python manage.py setup_daily_booking_reminders` - Creates the notifications for the bookings that have events due today
+* `python manage.py import_from_csv --contacts_file <path_to_contacts_csv> --locations_file <path_to_locations_csv> --companies_file <path_to_companies_csv` - Imports the contacts, locations and companies from the csv files.
+  * The contacts table must have the columns: `id`, `email`, `email_context`, `phone`, `phone_context`, `fax`, `fax_context`.
+  * The locations table must have the columns: `id`, `address`, `unit_number`, `city`, `state`, `country` (optional, defaults to "United States of America"), `zip`.
+  * The companies table must have the columns: `name`, `type`, `send_method`, `on_hold` ("yes" or "no"), and `contact_ids` and `location_ids` which are comma separated lists of the ids of the previously defined contacts and locations respectively.
+* `python manage.py import_languages_from_csv <path_to_csv>` - Imports the languages from the csv file.
+  * The csv file must have the columns (please note that they are case-sensitive): `Show` ("TRUE" or empty), `Common` ("TRUE" or empty), `alpha2`, `Alpha3`, `English Name`, `English Description`.
+  * When running the script, if there's another entry in the database that matches a row's `alpha2`, `Alpha3` and `English Name` columns, the script will update that entry with the new data.
+* `python manage.py migrate_languages_to_model` - Meant to be a one time script. Migrates the language extras in the database to the new language model.
+
+---
+
 ## Initial Setup
 
 First of all install:
@@ -16,6 +31,11 @@ First of all install:
 - Graphviz
 
 Also, install the dependencies with the command `pip install -r requirements.txt`. If a new package was added to `requirements.txt`, run the same command previously mentioned.
+
+To preload data for testing, run:\
+`python manage.py migrate core_backend 0019`\
+`python manage.py loaddata fixtures/core_backend_20230316_prefill_for_migration_0019.json --app core_backend`\
+You can update your migrations after that.
 
 ### Disclaimer
 

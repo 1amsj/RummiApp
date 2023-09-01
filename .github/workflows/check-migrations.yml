@@ -1,0 +1,61 @@
+name: Check migrations
+
+on:
+  pull_request:
+    branches:
+      - 'develop'
+
+jobs:
+  build:
+    name: Check migrations
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.8]
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+
+    steps:
+      -
+        name: Checkout Code
+        uses: actions/checkout@v2
+      -
+        name: Config Git and merge with PR branch
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git fetch
+          git checkout ${{ github.event.pull_request.head.ref }}
+          git merge --no-commit --no-ff origin/develop
+      -
+        name: Set Up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      -
+        name: Install Package Dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y build-essential graphviz-dev
+      -
+        name: Install Python Dependencies
+        run: |
+          pip install -r requirements.txt
+      -
+        name: Check Migrations
+        run: |
+          python manage.py migrate
+          python manage.py makemigrations --check --dry-run
+        env:
+          DB_NAME: testdb
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_PORT: 5432

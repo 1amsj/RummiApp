@@ -18,8 +18,9 @@ import corsheaders.defaults
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PARENT_DIR = BASE_DIR.parent
-FRONTEND_DIR = os.environ.get('FRONTEND_DIR', os.path.join(PARENT_DIR, 'core_frontend'))
-
+STATIC_ROOT = os.environ.get('FRONTEND_DIR', os.path.join(PARENT_DIR, 'core_frontend'))
+VERSION_FILE_DIR = os.path.join(BASE_DIR, 'logs', 'latest_commit.txt')
+INFO_FILE_DIR = os.path.join(BASE_DIR, 'logs', 'info.log')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -30,7 +31,7 @@ SECRET_KEY = 'django-insecure-v282f8w2sgzs)g3rr+u=3ws9*)z!!rweg_bs&ivpwccn%4=44k
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -72,7 +73,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=50),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -103,9 +104,8 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
-CORS_ALLOWED_ORIGINS = ['http://localhost:8000', 'http://localhost:3000']
-
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://localhost:3000']
+CORS_ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8000&http://localhost:3000').split('&')
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 CORS_ALLOW_METHODS = list(corsheaders.defaults.default_methods)
 
@@ -119,7 +119,7 @@ ROOT_URLCONF = 'core_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(FRONTEND_DIR, 'build')],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -132,7 +132,7 @@ TEMPLATES = [
     },
 ]
 
-STATICFILES_DIRS = [os.path.join(FRONTEND_DIR, 'build', 'static')]
+STATICFILES_DIRS = [os.path.join(STATIC_ROOT, 'build', 'static')]
 
 WSGI_APPLICATION = 'core_backend.wsgi.application'
 
@@ -143,11 +143,14 @@ WSGI_APPLICATION = 'core_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'core_db',
-        'USER': 'core_user',
-        'PASSWORD': 'core_password',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'core_db'),
+        'USER': os.environ.get('DB_USER', 'core_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'core_password'),
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
+        'OPTIONS': {
+            'options': '-c client_encoding=utf8',
+        },
     }
 }
 
@@ -193,3 +196,32 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'core_backend.User'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}

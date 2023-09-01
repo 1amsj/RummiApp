@@ -1,0 +1,20 @@
+<div>
+    <p>
+        Good morning, {{ name }}.
+    </p>
+    <p>
+        These are the scheduled interpretations for today ({{ date }}):
+    </p>
+    <ul>
+        {% for event in events %}
+            <li>
+                {{ event.start_at }},
+                patient {{ event.patient_name }},
+                provider {{ event.medical_provider_name }},
+                clinic {{ event.clinic_name }}
+                at {{ event.clinic_address }},
+                phone {{ event.clinic_phone }}
+            </li>
+        {% endfor %}
+    </ul>
+</div>

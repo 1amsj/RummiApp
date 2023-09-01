@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Union
 
-from core_api.constants import API_NESTED_QUERY_PARAM_SEPARATOR, NO_EXACT_MATCH_SUFFIX
+from core_api.constants import API_NESTED_QUERY_PARAM_SEPARATOR, API_QUERY_LOOKUP_MAP, API_QUERY_LOOKUP_SEPARATOR
 
 
 @dataclass
@@ -10,7 +10,7 @@ class Param:
     lookup: str = ''
 
 
-QueryParamsKey = Union[str, Tuple[str, bool]]
+QueryParamsKey = str
 QueryParamsValue = Union[Param, "QueryParams"]
 
 
@@ -21,7 +21,7 @@ class QueryParams(Dict[str, QueryParamsValue]):
             for (k, v) in params.items():
                 self[k] = v
 
-    def __getitem__(self, key: str) -> QueryParamsValue:
+    def __getitem__(self, key: QueryParamsKey) -> QueryParamsValue:
         ks = key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
         current = self
         for k in ks:
@@ -30,26 +30,53 @@ class QueryParams(Dict[str, QueryParamsValue]):
 
     # noinspection PySuperArguments
     def __setitem__(self, key: QueryParamsKey, value: Any):
-        if isinstance(key, tuple):
-            suffix = NO_EXACT_MATCH_SUFFIX if not key[1] else ''
-            ks = key[0].split(API_NESTED_QUERY_PARAM_SEPARATOR)
+        affixes = key.split(API_QUERY_LOOKUP_SEPARATOR)
+        if len(affixes) > 2 or len(affixes) < 1:
+            raise ValueError('Invalid query')
 
-        else:
-            suffix = ''
-            ks = key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
+        keys = affixes[0].split(API_NESTED_QUERY_PARAM_SEPARATOR)
+        try:
+            suffix = affixes[1]
+        except IndexError:
+            suffix = None
 
         current = self
-        for k in ks[:-1]:
+        for key in keys[:-1]:
             try:
-                current[k]
+                current[key]
             except KeyError:
-                super(QueryParams, current).__setitem__(k, QueryParams())
-            current = current[k]
+                super(QueryParams, current).__setitem__(key, QueryParams())
+            current = current[key]
 
-        super(QueryParams, current).__setitem__(ks[-1], Param(
-            value=value,
-            lookup=suffix,
-        ) if not isinstance(value, (Param, QueryParams)) else value)
+        value = QueryParams.correct_value(value)
+
+        key = keys[-1]
+        is_array = '[' in key
+
+        if not is_array:
+            super(QueryParams, current).__setitem__(key, Param(
+                value=value,
+                lookup=suffix,
+            ) if not isinstance(value, (Param, QueryParams)) else value)
+
+        else:
+            key = key.split('[')[0]
+            prev: Optional[Param] = super(QueryParams, current).get(key)
+            if prev:
+                value = (prev.value + [value]) if isinstance(prev.value, list) else [prev.value, value]
+            else:
+                value = [value]
+            current[F'{key}__array_in'] = value
+
+    @staticmethod
+    def correct_value(value):
+        if value == "true":
+            return True
+
+        elif value == "false":
+            return False
+
+        return value
 
     def is_empty(self):
         return len(self) <= 0
@@ -58,7 +85,11 @@ class QueryParams(Dict[str, QueryParamsValue]):
         ret = {}
         for (k, p) in self.items():
             if isinstance(p, Param):
-                ret[F'{prefix}{k}{p.lookup}'] = p.value
+                try:
+                    lookup = API_QUERY_LOOKUP_MAP[p.lookup] if p.lookup else None
+                except KeyError:
+                    raise ValueError('Invalid lookup value')
+                ret[F'{prefix}{k}{f"__{lookup}" if lookup else ""}'] = p.value
                 continue
 
             if isinstance(p, QueryParams):
@@ -68,7 +99,7 @@ class QueryParams(Dict[str, QueryParamsValue]):
             raise TypeError('Illegal QueryParams state')
         return ret
 
-    def pop(self, __key: str, default=None):
+    def pop(self, __key: QueryParamsKey, default=None):
         ks = __key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
         q = self['.'.join(ks[:-1])] if len(ks) > 1 else self
         return super(QueryParams, q).pop(ks[-1], default)
