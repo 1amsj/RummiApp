@@ -3,8 +3,8 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, Contact, Event, \
-    Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
-    Service, ServiceRoot, SoftDeletionQuerySet
+    Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
+    Service, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
     ExtraAttrSerializer, \
@@ -446,8 +446,8 @@ class OfferSerializer(BaseSerializer):
             .not_deleted()
         )
 
-
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
+    history = serializers.SerializerMethodField()
     categories = CategorySerializer(many=True)
     children = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Booking.objects.all().not_deleted('business'))
     companies = CompanyWithParentSerializer(many=True)
@@ -463,6 +463,11 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     class Meta:
         model = Booking
         fields = '__all__'
+
+    # def get_history(self, obj):
+    #     # print(obj.history.all()[0])
+    #     return obj.history.values()
+
 
     @staticmethod
     def get_default_queryset():
@@ -510,17 +515,82 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
             )
         )
 
+    def get_history(self, value):
+        history = []
+        for obj in value.history.all():
+            history_item = {
+                "history_id": obj.history_id,
+                "id": obj.id,
+                "is_deleted": obj.is_deleted,
+                "created_at": obj.created_at,
+                "public_id": obj.public_id,
+                "history_date": obj.history_date,
+                "history_change_reason": obj.history_change_reason,
+                "history_type": obj.history_type,
+                "business": obj.business.id,
+                "parent": obj.parent.id if obj.parent is not None else "No Exist",
+                "history_user": obj.history_user.username,
+            }
+            # Include related fields from prefetch
+            history_item['categories'] = CategorySerializer(value.categories.all(), many=True).data
+            def representation_categories(x):
+                return {
+                    "id": x["id"],
+                    "name": x["name"],
+                }
+            history_item['categories'] = map(representation_categories, history_item['categories'])
 
-class ReportSerializer(BaseSerializer):
-    class Meta:
-        model = Report
-        fields = '__all__'
+            history_item['companies'] = CompanyWithParentSerializer(value.companies.all(), many=True).data
+            def representation_companies(x):
+                return {
+                    "id": x["id"],
+                    "name": x["name"],
+                }
+            history_item['companies'] = map(representation_companies, history_item['companies'])
 
-    @staticmethod
-    def get_default_queryset():
-        return (
-            Report.objects.all().not_deleted()
-        )
+            history_item['notes'] = NoteSerializer(value.notes.all(), many=True).data
+            
+            history_item['offers']=OfferSerializer(value.offers.all(), many=True).data,
+            
+            history_item['expenses'] = ExpenseSerializer(value.expenses.all(), many=True).data
+            
+            history_item['extra'] = ExtraAttrSerializer(value.extra.all(), many=True).data
+            
+            history_item['operators'] = OperatorSerializer(value.operators.all(), many=True).data
+            def representation_operators(x):
+                return {
+                    "id": x["id"],
+                    "user_id": x["user_id"],
+                    "username": x["username"],
+                }
+            history_item['operators'] = map(representation_operators, history_item['operators'])
+            
+            history_item['services'] = ServiceSerializer(value.services.all(), many=True).data
+            def representation_services(x):
+                return {
+                    "id": x["id"],
+                    "bill_rate": x["bill_rate"],
+                    "bill_amount": x["bill_amount"],
+                    "contract_type": x["provider"]["contract_type"],
+                    "user_id": x["provider"]["user_id"],
+                    "username": x["provider"]["username"],
+                }
+            history_item['services'] = map(representation_services, history_item['services'])
+
+            history_item['service_root'] = ServiceRootBaseSerializer.get_default_queryset()
+            def representation_service_root(x):
+                return {
+                    "id": x.id,
+                    "name": x.name,
+                }
+            history_item['service_root'] = map(representation_service_root, history_item['service_root'])
+            # Add the history item to the list
+            history.append(history_item)
+        
+        return history
+
+                # "service_root": x.service_root.Name,
+    
 
 
 class EventNoBookingSerializer(extendable_serializer(Event)):
@@ -530,7 +600,6 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
     payer = PayerSerializer(required=False)
     payer_company = CompanyWithParentSerializer(required=False)
-    reports = ReportSerializer(many=True)
     requester = RequesterSerializer()
 
     class Meta:
@@ -563,10 +632,6 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
                 Prefetch(
                     'payer_company',
                     queryset=CompanyWithParentSerializer.get_default_queryset(),
-                ),
-                Prefetch(
-                    'reports',
-                    queryset=ReportSerializer.get_default_queryset(),
                 ),
                 Prefetch(
                     'requester',
