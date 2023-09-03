@@ -24,7 +24,7 @@ class Command(BaseCommand):
             return
 
         try:
-            with open(filepath, 'r') as file:
+            with open(filepath, 'r', encoding='utf-8') as file:
                 self.create_languages_from_csv_file(file)
         except FileNotFoundError:
             self.stdout.write(self.style.ERROR(f'File not found at {filepath}'))
@@ -41,7 +41,7 @@ class Command(BaseCommand):
 
         for row in csv_reader:
             alpha2 = row['alpha2']
-            alpha3 = row['Alpha3']
+            alpha3 = row['Key']
             available = row['Show'] == 'TRUE'
             common = row['Common'] == 'TRUE'
             name = row['English Name']

@@ -198,8 +198,8 @@ class Company(SoftDeletableModel, HistoricalModel):
 
 
 class Language(SoftDeletableModel, HistoricalModel):
-    alpha2 = models.CharField(_('alpha2'), max_length=2)
-    alpha3 = models.CharField(_('alpha3'), max_length=3)
+    alpha2 = models.CharField(_('alpha2'), max_length=2, null=True, blank=True)
+    alpha3 = models.CharField(_('alpha3'), max_length=6)
     available = models.BooleanField(_('available'), default=True)
     common = models.BooleanField(_('common'), default=False)
     description = models.TextField(_('description'), null=True, blank=True)
@@ -232,7 +232,7 @@ class Location(SoftDeletableModel, HistoricalModel):
 
 # User models
 class User(SoftDeletableModel, AbstractUser, HistoricalModel):
-    contacts = models.ManyToManyField(Contact, blank=True)
+    contacts = models.ManyToManyField(Contact, blank=True, null=True, default="S/N")
     location = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='location', blank=True, null=True)
     date_of_birth = models.DateField(_('date of birth'), null=True, blank=True)
     first_name = models.CharField(_('first name'), max_length=150, blank=True)
@@ -518,7 +518,6 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     created_at = models.DateTimeField(auto_now_add=True)
     public_id = DailyUniqueIdentifierField(max_length=30, null=True)
 
-
     # Constraints
     categories = models.ManyToManyField(Category, blank=True, related_name='bookings')
     agents_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_agents')
@@ -573,9 +572,6 @@ class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
     @property
     def is_online(self):
         return bool(self.meeting_url)
-    
-    def delete_related(self):
-        self.reports.all().delete()
 
 
 # Billing models
@@ -619,6 +615,22 @@ class Invoice(models.Model):
     class Meta:
         verbose_name = _('invoice')
         verbose_name_plural = _('invoices')
+
+
+class Note(SoftDeletableModel):
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True)
+    text = models.TextField(blank=True, default='')
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    payer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+
+    class Meta:
+        verbose_name = _('note')
+        verbose_name_plural = _('notes')
 
 
 class Authorization(ExtendableModel, HistoricalModel, SoftDeletableModel):
@@ -688,32 +700,3 @@ class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Meta:
         verbose_name = _('offer')
         verbose_name_plural = _('offers')
-
-
-class Report(HistoricalModel, ExtendableModel, SoftDeletableModel):
-    status = models.CharField(max_length=32, default='Unreported')
-    arrive_at = models.DateTimeField(_('Arrival Time'), null=True, blank=True)
-    start_at = models.DateTimeField(_('Start Time'), null=True, blank=True)
-    end_at = models.DateTimeField(_('End Time'), null=True, blank=True)
-    observations = models.TextField(blank=True, default='')
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='reports')
-    
-    class Meta:
-        verbose_name = _('report')
-        verbose_name_plural = _('reports')
-
-
-class Note(SoftDeletableModel):
-    created_at = models.DateTimeField(auto_now_add=True)
-    last_updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True)
-    text = models.TextField(blank=True, default='')
-    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    payer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-    recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
-
-    class Meta:
-        verbose_name = _('note')
-        verbose_name_plural = _('notes')
