@@ -48,13 +48,14 @@ class Command(BaseCommand):
             description = row['English Description']
 
             language, created = Language.objects.update_or_create(
-                alpha2=alpha2,
                 alpha3=alpha3,
                 name=name,
                 defaults={
                     'available': available,
+                    'alpha2': alpha2,
                     'common': common,
                     'description': description,
+                    'name': name,
                 },
             )
 
