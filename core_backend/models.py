@@ -322,7 +322,7 @@ class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
 class Operator(HistoricalModel, SoftDeletableModel):
     """Staff who maintain the platform"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_operator')
-    companies = models.ManyToManyField(Company, related_name='operators')
+    companies = models.ManyToManyField(Company, related_name='operators', blank=True)
     hiring_date = models.DateField(_('hiring date'))
 
     class Meta:
