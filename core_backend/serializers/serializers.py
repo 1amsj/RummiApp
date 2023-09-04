@@ -464,11 +464,6 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
         model = Booking
         fields = '__all__'
 
-    # def get_history(self, obj):
-    #     # print(obj.history.all()[0])
-    #     return obj.history.values()
-
-
     @staticmethod
     def get_default_queryset():
         return (
@@ -533,18 +528,18 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
             }
             # Include related fields from prefetch
             history_item['categories'] = CategorySerializer(value.categories.all(), many=True).data
-            def representation_categories(x):
+            def representation_categories(repr):
                 return {
-                    "id": x["id"],
-                    "name": x["name"],
+                    "id": repr["id"],
+                    "name": repr["name"],
                 }
             history_item['categories'] = map(representation_categories, history_item['categories'])
 
             history_item['companies'] = CompanyWithParentSerializer(value.companies.all(), many=True).data
-            def representation_companies(x):
+            def representation_companies(repr):
                 return {
-                    "id": x["id"],
-                    "name": x["name"],
+                    "id": repr["id"],
+                    "name": repr["name"],
                 }
             history_item['companies'] = map(representation_companies, history_item['companies'])
 
@@ -557,41 +552,37 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
             history_item['extra'] = ExtraAttrSerializer(value.extra.all(), many=True).data
             
             history_item['operators'] = OperatorSerializer(value.operators.all(), many=True).data
-            def representation_operators(x):
+            def representation_operators(repr):
                 return {
-                    "id": x["id"],
-                    "user_id": x["user_id"],
-                    "username": x["username"],
+                    "id": repr["id"],
+                    "user_id": repr["user_id"],
+                    "username": repr["username"],
                 }
             history_item['operators'] = map(representation_operators, history_item['operators'])
             
             history_item['services'] = ServiceSerializer(value.services.all(), many=True).data
-            def representation_services(x):
+            def representation_services(repr):
                 return {
-                    "id": x["id"],
-                    "bill_rate": x["bill_rate"],
-                    "bill_amount": x["bill_amount"],
-                    "contract_type": x["provider"]["contract_type"],
-                    "user_id": x["provider"]["user_id"],
-                    "username": x["provider"]["username"],
+                    "id": repr["id"],
+                    "bill_rate": repr["bill_rate"],
+                    "bill_amount": repr["bill_amount"],
+                    "contract_type": repr["provider"]["contract_type"],
+                    "user_id": repr["provider"]["user_id"],
+                    "username": repr["provider"]["username"],
                 }
             history_item['services'] = map(representation_services, history_item['services'])
 
             history_item['service_root'] = ServiceRootBaseSerializer.get_default_queryset()
-            def representation_service_root(x):
+            def representation_service_root(repr):
                 return {
-                    "id": x.id,
-                    "name": x.name,
+                    "id": repr.id,
+                    "name": repr.name,
                 }
             history_item['service_root'] = map(representation_service_root, history_item['service_root'])
             # Add the history item to the list
             history.append(history_item)
         
         return history
-
-                # "service_root": x.service_root.Name,
-    
-
 
 class EventNoBookingSerializer(extendable_serializer(Event)):
     affiliates = AffiliationSerializer(many=True)

@@ -49,7 +49,6 @@ class Command(BaseCommand):
 
             language, created = Language.objects.update_or_create(
                 alpha3=alpha3,
-                name=name,
                 defaults={
                     'available': available,
                     'alpha2': alpha2,
