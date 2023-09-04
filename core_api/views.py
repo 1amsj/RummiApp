@@ -1273,6 +1273,7 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
         return Response(serialized.data)
     
     @staticmethod
+    @transaction.atomic
     def post(request, business_name=None):
         data = request.data
         serializer = OfferCreateSerializer(data=data)
@@ -1281,7 +1282,10 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
         return Response(offer_id, status=status.HTTP_201_CREATED)
     
     @staticmethod
-    def put(request, offer_id=None, business_name=None):
+    @transaction.atomic
+    @expect_does_not_exist(Offer)
+    def put(request, offer_id=None):
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS);
         offer = Offer.objects.get(id=offer_id)
         serializer = OfferUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

@@ -198,8 +198,8 @@ class Company(SoftDeletableModel, HistoricalModel):
 
 
 class Language(SoftDeletableModel, HistoricalModel):
-    alpha2 = models.CharField(_('alpha2'), max_length=2)
-    alpha3 = models.CharField(_('alpha3'), max_length=3)
+    alpha2 = models.CharField(_('alpha2'), max_length=2, null=True, blank=True)
+    alpha3 = models.CharField(_('alpha3'), max_length=6)
     available = models.BooleanField(_('available'), default=True)
     common = models.BooleanField(_('common'), default=False)
     description = models.TextField(_('description'), null=True, blank=True)
