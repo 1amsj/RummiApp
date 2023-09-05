@@ -31,7 +31,7 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
     ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
-    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
+    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, \
     PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
@@ -56,6 +56,18 @@ def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
                 or (method == 'DELETE' and user.has_perm(F'core_backend.delete_{model_name}'))
 
     return CanManageModel
+
+class CanManageOperators(BasePermission):
+    message = 'You do not have permission to perform this operation'
+
+    def has_permission(self, request, view):    
+        method = request.method
+        user = request.user
+        return (method == 'GET' and user.is_authenticated and user.has_perm('core_backend.view_operator')) \
+            or (method == 'POST') \
+            or (method == 'PUT' and user.is_authenticated and user.has_perm('core_backend.change_operator')) \
+            or (method == 'PATCH' and user.is_authenticated and user.has_perm('core_backend.change_operator')) \
+            or (method == 'DELETE' and user.is_authenticated and user.has_perm('core_backend.delete_operator'))
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -442,6 +454,7 @@ class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
         return Response(serialized.data)
 
 class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
+    permission_classes = [CanManageOperators]
     @staticmethod
     def apply_nested_filters(queryset, nested_params):
         if nested_params.is_empty():
@@ -455,6 +468,16 @@ class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
             queryset = queryset.filter_by_extra(related_prefix='services__', **extra_params.to_dict())
 
         return queryset
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(Operator)
+    def post(request, business_name=None):
+        serializer = OperatorCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = serializer.create()
+        return Response(operator.id, status=status.HTTP_201_CREATED)
 
     @classmethod
     @expect_does_not_exist(Operator)
