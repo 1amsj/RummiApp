@@ -16,11 +16,13 @@ from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerial
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, update_provider_wrap, \
+    create_reports_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, \
+    update_provider_wrap, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
-    Expense, ExtraQuerySet, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, Service, \
+    Expense, ExtraQuerySet, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
+    Service, \
     ServiceRoot, User
 from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
@@ -31,7 +33,8 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
     ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
-    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, \
+    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
+    OperatorCreateSerializer, \
     PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
@@ -157,9 +160,16 @@ def search_bookings(request):
     # without making the proper modifications
 
     person_query = Q(is_deleted=False)
-    if first_name := request.GET.get('first_name'):
+    first_name = request.GET.get('first_name')
+    last_name = request.GET.get('last_name')
+
+    if first_name and not last_name:
+        person_query &= (Q(first_name__icontains=first_name) | Q(last_name__icontains=first_name))
+
+    elif first_name:
         person_query &= Q(first_name__icontains=first_name)
-    if last_name := request.GET.get('last_name'):
+
+    if last_name:
         person_query &= Q(last_name__icontains=last_name)
 
     eligible_users = UserSerializer.get_default_queryset().filter(person_query)
@@ -178,17 +188,22 @@ def search_bookings(request):
 
     booking_query = Q(is_deleted=False) & (Q(services__in=eligible_services) | Q(events__in=eligible_events))
 
-    queryset = BookingSerializer.get_default_queryset().filter(booking_query).distinct('id')
+    queryset = (BookingSerializer
+                .get_default_queryset()
+                .filter(booking_query)
+                .distinct('id')
+                )
 
     if date := request.GET.get('date'):
         queryset_dob_filtered = Booking.objects.all().filter(
             events__affiliates__recipient__user__date_of_birth__contains=date,
         )
-        queryset_event_date_filtered = queryset.filter(
-            events__start_at__contains=date
+        queryset_doi_filtered = queryset.filter_by_extra(
+            related_prefix='events__',
+            date_of_injury__contains=date,
         )
 
-        queryset = queryset_dob_filtered.union(queryset_event_date_filtered)
+        queryset = queryset_dob_filtered.union(queryset_doi_filtered)
 
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.data)
