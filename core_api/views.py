@@ -757,6 +757,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     def post(request, business_name):
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
         offer_datalist = request.data.pop(ApiSpecialKeys.OFFER_DATALIST, [])
+
         booking_id = create_booking(request.data, business_name, request.user)
 
         event_ids = create_events_wrap(

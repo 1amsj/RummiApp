@@ -10,8 +10,6 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
-from core_backend.fields import DailyUniqueIdentifierField
-
 
 # Query sets
 class SoftDeletionQuerySet(models.QuerySet):
@@ -518,8 +516,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     service_root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
     created_at = models.DateTimeField(auto_now_add=True)
-    public_id = DailyUniqueIdentifierField(max_length=30, null=True)
-
+    public_id = models.CharField(max_length=30, null=True)
 
     # Constraints
     categories = models.ManyToManyField(Category, blank=True, related_name='bookings')

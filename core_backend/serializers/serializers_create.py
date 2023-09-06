@@ -14,7 +14,7 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import NoteUnsafeSerializer
 from core_backend.serializers.serializers_utils import extendable_serializer, generic_serializer
-from core_backend.services import manage_extra_attrs, user_sync_email_with_contact
+from core_backend.services import generate_public_id, manage_extra_attrs, user_sync_email_with_contact
 
 
 # Group for permissions
@@ -99,6 +99,8 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         operators = data.pop('operators', [])
         services = data.pop('services', [])
         notes = data.pop('notes', [])
+
+        data['public_id'] = generate_public_id()
 
         booking = Booking.objects.create(**data)
         if categories:

@@ -1,8 +1,10 @@
+from datetime import datetime
 from functools import lru_cache
 from typing import Iterator, Set, Tuple, Type, Union
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from pytz import timezone
 
 import core_backend.models as app_models
 from core_api.constants import FIELDS_BLACKLIST
@@ -176,3 +178,21 @@ def user_sync_email_with_contact(user: app_models.User):
         return
     contact = app_models.Contact.objects.create(email=user.email)
     user.contacts.add(contact)
+
+
+def generate_public_id():
+    pst = timezone('US/Pacific')
+    datetime_pst = datetime.now(pst)
+
+    # Get the last object with the same date prefix
+    queryset = app_models.Booking.objects.filter(public_id__startswith=datetime_pst.strftime('%y%m%d'))
+    last_object = queryset.order_by(F"-public_id").first()
+
+    # Increment the sequence number
+    sequence_number = 1
+    if last_object:
+        last_sequence_number = int(last_object.public_id[9:])
+        sequence_number = last_sequence_number + 1
+
+    # Unique identifier field value
+    return '{}-{:03d}'.format(datetime_pst.strftime('%y%m%d'), sequence_number)

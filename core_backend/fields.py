@@ -1,13 +1,20 @@
 from datetime import datetime
+
 from django.db import models
 
+
 class DailyUniqueIdentifierField(models.CharField):
+    """
+    Legacy field that generates a unique identifier with the format YYMMDD-NNN, left behind to avoid breaking
+    migration 0023
+    """
+
     # This is a pre_save, therefore this will not be called on bulk_create, a for loop with .save() should be used instead
     def pre_save(self, model_instance, add):
         if add:
             # Get the current date
             date = datetime.now().date()
-            
+
             # Get the last object with the same date prefix
             querySet = model_instance.__class__.objects.filter(**{
                 F"{self.name}__startswith": date.strftime('%y%m%d')
