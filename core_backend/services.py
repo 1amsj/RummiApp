@@ -72,7 +72,7 @@ def filter_extra_attrs(model: Type[models.Model], fields: dict) -> dict:
         for (k, v) in iter_extra_attrs(model, fields)
     }
 
-
+# FIXME this function is being used for updating instances, but it does not delete extra attrs that are not in the fields
 def manage_extra_attrs(business: Union[None, str, app_models.Business], inst: models.Model, fields: dict):
     if not business:
         raise BusinessNotProvidedException

@@ -1,15 +1,17 @@
 from rest_framework import serializers
 
 from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Expense, Language, \
-    Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, ServiceRoot, User
+    Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, Service, ServiceRoot, User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyWithParentSerializer, \
     ContactSerializer, LocationSerializer, NoteSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, \
     EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, \
-    RecipientCreateSerializer, ReportCreateSerializer, ServiceRootCreateSerializer, UserCreateSerializer
+    RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, \
+    UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
     NoteUnsafeSerializer
+from core_backend.serializers.serializers_utils import extendable_serializer
 from core_backend.services import manage_extra_attrs, sync_m2m
 from core_backend.services import user_sync_email_with_contact
 
@@ -152,11 +154,10 @@ class LanguageUpdateSerializer(LanguageCreateSerializer):
         instance.save()
 
 
-class ProviderUpdateSerializer(serializers.Serializer):
+class ProviderUpdateSerializer(extendable_serializer(Event)):
+    user = serializers.ReadOnlyField()
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
     notes = NoteUnsafeSerializer(many=True, default=[])
-
-    # services is not modifiable from here
 
     class Meta:
         model = Provider
@@ -196,6 +197,18 @@ class RecipientUpdateSerializer(RecipientCreateSerializer):
         NoteSerializer.sync_notes(instance, notes)
 
         manage_extra_attrs(business_name, instance, extras)
+
+
+class ServiceUpdateSerializer(ServiceCreateSerializer):
+    def update(self, instance: Service, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        manage_extra_attrs(instance.business, instance, extras)
 
 
 class ServiceRootUpdateSerializer(ServiceRootCreateSerializer):

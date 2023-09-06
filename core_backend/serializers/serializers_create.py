@@ -1,3 +1,4 @@
+from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
@@ -8,13 +9,13 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
     CategorySerializer, \
     CompanyWithParentSerializer, \
     ContactSerializer, ExpenseSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
-    NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, UserSerializer
+    NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, \
+    UserSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import NoteUnsafeSerializer
 from core_backend.serializers.serializers_utils import extendable_serializer, generic_serializer
 from core_backend.services import manage_extra_attrs, user_sync_email_with_contact
 
-from django.contrib.auth.models import Group, Permission
 
 # Group for permissions
 def get_or_create_operators_group():
@@ -277,6 +278,29 @@ class PayerCreateSerializer(PayerSerializer):
         return payer
 
 
+class ProviderCreateSerializer(extendable_serializer(Provider)):
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
+    notes = NoteSerializer(many=True, default=[])
+
+    def create(self, business_name, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        companies = data.pop('companies', [])
+        notes = data.pop('notes', [])
+
+        provider = Provider.objects.create(**data)
+        if companies:
+            provider.companies.add(*companies)
+        if notes:
+            note_instances = NoteSerializer.create_instances(notes)
+            provider.notes.add(*note_instances)
+
+        manage_extra_attrs(business_name, provider, extras)
+
+        return provider
+
+
 class RecipientCreateSerializer(extendable_serializer(Recipient)):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
@@ -329,11 +353,8 @@ class ServiceCreateSerializer(ServiceNoProviderSerializer):
     def create(self, validated_data=None) -> int:
         data = validated_data or self.validated_data
         extras = data.pop('extra', {})
-        categories = data.pop('categories', [])
 
         service = Service.objects.create(**data)
-        if categories:
-            service.categories.add(*categories)
         manage_extra_attrs(service.business, service, extras)
 
         return service.id

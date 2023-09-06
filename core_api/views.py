@@ -15,8 +15,10 @@ from core_api.exceptions import BadRequestException
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
-    create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_user, handle_events_bulk, update_event_wrap, \
+    create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
+    create_recipient_wrap, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_user, handle_events_bulk, \
+    handle_services_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
@@ -316,6 +318,8 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             "method": '',
         })
 
+        provider_data = request.data.pop(ApiSpecialKeys.PROVIDER_DATA, None)
+
         recipient_data = request.data.pop(ApiSpecialKeys.RECIPIENT_DATA, {
             "companies": [],
             "notes": [],
@@ -355,6 +359,25 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             )
 
             response["payer_id"] = payer_id
+
+        if provider_data:
+            service_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_DATALIST, None)
+
+            provider_id = create_provider_wrap(
+                provider_data,
+                business_name=business_name,
+                user_id=user_id,
+            )
+
+            if service_datalist:
+                service_ids = create_services_wrap(
+                    service_datalist,
+                    business_name,
+                    provider_id=provider_id,
+                )
+                response["service_ids"] = service_ids
+
+            response["provider_id"] = provider_id
 
         if recipient_data:
             # Create recipient and affiliation
@@ -412,12 +435,21 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
         # Update provider
         if provider_data:
+            service_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_DATALIST, None)
+
             update_provider_wrap(
                 provider_data,
                 business_name,
                 user_id,
                 provider_instance=user.as_provider
             )
+
+            if service_datalist:
+                handle_services_bulk(
+                    service_datalist,
+                    business_name,
+                    provider_id=user.as_provider.id,
+                )
 
         # Update recipient
         if recipient_data:
@@ -441,7 +473,6 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
 
 class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
-
     @staticmethod
     @transaction.atomic
     @expect_key_error

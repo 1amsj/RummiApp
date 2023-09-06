@@ -494,7 +494,9 @@ class Service(ExtendableModel, HistoricalModel, SoftDeletableModel):
     bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
     bill_rate_type = models.CharField(_('billing rate type'), max_length=255, choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
     bill_min_payment = models.DecimalField(_('billing minimum payment'), max_digits=32, decimal_places=2, default=0, help_text='Defines the minimum that the provider will charge for this service')
+    bill_no_show_fee = models.DecimalField(_('billing no show fee'), max_digits=32, decimal_places=2, default=0, help_text='Defines the fee that the provider will charge if the service is not completed')
     bill_rate = models.DecimalField(_('billing rate'), max_digits=32, decimal_places=2, default=0, help_text='Is how much the provider charges per `bill_rate_type`')
+    bill_rate_minutes_threshold = models.DecimalField(_('billing minutes rate threshold'), max_digits=32, decimal_places=2, default=None, null=True, blank=True, help_text='Defines the minimum amount of minutes that will count as a full hour if `bill_rate_type` is hourly')
 
     class Meta:
         verbose_name = _('service')

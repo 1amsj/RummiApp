@@ -3,15 +3,16 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Event, Report
+from core_backend.models import Event, Report, Service
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
-    RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, UserCreateSerializer
+    ProviderCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, \
+    ServiceCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, ReportUpdateSerializer, \
-    UserUpdateSerializer
+    ServiceUpdateSerializer, UserUpdateSerializer
 
 
 # Creation
@@ -24,7 +25,7 @@ def create_user(data):
 
 
 @transaction.atomic
-def create_agent_wrap(data,  business_name, user_id,):
+def create_agent_wrap(data, business_name, user_id,):
     # Handle recipient role creation
     try:
         data['user'] = user_id
@@ -75,6 +76,23 @@ def create_payer_wrap(data, user_id):
         })
 
     return payer.id
+
+@transaction.atomic
+def create_provider_wrap(data, business_name, user_id):
+    # Handle provider role creation
+    try:
+        data['user'] = user_id
+        serializer = ProviderCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        provider = serializer.create(business_name)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.PROVIDER_DATA: exc.detail,
+        })
+
+    return provider.id
 
 
 @transaction.atomic
@@ -245,6 +263,41 @@ def create_report(data, business, event_id):
     return serializer.create(business)
 
 
+def create_service(data, business_name, provider_id):
+    if not data.get('provider'):
+        data['provider'] = provider_id
+    if not data.get('business'):
+        data['business'] = business_name
+
+    serializer = ServiceCreateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    return serializer.create()
+
+
+@transaction.atomic
+def create_services_wrap(datalist, business_name, provider_id):
+    service_ids = []
+    service_errors = []
+    for service_data in datalist:
+        try:
+            service_data['business'] = business_name
+            service_data['provider'] = provider_id
+            serializer = ServiceCreateSerializer(data=service_data)
+            serializer.is_valid(raise_exception=True)
+            service_id = serializer.create()
+            service_ids.append(service_id)
+
+        except ValidationError as exc:
+            service_errors.append(exc.detail)
+
+    if service_errors:
+        raise ValidationError({
+            ApiSpecialKeys.SERVICE_DATALIST: service_errors
+        })
+
+    return service_ids
+
+
 # Update
 @transaction.atomic
 def update_user(data, user_instance):
@@ -260,7 +313,6 @@ def update_provider_wrap(data, business_name, user_id, provider_instance):
 
     # Handle provider role update
     try:
-        data['user'] = user_id
         serializer = ProviderUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.update(provider_instance, business_name)
@@ -292,6 +344,26 @@ def update_recipient_wrap(data, business_name, user_id, recipient_instance):
 
 
 @transaction.atomic
+def update_service_wrap(data, business_name, provider_id, service_instance):
+    if not business_name:
+        raise BusinessNotProvidedException
+
+    # Handle service update
+    try:
+        data['provider'] = provider_id
+        data['business'] = business_name
+        serializer = ServiceUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(service_instance)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.SERVICE_DATALIST: exc.detail,
+        })
+
+
+@transaction.atomic
 def update_event_wrap(data, business_name, event_instance):
     if not business_name:
         raise BusinessNotProvidedException
@@ -307,6 +379,19 @@ def update_event_wrap(data, business_name, event_instance):
             ApiSpecialKeys.EVENT_DATALIST: exc.detail,
         })
 
+
+@transaction.atomic
+def update_report_wrap(data, report_instance, business):
+    try:
+        serializer = ReportUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(report_instance, business)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.REPORT_DATALIST: exc.detail,
+        })
 
 # Bulk
 @transaction.atomic
@@ -326,7 +411,6 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
         event_id = data.pop('id', None)
         deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
         report_datalist = data.pop(ApiSpecialKeys.REPORT_DATALIST, None)
-        print("🚀 ~ file: services_datamanagement.py:329 ~ report_datalist:", report_datalist)
 
         if not event_id and deleted_flag:
             raise BadRequestException('Event flagged as deleted but no ID provided')
@@ -380,21 +464,6 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
 
 
 @transaction.atomic
-def update_report_wrap(data, report_instance, business):
-    try:
-        serializer = ReportUpdateSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        serializer.update(report_instance, business)
-
-    except ValidationError as exc:
-        # Wrap errors
-        raise ValidationError({
-            ApiSpecialKeys.REPORT_DATALIST: exc.detail,
-        })
-
-
-# Bulk
-@transaction.atomic
 def handle_reports_bulk(datalist: list, business, event_id):
     """
     Create, update or delete the reports in bulk, depending on whether the payload includes an ID or not
@@ -444,3 +513,54 @@ def handle_reports_bulk(datalist: list, business, event_id):
         raise ValidationError(report_errors)
 
     return report_ids
+
+
+@transaction.atomic
+def handle_services_bulk(datalist: list, business_name, provider_id):
+    """
+    Create, update or delete the services in bulk, depending on whether the payload includes an ID or not
+    """
+    # TODO It is noteworthy that currently this is not a true bulk operation.
+    #  Also, services get created even if an error was found before,
+    #  this might make the transaction rollback expensive.
+
+    service_ids = []
+    service_errors = []
+    error_found = False
+
+    for data in datalist:
+        service_id = data.pop('id', None)
+        deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if not service_id and deleted_flag:
+            raise BadRequestException('Service flagged as deleted but no ID provided')
+
+        try:
+            if not service_id:
+                service_id = create_service(
+                    data,
+                    business_name,
+                    provider_id
+                )
+            elif not deleted_flag:
+                update_service_wrap(
+                    data,
+                    business_name,
+                    provider_id,
+                    service_instance=Service.objects.get(id=service_id)
+                )
+            else:
+                Service.objects.get(id=service_id).delete()
+
+            # Append empty error to object so that the indexes of the errors correspond to the indexes of the data
+            service_errors.append({})
+            service_ids.append(service_id)
+
+        except ValidationError as exc:
+            error_found = True
+            service_errors.append(exc.detail)
+
+    if error_found:
+        raise ValidationError(service_errors)
+
+    return service_ids
