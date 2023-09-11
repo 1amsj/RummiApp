@@ -206,7 +206,7 @@ class Language(SoftDeletableModel, HistoricalModel):
     class Meta:
         verbose_name = _('language')
         verbose_name_plural = _('languages')
-        ordering = ['-available', '-common', 'name']
+        ordering = ['-common', 'name']
 
     def __str__(self):
         return F"{self.name} [{self.alpha2}|{self.alpha3}] ({self.id})"
