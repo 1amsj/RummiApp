@@ -459,6 +459,7 @@ class ReportSerializer(BaseSerializer):
 
 
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
+    public_id = serializers.ReadOnlyField()
     categories = CategorySerializer(many=True)
     children = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Booking.objects.all().not_deleted('business'))
     companies = CompanyWithParentSerializer(many=True)
@@ -653,7 +654,6 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
 
 class BookingSerializer(BookingNoEventsSerializer):
     events = EventNoBookingSerializer(many=True)
-    public_id = serializers.ReadOnlyField()
 
     @staticmethod
     def get_default_queryset():
