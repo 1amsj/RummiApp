@@ -464,6 +464,7 @@ class ServiceRoot(SoftDeletableModel, HistoricalModel):
     class Meta:
         verbose_name = _('service root')
         verbose_name_plural = _('service roots')
+        ordering = ['description']
 
     def __str__(self):
         return self.name
@@ -473,7 +474,6 @@ class ServiceRoot(SoftDeletableModel, HistoricalModel):
         return hasattr(self, 'services') and self.services is not None
 
     def delete_related(self):
-
         if self.has_services:
             self.services.all().delete()
 
