@@ -142,6 +142,19 @@ class CompanySerializer(BaseSerializer):
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            super(CompanyWithParentSerializer, CompanyWithParentSerializer)
+            .get_default_queryset()
+            .prefetch_related(
+                Prefetch(
+                    'parent_company',
+                    queryset=CompanySerializer.get_default_queryset()
+                ),
+            )
+        )
+
 
 class LanguageSerializer(BaseSerializer):
     class Meta:
@@ -340,6 +353,20 @@ class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
         model = Affiliation
         fields = ('id', 'company',)
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Affiliation.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'company',
+                    queryset=CompanyWithParentSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
 
 class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
@@ -405,6 +432,19 @@ class AffiliationSerializer(generic_serializer(Affiliation)):
 
 class RecipientSerializer(RecipientNoAffiliationSerializer):
     affiliations = AffiliationNoRecipientSerializer(many=True, read_only=True)
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            super(RecipientSerializer, RecipientSerializer)
+            .get_default_queryset()
+            .prefetch_related(
+                Prefetch(
+                    'affiliations',
+                    queryset=AffiliationNoRecipientSerializer.get_default_queryset(),
+                ),
+            )
+        )
 
 
 class RequesterSerializer(user_subtype_serializer(Requester)):
@@ -672,6 +712,19 @@ class BookingSerializer(BookingNoEventsSerializer):
 class EventSerializer(EventNoBookingSerializer):
     booking = BookingNoEventsSerializer()
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            super(EventSerializer, EventSerializer)
+            .get_default_queryset()
+            .prefetch_related(
+                Prefetch(
+                    'booking',
+                    queryset=BookingNoEventsSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
 
 InvoiceSerializer = generic_serializer(Invoice)
 
@@ -685,6 +738,28 @@ class LedgerSerializer(BaseSerializer):
         model = Ledger
         fields = '__all__'
 
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Ledger.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'booking',
+                    queryset=BookingSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'event',
+                    queryset=EventSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'invoice',
+                    queryset=InvoiceSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
 
 class CompanyWithRolesSerializer(CompanyWithParentSerializer):
     agents = AgentSerializer(many=True)
@@ -697,6 +772,40 @@ class CompanyWithRolesSerializer(CompanyWithParentSerializer):
     class Meta:
         model = Company
         fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Company.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'agents',
+                    queryset=AgentSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'operators',
+                    queryset=OperatorSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'payers',
+                    queryset=PayerSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'providers',
+                    queryset=ProviderSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'recipients',
+                    queryset=RecipientSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'requesters',
+                    queryset=RequesterSerializer.get_default_queryset(),
+                ),
+            )
+        )
 
 
 class AuthorizationSerializer(BaseSerializer):

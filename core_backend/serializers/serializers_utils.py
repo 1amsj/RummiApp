@@ -11,7 +11,6 @@ from core_backend.services import assert_extendable, get_model_field_names, \
 class BaseSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_default_queryset() -> SoftDeletionQuerySet:
-        pass  # This is to avoid the warning in children: Class X must implement all abstract methods
         raise NotImplementedError
 
 
