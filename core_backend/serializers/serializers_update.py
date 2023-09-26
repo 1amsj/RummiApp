@@ -12,8 +12,8 @@ from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
     NoteUnsafeSerializer
 from core_backend.serializers.serializers_utils import extendable_serializer
-from core_backend.services import manage_extra_attrs, sync_m2m
-from core_backend.services import user_sync_email_with_contact
+from core_backend.services.core_services import manage_extra_attrs, sync_m2m
+from core_backend.services.core_services import user_sync_email_with_contact
 
 
 class AuthorizationUpdateSerializer(AuthorizationBaseSerializer):

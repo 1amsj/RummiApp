@@ -4,6 +4,17 @@ from typing import Any, Dict, Optional, Union
 from core_api.constants import API_NESTED_QUERY_PARAM_SEPARATOR, API_QUERY_LOOKUP_MAP, API_QUERY_LOOKUP_SEPARATOR
 
 
+# Metaclasses
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+# Query params
 @dataclass
 class Param:
     value: Any

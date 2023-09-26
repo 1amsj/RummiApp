@@ -4,7 +4,7 @@ from django.db import models
 from rest_framework import serializers
 
 from core_backend.models import ExtendableModel, SoftDeletionQuerySet
-from core_backend.services import assert_extendable, get_model_field_names, \
+from core_backend.services.core_services import assert_extendable, get_model_field_names, \
     is_extendable
 
 

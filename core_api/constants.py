@@ -47,6 +47,9 @@ API_QUERY_LOOKUP_MAP = {
     "isnull": "isnull",
 }
 
+# External API names
+CONCORD_API_NAME = 'concord'
+
 # Non-generic constants
 INTERPRETATION_BUSINESS_NAME = 'interpretation'
 

@@ -43,7 +43,7 @@ from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
     CategoryUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
     OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceRootUpdateSerializer
-from core_backend.services import filter_params, is_extendable
+from core_backend.services.core_services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
 
 
@@ -1298,7 +1298,14 @@ class ManageNotifications(basic_view_manager(Notification, NotificationSerialize
         serializer = NotificationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Only fax supported
         render_data = build_from_template(template, payload)
+
+        if not 'fax_number' in data:
+            raise BadRequestException('Fax number missing')
+
+        render_data['fax_number'] = data['fax_number']
+        render_data['fax_name'] = data.get('fax_name', None)
 
         notification_id = serializer.create(render_data=render_data)
 

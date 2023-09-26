@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from core_backend.models import Business, Category, Contact, Expense, Extra, Location, Note, User
 from core_backend.serializers.serializers_utils import BaseSerializer, generic_serializer
-from core_backend.services import fetch_updated_from_validated_data
+from core_backend.services.core_services import fetch_updated_from_validated_data
 
 BusinessSerializer = generic_serializer(Business)
 

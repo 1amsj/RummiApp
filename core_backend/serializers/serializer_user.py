@@ -6,7 +6,7 @@ from rest_framework import serializers
 from core_backend.models import SoftDeletableModel, SoftDeletionQuerySet, User
 from core_backend.serializers.serializers_plain import ContactSerializer, LocationSerializer
 from core_backend.serializers.serializers_utils import BaseSerializer, extendable_serializer
-from core_backend.services import is_extendable
+from core_backend.services.core_services import is_extendable
 
 
 # User needs to be in this file to avoid circular imports

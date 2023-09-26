@@ -1,6 +1,6 @@
 from core_backend.models import Event
 from core_backend.serializers.serializers_update import EventUpdateSerializer
-from core_backend.services import manage_extra_attrs, sync_m2m
+from core_backend.services.core_services import manage_extra_attrs, sync_m2m
 
 
 class EventPatchSerializer(EventUpdateSerializer):

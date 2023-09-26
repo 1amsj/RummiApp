@@ -6,9 +6,17 @@ from django.core.management import BaseCommand
 
 from core_api.constants import \
     AgentRoles, BookingReminderTargets, CompanyTypes, INTERPRETATION_BUSINESS_NAME
-from core_backend.models import Booking, Extra, Notification, User
+from core_backend.models import Booking, Company, Extra, Notification, User
 from core_backend.notification_builders import ClinicDailyReminderBookings, InterpreterDailyReminderBookings
 from core_backend.serializers.serializers import EventSerializer
+
+
+def add_event_to_map(event_map, key, event):
+    if key not in event_map:
+        event_map[key] = [event]
+    else:
+        event_map[key].append(event)
+    return event_map
 
 
 def get_today_events_for_targets(events):
@@ -25,19 +33,16 @@ def get_today_events_for_targets(events):
 
         reminder_targets = reminder_targets_extra.value if reminder_targets_extra else None
 
-        if reminder_targets == BookingReminderTargets.ALL or reminder_targets == BookingReminderTargets.CLINIC:
+        if reminder_targets in [BookingReminderTargets.ALL, BookingReminderTargets.CLINIC]:
             clinic_id = event.booking.companies.filter(type=CompanyTypes.CLINIC).values_list('id', flat=True)[0]
-            try:
-                clinic_events_map[clinic_id].append(event)
-            except KeyError:
-                clinic_events_map[clinic_id] = [event]
 
-        if reminder_targets == BookingReminderTargets.ALL or reminder_targets == BookingReminderTargets.INTERPRETER:
-            interpreter_user_id = event.booking.services.first().provider.user.id
-            try:
-                interpreter_events_map[interpreter_user_id].append(event)
-            except KeyError:
-                interpreter_events_map[interpreter_user_id] = [event]
+            clinic_events_map = add_event_to_map(clinic_events_map, clinic_id, event)
+
+        if (reminder_targets in [BookingReminderTargets.ALL, BookingReminderTargets.INTERPRETER]
+                and (service := event.booking.services.first())):
+            interpreter_user_id = service.provider.user.id
+
+            interpreter_events_map = add_event_to_map(interpreter_events_map, interpreter_user_id, event)
 
     return clinic_events_map, interpreter_events_map
 
@@ -49,14 +54,19 @@ def prepare_notifications_for_clinics(clinic_events_map: dict, notification_list
         for event in events:
             patient = event.affiliates.first().recipient.user
             medical_provider = event.agents.filter(role=AgentRoles.MEDICAL_PROVIDER).first().user
-            interpreter = event.booking.services.first().provider.user
-            interpreter_contact = interpreter.contacts.filter(phone__isnull=False).exclude(phone__exact='').first()
+
+            interpreter = None
+            interpreter_contact = None
+
+            if service := event.booking.services.first():
+                interpreter = service.provider.user
+                interpreter_contact = interpreter.contacts.filter(phone__isnull=False).exclude(phone__exact='').first()
 
             payload_events.append({
                 "start_at": event.start_at.strftime("%I:%M%p"),
                 "patient_name": patient.full_name,
                 "medical_provider_name": medical_provider.full_name,
-                "interpreter_name": interpreter.full_name,
+                "interpreter_name": interpreter.full_name if interpreter else None,
                 "interpreter_phone": str(interpreter_contact.phone) if interpreter_contact else None,
             })
 
@@ -67,11 +77,23 @@ def prepare_notifications_for_clinics(clinic_events_map: dict, notification_list
 
         notification_data = ClinicDailyReminderBookings().build(notification_payload)
 
+        clinic = Company.objects.get(id=clinic_id)
+
+        # Only fax supported
+        send_method = Notification.SendMethod.FAX
+        fax_contact = clinic.contacts.filter(fax__isnull=False).exclude(fax__exact='').first()
+
+        if not fax_contact:
+            continue
+
+        notification_data['fax_number'] = str(fax_contact.fax)
+        notification_data['fax_name'] = clinic.name
+
         notification_list.append(
             Notification(
                 data=notification_data,
                 payload=notification_payload,
-                send_method=Notification.SendMethod.FAX,  # TODO change for clinic's preferred method
+                send_method=send_method,
                 template=ClinicDailyReminderBookings.template,
             )
         )
@@ -107,11 +129,21 @@ def prepare_notifications_for_interpreters(interpreter_events_map: dict, notific
 
         notification_data = InterpreterDailyReminderBookings().build(notification_payload)
 
+        # Only fax supported
+        send_method = Notification.SendMethod.FAX
+        fax_contact = interpreter_user.contacts.filter(fax__isnull=False).exclude(fax__exact='').first()
+
+        if not fax_contact:
+            continue
+
+        notification_data['fax_number'] = fax_contact.fax
+        notification_data['fax_name'] = interpreter_user.full_name
+
         notification_list.append(
             Notification(
                 data=notification_data,
                 payload=notification_payload,
-                send_method=Notification.SendMethod.EMAIL,  # TODO change for interpreter's preferred method
+                send_method=send_method,
                 template=InterpreterDailyReminderBookings.template,
             )
         )

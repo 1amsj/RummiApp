@@ -1,6 +1,5 @@
 from typing import Type
 
-from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline
@@ -54,6 +53,31 @@ class UserAdmin(SimpleHistoryAdmin, NestedModelAdmin, BaseUserAdmin):
 
     def delete_model(self, request, obj):
         obj.hard_delete()
+
+
+from django.contrib import admin
+from django.utils.translation import gettext_lazy as _
+from .models import ExternalApiToken
+
+class ExternalApiTokenAdmin(admin.ModelAdmin):
+    list_display = ('api_name', 'client_id', 'is_valid', 'created_at', 'updated_at')
+    actions = ['invalidate_tokens']
+
+    fields = ('api_name', 'client_id', 'expires_at', 'expiration_timestamp', 'is_expired', 'access_token', 'refresh_token', 'scope', 'created_at', 'updated_at')
+    readonly_fields = ('api_name', 'client_id', 'expires_at', 'is_expired', 'access_token', 'refresh_token', 'scope', 'created_at', 'updated_at')
+
+    def is_valid(self, obj):
+        return bool(obj.access_token and obj.refresh_token and not obj.is_expired)
+    is_valid.boolean = True
+    is_valid.short_description = _('Is Valid')
+
+    def invalidate_tokens(self, request, queryset):
+        count = 0
+        for token in queryset:
+            token.invalidate()
+            count += 1
+        self.message_user(request, _('%d tokens were invalidated.') % count)
+    invalidate_tokens.short_description = _("Invalidate selected tokens")
 
 
 def stacked_inline(inline_model: Type[models.Model], extendable=False):
@@ -130,5 +154,6 @@ basic_register(Authorization, readonly=('last_updated_at',))
 basic_register(Extra)
 basic_register(Note)
 basic_register(Notification)
+admin.site.register(ExternalApiToken, ExternalApiTokenAdmin)
 
 # admin.site.register(Rule)

@@ -1,3 +1,5 @@
+import time
+from datetime import datetime
 from typing import Optional, Tuple
 
 from django.contrib.auth.models import AbstractUser, UserManager
@@ -48,7 +50,7 @@ class ExtraQuerySet(SoftDeletionQuerySet):
         return self.prefetch_related('extra').filter(query)
 
     def filter_by_extra(self, related_prefix='', **fields):
-        from core_backend.services import iter_extra_attrs
+        from core_backend.services.core_services import iter_extra_attrs
         queryset = self
         for (k, v) in iter_extra_attrs(self.model, fields):
             params = k.split('__')
@@ -647,20 +649,26 @@ class Authorization(ExtendableModel, HistoricalModel, SoftDeletableModel):
 class Notification(HistoricalModel, SoftDeletableModel):
     class Status(models.TextChoices):
         PENDING = 'PENDING', _('Pending')
+        SUBMITTED = 'SUBMITTED', _('Submitted')
         SENT = 'SENT', _('Sent')
 
     class SendMethod(models.TextChoices):
         EMAIL = 'EMAIL', _('Email')
         FAX = 'FAX', _('Fax')
 
+    template = models.CharField(max_length=128)
     data = models.JSONField()
     payload = models.JSONField()
-    created_at = models.DateTimeField(auto_now_add=True)
     priority = models.IntegerField(default=50)
-    send_method = models.CharField(max_length=32, choices=SendMethod.choices)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    submitted_at = models.DateTimeField(default=None, null=True, blank=True)
+    expected_send_at = models.DateTimeField(default=None, null=True, blank=True)
     sent_at = models.DateTimeField(default=None, null=True, blank=True)
+
+    send_method = models.CharField(max_length=32, choices=SendMethod.choices)
+    job_id = models.CharField(max_length=128, null=True, blank=True)
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING)
-    template = models.CharField(max_length=128)
 
     class Meta:
         verbose_name = _('notification')
@@ -716,3 +724,38 @@ class Note(SoftDeletableModel):
     class Meta:
         verbose_name = _('note')
         verbose_name_plural = _('notes')
+
+
+class ExternalApiToken(models.Model):
+    api_name = models.CharField(max_length=255)
+    client_id = models.CharField(max_length=255)
+
+    access_token = models.TextField(blank=True, null=True)
+    refresh_token = models.TextField(blank=True, null=True)
+    expiration_timestamp = models.IntegerField()
+    scope = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _('external API token')
+        verbose_name_plural = _('external API tokens')
+        unique_together = ['api_name', 'client_id']
+
+    def __str__(self):
+        return F'{self.api_name} - {self.client_id}'
+
+    @property
+    def is_expired(self):
+        return self.expiration_timestamp < time.time()
+
+    @property
+    def expires_at(self):
+        return datetime.fromtimestamp(self.expiration_timestamp)
+
+    def invalidate(self):
+        self.access_token = None
+        self.refresh_token = None
+        self.expiration_timestamp = 0
+        self.scope = None
+        self.save()
