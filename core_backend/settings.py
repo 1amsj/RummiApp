@@ -226,6 +226,8 @@ LOGGING = {
     },
 }
 
+BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
+
 # Concord
 CONCORD_CLIENT_ID = os.environ.get('CONCORD_CLIENT_ID', 'concord_client_id')
 CONCORD_CLIENT_SECRET = os.environ.get('CONCORD_CLIENT_SECRET', 'concord_client_secret')
@@ -235,3 +237,7 @@ CONCORD_PASSWORD = os.environ.get('CONCORD_PASSWORD', 'concord_password')
 CONCORD_DEBUG = os.environ.get('CONCORD_DEBUG', 'True').lower() in ('true', '1', 't')
 CONCORD_LOGIN_URL = os.environ.get('CONCORD_LOGIN_URL', 'https://login.concord.net/v1/connect/token')
 CONCORD_API_URL = os.environ.get('CONCORD_API_URL', 'https://ws.concordfax.com/fax/v5')
+CONCORD_NUMBER_OVERRIDE = os.environ.get('CONCORD_NUMBER_OVERRIDE', None)
+
+CONCORD_NOTIFY_AUTH_USERNAME = os.environ.get('CONCORD_NOTIFY_AUTH_USERNAME', None)
+CONCORD_NOTIFY_AUTH_PASSWORD = os.environ.get('CONCORD_NOTIFY_AUTH_PASSWORD', None)

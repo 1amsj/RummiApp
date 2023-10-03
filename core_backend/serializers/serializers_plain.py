@@ -141,7 +141,7 @@ class LocationUnsafeSerializer(LocationSerializer):
 
 
 class NoteSerializer(BaseSerializer):
-    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all())
+    created_by = serializers.PrimaryKeyRelatedField(required=False, allow_null=True, queryset=User.objects.all())
     created_by_first_name = serializers.CharField(read_only=True, source='created_by.first_name')
     created_by_last_name = serializers.CharField(read_only=True, source='created_by.last_name')
     text = serializers.CharField(required=True, allow_blank=True)
@@ -157,7 +157,7 @@ class NoteSerializer(BaseSerializer):
     @staticmethod
     def build_model_instance(data: dict):
         return Note(
-            created_by=data['created_by'],
+            created_by=data.get('created_by', None),
             text=data['text'],
         )
 

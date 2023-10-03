@@ -20,6 +20,7 @@ These are the following commands that can be run with the `manage.py` file:
   * The csv file must have the columns (please note that they are case-sensitive): `Show` ("TRUE" or empty), `Common` ("TRUE" or empty), `alpha2`, `Alpha3`, `English Name`, `English Description`.
   * When running the script, if there's another entry in the database that matches a row's `alpha2`, `Alpha3` and `English Name` columns, the script will update that entry with the new data.
 * `python manage.py migrate_languages_to_model` - Meant to be a one time script. Migrates the language extras in the database to the new language model.
+* `python manage.py check_submitted_notifications_status` - Checks the status of all submitted notifications and updates the database accordingly.
 
 ---
 

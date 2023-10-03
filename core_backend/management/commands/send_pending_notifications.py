@@ -5,6 +5,7 @@ from django.core.management import BaseCommand
 from core_backend.models import Notification
 from core_backend.services.concord.concord_interfaces import FaxJobFile, FaxJobRecipient, FileFormats
 from core_backend.services.concord.concord_service import ConcordService
+from core_backend.services.core_services import log_notification_status_change
 
 
 def send_fax(data: dict, fax_service: ConcordService):
@@ -45,13 +46,24 @@ class Command(BaseCommand):
                 notification.save()
                 continue
 
-            fax_service = ConcordService()
-            job_id, job_begin_time = send_fax(notification.data, fax_service)
+
+            try:
+                fax_service = ConcordService()
+                job_id, job_begin_time = send_fax(notification.data, fax_service)
+
+            except Exception as e:
+                self.stdout.write(F"Failed to send notification {notification}: {e}")
+                notification.status = Notification.Status.FAILED
+                notification.status_message = f'Failed to send notification due to unknown error: {e}'
+                notification.save()
+                continue
 
             notification.job_id = job_id
             notification.status = Notification.Status.SUBMITTED
             notification.submitted_at = datetime.now()
             notification.expected_send_at = datetime.fromtimestamp(job_begin_time)
             notification.save()
+
+            log_notification_status_change(notification, Notification.Status.SUBMITTED)
 
         self.stdout.write(self.style.SUCCESS('Successfully sent notifications'))

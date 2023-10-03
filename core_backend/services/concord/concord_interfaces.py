@@ -76,6 +76,62 @@ class FaxJobFile:
         }
 
 
+class FaxJobScheduleStartType(int, Enum):
+    IMMEDIATE = 0
+    SCHEDULED = 1
+
+
+class FaxJobDetails:
+    def __init__(
+            self,
+            schedule_start_type,
+            schedule_start_date=None,
+            expiry_date=None,
+            sender_csid=None,
+            sender_name=None,
+            sender_company=None,
+            sender_phone=None,
+            cover_text=None,
+            cover_name=None,
+            cover_subject=None,
+            reference_id=None,
+            resolution=None,
+            sender_fax=None,
+            software_client=None,
+            notify_type=None,
+            notify_include_delivered_image=None,
+            notify_destination=None,
+            notify_auth_user=None,
+            notify_auth_password=None,
+            **kwargs
+    ):
+        self.JobScheduleStartType = schedule_start_type
+        self.JobScheduleStartDate = schedule_start_date
+        self.JobExpiryDate = expiry_date
+        self.SenderCSID = sender_csid
+        self.SenderName = sender_name
+        self.SenderCompany = sender_company
+        self.SenderPhone = sender_phone
+        self.CoverText = cover_text
+        self.CoverName = cover_name
+        self.CoverSubject = cover_subject
+        self.ReferenceId = reference_id
+        self.Resolution = resolution
+        self.SenderFax = sender_fax
+        self.SoftwareClient = software_client
+        self.NotifyType = notify_type
+        self.NotifyIncludeDeliveredImage = notify_include_delivered_image
+        self.NotifyDestination = notify_destination
+        self.NotifyAuthUser = notify_auth_user
+        self.NotifyAuthPassword = notify_auth_password
+
+        for attr in [f'UserField{i}' for i in range(1, 13)]:  # UserField1 ~ UserField12
+            setattr(self, attr, kwargs.get(attr, None))
+
+    def to_dict(self):
+        return self.__dict__
+
+
 # DTOs for response
 class FaxStatusCode(int, Enum):
     SUCCESS = 1
@@ -91,3 +147,54 @@ class FaxJobStatus:
         self.status_message = status_message
         self.error_code = error_code
         self.error_message = error_message
+
+# DTOs for notification
+class FaxNotifyType(int, Enum):
+    NONE = 0
+    EMAIL = 1
+    HTTP_GET = 2
+    HTTP_POST = 3
+
+
+class FaxPushNotification:
+    def __init__(
+        self,
+        account_id,
+        reference_id,
+        job_id,
+        job_status_id,
+        status_description,
+        page_count,
+        delivery_date_time,
+        delivery_duration,
+        remote_csid,
+        error_code,
+        error_string,
+    ):
+        self.account_id = account_id
+        self.reference_id = reference_id
+        self.job_id = job_id
+        self.job_status_id = job_status_id
+        self.status_description = status_description
+        self.page_count = page_count
+        self.delivery_date_time = delivery_date_time
+        self.delivery_duration = delivery_duration
+        self.remote_csid = remote_csid
+        self.error_code = error_code
+        self.error_string = error_string
+
+    @staticmethod
+    def from_request_data(data) -> 'FaxPushNotification':
+        return FaxPushNotification(
+            account_id=data.get('AccountId'),
+            reference_id=data.get('ReferenceId'),
+            job_id=data.get('FaxJobId'),
+            job_status_id=int(data.get('FaxJobStatusId')),
+            status_description=data.get('StatusDescription'),
+            page_count=data.get('PageCount'),
+            delivery_date_time=data.get('FaxDeliveryDateTime'),
+            delivery_duration=data.get('FaxDeliveryDuration'),
+            remote_csid=data.get('RemoteFaxCSID'),
+            error_code=data.get('ErrorCode'),
+            error_string=data.get('ErrorString'),
+        )

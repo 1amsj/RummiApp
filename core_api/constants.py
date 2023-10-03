@@ -1,5 +1,8 @@
 from enum import Enum
 
+from core_backend.settings import BACKEND_URL
+
+
 # API special payload keys
 class ApiSpecialKeys(str, Enum):
     # Querying
@@ -47,8 +50,16 @@ API_QUERY_LOOKUP_MAP = {
     "isnull": "isnull",
 }
 
-# External API names
+# External APIs
 CONCORD_API_NAME = 'concord'
+CONCORD_DEBUG_JOB_PREFIX = 'DEBUG_JOB_ID'
+CONCORD_EXPECTED_SEND_WAIT_THRESHOLD_IN_DAYS = 0 # TODO should be 7 whence we configure listener
+CONCORD_NOTIFY_ENDPOINT = 'api/v1/notifications/fax'
+CONCORD_NOTIFY_DESTINATION = (
+    f'{BACKEND_URL}{CONCORD_NOTIFY_ENDPOINT}'
+    if BACKEND_URL[-1] == '/'
+    else f'{BACKEND_URL}/{CONCORD_NOTIFY_ENDPOINT}'
+)
 
 # Non-generic constants
 INTERPRETATION_BUSINESS_NAME = 'interpretation'

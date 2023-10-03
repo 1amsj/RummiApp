@@ -1,11 +1,15 @@
 from typing import Type
 
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db import IntegrityError
 from django.utils.translation import gettext_lazy as _
 from nested_admin.nested import NestedGenericTabularInline, NestedModelAdmin, NestedStackedInline
 from simple_history.admin import SimpleHistoryAdmin
 
 from core_backend.models import *
+from .models import ExternalApiToken
+from .services.core_services import generate_unique_field, regenerate_unique_condition_fields
 
 
 class ExtraInline(NestedGenericTabularInline):
@@ -55,10 +59,6 @@ class UserAdmin(SimpleHistoryAdmin, NestedModelAdmin, BaseUserAdmin):
         obj.hard_delete()
 
 
-from django.contrib import admin
-from django.utils.translation import gettext_lazy as _
-from .models import ExternalApiToken
-
 class ExternalApiTokenAdmin(admin.ModelAdmin):
     list_display = ('api_name', 'client_id', 'is_valid', 'created_at', 'updated_at')
     actions = ['invalidate_tokens']
@@ -78,6 +78,85 @@ class ExternalApiTokenAdmin(admin.ModelAdmin):
             count += 1
         self.message_user(request, _('%d tokens were invalidated.') % count)
     invalidate_tokens.short_description = _("Invalidate selected tokens")
+
+
+class UniqueConditionAdmin(admin.ModelAdmin):
+    list_display = ('business', 'content_type', 'fields')
+    actions = ['regenerate_unique_fields', 'check_for_conflicts']
+
+    def save_model(self, request, obj, form, change):
+        model = obj.content_type.model_class()
+        if not hasattr(model, 'unique_field'):
+            messages.add_message(request, messages.WARNING, 'This model does not support unique field')
+        super(UniqueConditionAdmin, self).save_model(request, obj, form, change)
+
+    def regenerate_unique_fields(self, request, queryset):
+        updated_models = []
+
+        for unique_condition in queryset:
+            model = unique_condition.content_type.model_class()
+            if not hasattr(model, 'unique_field'):
+                messages.add_message(request, messages.WARNING, 'Model %s does not support unique field' % model)
+                continue
+
+            try:
+                regenerate_unique_condition_fields(unique_condition)
+                updated_models.append(unique_condition.content_type.model)
+            except IntegrityError as e:
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    _('Could not regenerate unique fields for the model %s due to a duplicate.')
+                    % unique_condition.content_type.model,
+                )
+
+        if not updated_models:
+            return
+
+        self.message_user(
+            request,
+            _('Unique fields were regenerated for the models %s.')
+            % ','.join(updated_models),
+        )
+
+
+    def check_for_conflicts(self, request, queryset):
+        found_conflict = False
+
+        for unique_condition in queryset:
+            model = unique_condition.content_type.model_class()
+            if not hasattr(model, 'unique_field'):
+                messages.add_message(request, messages.WARNING, 'This model does not support unique field')
+                continue
+
+            unique_fields_dict = {}
+
+            for instance in model.objects.all():
+                unique_field = generate_unique_field(unique_condition.business, instance, unique_condition.fields)
+
+                if unique_field in unique_fields_dict:
+                    unique_fields_dict[unique_field].append(str(instance.id))
+                else:
+                    unique_fields_dict[unique_field] = [str(instance.id)]
+
+            for unique_field, instances in unique_fields_dict.items():
+                if len(instances) <= 1:
+                    continue
+
+                found_conflict = True
+                messages.add_message(
+                    request,
+                    messages.ERROR,
+                    _('For the model %s, the following %d instances have the same unique field %s: %s')
+                    % (model._meta.model_name, len(instances), unique_field, ','.join(instances)),
+                )
+
+        if not found_conflict:
+            messages.add_message(
+                request,
+                messages.SUCCESS,
+                _('No conflicts found for the selected unique conditions. It is safe to regenerate unique fields.'),
+            )
 
 
 def stacked_inline(inline_model: Type[models.Model], extendable=False):
@@ -155,5 +234,6 @@ basic_register(Extra)
 basic_register(Note)
 basic_register(Notification)
 admin.site.register(ExternalApiToken, ExternalApiTokenAdmin)
+admin.site.register(UniqueCondition, UniqueConditionAdmin)
 
 # admin.site.register(Rule)
