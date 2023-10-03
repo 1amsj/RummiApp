@@ -45,8 +45,17 @@ class Command(BaseCommand):
                 notification.save()
                 continue
 
-            fax_service = ConcordService()
-            job_id, job_begin_time = send_fax(notification.data, fax_service)
+
+            try:
+                fax_service = ConcordService()
+                job_id, job_begin_time = send_fax(notification.data, fax_service)
+
+            except Exception as e:
+                self.stdout.write(F"Failed to send notification {notification}: {e}")
+                notification.status = Notification.Status.FAILED
+                notification.status_message = f'Failed to send notification due to unknown error: {e}'
+                notification.save()
+                continue
 
             notification.job_id = job_id
             notification.status = Notification.Status.SUBMITTED

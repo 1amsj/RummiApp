@@ -651,6 +651,7 @@ class Notification(HistoricalModel, SoftDeletableModel):
         PENDING = 'PENDING', _('Pending')
         SUBMITTED = 'SUBMITTED', _('Submitted')
         SENT = 'SENT', _('Sent')
+        FAILED = 'FAILED', _('Failed')
 
     class SendMethod(models.TextChoices):
         EMAIL = 'EMAIL', _('Email')
@@ -669,6 +670,7 @@ class Notification(HistoricalModel, SoftDeletableModel):
     send_method = models.CharField(max_length=32, choices=SendMethod.choices)
     job_id = models.CharField(max_length=128, null=True, blank=True)
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING)
+    status_message = models.TextField(null=True, blank=True)
 
     class Meta:
         verbose_name = _('notification')

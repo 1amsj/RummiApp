@@ -67,5 +67,7 @@ urlpatterns = [
 
     path('search/', views.search_bookings, name='search'),
 
+    path('notifications/fax/', views.handle_fax_push_notification, name='fax_push_notification'),
+
     path('', views.get_routes)
 ]

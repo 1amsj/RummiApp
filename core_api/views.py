@@ -2,9 +2,11 @@ from typing import Type, Union
 
 from django.db import models, transaction
 from django.db.models import Q, QuerySet
+from django.utils import timezone
 from rest_framework import generics, serializers, status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
+from rest_framework.authentication import BasicAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -12,6 +14,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
+from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
@@ -43,36 +46,9 @@ from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
     CategoryUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
     OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceRootUpdateSerializer
+from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
-
-
-def can_manage_model_basic_permissions(model_name: str) -> Type[BasePermission]:
-    class CanManageModel(BasePermission):
-        message = 'You do not have permission to perform this operation'
-
-        def has_permission(self, request, view):
-            method = request.method
-            user = request.user
-            return (method == 'GET' and user.has_perm(F'core_backend.view_{model_name}')) \
-                or (method == 'POST' and user.has_perm(F'core_backend.add_{model_name}')) \
-                or (method == 'PUT' and user.has_perm(F'core_backend.change_{model_name}')) \
-                or (method == 'PATCH' and user.has_perm(F'core_backend.change_{model_name}')) \
-                or (method == 'DELETE' and user.has_perm(F'core_backend.delete_{model_name}'))
-
-    return CanManageModel
-
-class CanManageOperators(BasePermission):
-    message = 'You do not have permission to perform this operation'
-
-    def has_permission(self, request, view):    
-        method = request.method
-        user = request.user
-        return (method == 'GET' and user.is_authenticated and user.has_perm('core_backend.view_operator')) \
-            or (method == 'POST') \
-            or (method == 'PUT' and user.is_authenticated and user.has_perm('core_backend.change_operator')) \
-            or (method == 'PATCH' and user.is_authenticated and user.has_perm('core_backend.change_operator')) \
-            or (method == 'DELETE' and user.is_authenticated and user.has_perm('core_backend.delete_operator'))
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -209,6 +185,32 @@ def search_bookings(request):
 
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.data)
+
+
+@api_view(['POST'])
+@authentication_classes([BasicAuthentication])
+@permission_classes([CanPushFaxNotifications])
+@transaction.atomic
+def handle_fax_push_notification(request):
+    data = FaxPushNotification.from_request_data(request.data)
+
+    if data.job_status_id not in (FaxStatusCode.SUCCESS, FaxStatusCode.FAILURE):
+        print(f'Fax job {data.job_id} is still in progress', data.__dict__)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    notification = Notification.objects.get(job_id=data.job_id)
+    notification.status = (
+        Notification.Status.SENT
+        if data.job_status_id == FaxStatusCode.SUCCESS
+        else Notification.Status.FAILED
+    )
+    notification.status_message = data.status_description
+    notification.sent_at = timezone.now()  # Notice that this is not the actual time of sending
+    notification.save()
+
+    print(f'Fax job {data.job_id} has been processed', data.__dict__)
+
+    return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.ModelSerializer]):

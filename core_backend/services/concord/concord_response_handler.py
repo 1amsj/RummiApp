@@ -1,8 +1,9 @@
 import json
 import time
 import uuid
-from typing import List
+from typing import List, Tuple
 
+from core_api.constants import CONCORD_DEBUG_JOB_PREFIX
 from core_api.decorators import raise_instead
 from core_backend.exceptions import RequestFailedException, UnexpectedResponseException
 from core_backend.services.concord.concord_interfaces import FaxJobFile, FaxJobRecipient, FaxJobStatus, FaxStatusCode
@@ -13,12 +14,12 @@ handle_key_error = raise_instead(UnexpectedResponseException, KeyError, 'Missing
 
 class ConcordResponseHandler:
     @handle_key_error
-    def check_service(self, response_data):
+    def check_service(self, response_data) -> str:
         check_service_response = response_data["CheckServiceResponse"]
         return check_service_response["return"]
 
     @handle_key_error
-    def get_fax_status(self, response_data, job_ids: List[str]):
+    def get_fax_status(self, response_data, job_ids: List[str]) -> List[FaxJobStatus]:
         check_service_response = response_data["GetFaxStatusResponse"]
         was_successful = check_service_response["return"]
 
@@ -45,7 +46,7 @@ class ConcordResponseHandler:
         return ret_fax_status_list
 
     @handle_key_error
-    def send_fax(self, response_data, fax_recipients: List[FaxJobRecipient], fax_files: List[FaxJobFile]):
+    def send_fax(self, response_data, fax_recipients: List[FaxJobRecipient], fax_files: List[FaxJobFile]) -> Tuple[List[int], float]:
         send_fax_response = response_data["SendFaxResponse"]
         was_successful = send_fax_response["return"]
 
@@ -67,7 +68,7 @@ class ConcordDebugResponseHandler(ConcordResponseHandler):
     def check_service(self, response_data):
         return "DEBUG CONCORD"
 
-    def get_fax_status(self, response_data, job_ids: List[str]):
+    def get_fax_status(self, response_data, job_ids):
         return [
             FaxJobStatus(
                 job_id=job_id,
@@ -79,8 +80,8 @@ class ConcordDebugResponseHandler(ConcordResponseHandler):
             for job_id in job_ids
         ]
 
-    def send_fax(self, response_data, fax_recipients: List[FaxJobRecipient], fax_files: List[FaxJobFile]):
+    def send_fax(self, response_data, fax_recipients, fax_files):
         return (
-            [f"DEBUG_JOB_ID_{uuid.uuid4().hex}" for _ in fax_recipients],
+            [f"{CONCORD_DEBUG_JOB_PREFIX}_{uuid.uuid4().hex}" for _ in fax_recipients],
             time.time() + 5,
         )
