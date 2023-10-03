@@ -14,7 +14,8 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import NoteUnsafeSerializer
 from core_backend.serializers.serializers_utils import extendable_serializer, generic_serializer
-from core_backend.services.core_services import generate_public_id, manage_extra_attrs, user_sync_email_with_contact
+from core_backend.services.core_services import generate_public_id, manage_extra_attrs, update_model_unique_field, \
+    user_sync_email_with_contact
 
 
 # Group for permissions
@@ -207,6 +208,8 @@ class EventCreateSerializer(extendable_serializer(Event)):
         if agents:
             event.agents.add(*agents)
         manage_extra_attrs(business, event, extras)
+
+        update_model_unique_field(business, event)
 
         return event.id
 

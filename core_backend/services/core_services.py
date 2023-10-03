@@ -3,7 +3,7 @@ from functools import lru_cache
 from typing import Iterator, Set, Tuple, Type, Union
 
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from pytz import timezone
 
 import core_backend.models as app_models
@@ -196,6 +196,81 @@ def generate_public_id():
 
     # Unique identifier field value
     return '{}-{:03d}'.format(datetime_pst.strftime('%y%m%d'), sequence_number)
+
+
+def generate_unique_field(business: Union[str, app_models.Business], instance: Union[models.Model, app_models.ExtendableModel], fields: list):
+    """
+    Generates a unique field for a model instance
+    :param business: Business
+    :param instance: Model instance
+    :param fields: List of fields to be used to generate the unique field
+    """
+
+    if isinstance(business, str):
+        business = app_models.Business.objects.get(name=business)
+
+    model = instance.__class__
+    content_type = ContentType.objects.get_for_model(model)
+
+    extras = app_models.Extra.objects.filter(
+        business=business,
+        parent_ct=content_type,
+        parent_id=instance.id,
+    )
+
+    values = []
+
+    for field in fields:
+        if hasattr(instance, field):
+            value = getattr(instance, field)
+
+        else:
+            assert_extendable(instance.__class__)
+            try:
+                value = extras.get(key=field).value
+            except app_models.Extra.DoesNotExist:
+                value = None
+
+        values.append(str(value))
+
+    return '|'.join(values)
+
+
+def update_model_unique_field(business: Union[str, app_models.Business], instance: app_models.UniquifiableModel):
+    """
+    Updates the unique field of a model instance. Note that this function saves the instance.
+    :param business: Business
+    :param instance: UniquifiableModel
+    """
+    if isinstance(business, str):
+        business = app_models.Business.objects.get(name=business)
+
+    model = instance.__class__
+    content_type = ContentType.objects.get_for_model(model)
+
+    try:
+        unique_condition = app_models.UniqueCondition.objects.get(business=business, content_type=content_type)
+
+    except app_models.UniqueCondition.DoesNotExist:
+        return None
+
+    instance.unique_field = generate_unique_field(business, instance, unique_condition.fields)
+    instance.save(update_fields=['unique_field'])
+
+
+@transaction.atomic
+def regenerate_unique_condition_fields(unique_condition: app_models.UniqueCondition) -> int:
+    model = unique_condition.content_type.model_class()
+    model.objects.all().update(unique_field=None)
+
+    unique_fields = []
+    updated_instances = []
+    for instance in model.objects.all():
+        instance.unique_field = generate_unique_field(unique_condition.business, instance, unique_condition.fields)
+        unique_fields.append(f"{instance.unique_field}, {instance.id}")
+        updated_instances.append(instance)
+
+    return model.objects.bulk_update(updated_instances, ['unique_field'])
 
 
 def log_notification_status_change(notification: app_models.Notification, status: app_models.Notification.Status):

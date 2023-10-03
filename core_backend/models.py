@@ -130,6 +130,13 @@ class HistoricalModel(models.Model):
         abstract = True
 
 
+class UniquifiableModel(models.Model):
+    unique_field = models.TextField(unique=True, blank=True, null=True, default=None)
+
+    class Meta:
+        abstract = True
+
+
 # General data models
 class Extra(SoftDeletableModel):
     parent_id = models.PositiveIntegerField()
@@ -149,6 +156,20 @@ class Extra(SoftDeletableModel):
 
     def __str__(self):
         return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.value}"
+
+
+class UniqueCondition(models.Model):
+    business = models.ForeignKey("Business", on_delete=models.CASCADE)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    fields = ArrayField(models.TextField(), default=list, blank=False)
+
+    class Meta:
+        verbose_name = _('unique condition')
+        verbose_name_plural = _('unique conditions')
+        unique_together = ['business', 'content_type']
+
+    def __str__(self):
+        return F"{self.content_type} - {self.fields}"
 
 
 class Contact(SoftDeletableModel, HistoricalModel):
@@ -543,7 +564,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
         self.offers.all().delete()
 
 
-class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
+class Event(ExtendableModel, HistoricalModel, SoftDeletableModel, UniquifiableModel):
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='events')
 
     affiliates = models.ManyToManyField(Affiliation, related_name='events')
@@ -574,6 +595,10 @@ class Event(ExtendableModel, HistoricalModel, SoftDeletableModel):
     @property
     def is_online(self):
         return bool(self.meeting_url)
+
+    @property
+    def affiliates_ids(self):
+        return list(self.affiliates.all().values_list('id', flat=True))
     
     def delete_related(self):
         self.reports.all().delete()
