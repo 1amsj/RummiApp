@@ -88,6 +88,7 @@ def prepare_notifications_for_clinics(clinic_events_map: dict, notification_list
 
         notification_data['fax_number'] = str(fax_contact.fax)
         notification_data['fax_name'] = clinic.name
+        notification_data['addressee'] = notification_data['fax_name']
 
         notification_list.append(
             Notification(
@@ -95,6 +96,7 @@ def prepare_notifications_for_clinics(clinic_events_map: dict, notification_list
                 payload=notification_payload,
                 send_method=send_method,
                 template=ClinicDailyReminderBookings.template,
+                booking_to_log=events[0].booking,
             )
         )
 
@@ -138,6 +140,7 @@ def prepare_notifications_for_interpreters(interpreter_events_map: dict, notific
 
         notification_data['fax_number'] = fax_contact.fax
         notification_data['fax_name'] = interpreter_user.full_name
+        notification_data['addressee'] = notification_data['fax_name']
 
         notification_list.append(
             Notification(
@@ -145,6 +148,7 @@ def prepare_notifications_for_interpreters(interpreter_events_map: dict, notific
                 payload=notification_payload,
                 send_method=send_method,
                 template=InterpreterDailyReminderBookings.template,
+                booking_to_log=events[0].booking,
             )
         )
 

@@ -11,7 +11,7 @@ from core_backend.services.concord.concord_interfaces import FaxJobDetails, FaxJ
     FaxJobScheduleStartType, FaxJobStatus, FaxNotifyType
 from core_backend.services.concord.concord_response_handler import ConcordDebugResponseHandler, ConcordResponseHandler
 from core_backend.settings import CONCORD_DEBUG, \
-    CONCORD_NOTIFY_AUTH_PASSWORD, CONCORD_NOTIFY_AUTH_USERNAME, CONCORD_USERNAME
+    CONCORD_NOTIFY_AUTH_PASSWORD, CONCORD_NOTIFY_AUTH_USERNAME, CONCORD_NUMBER_OVERRIDE, CONCORD_USERNAME
 
 
 class ConcordService(metaclass=Singleton):
@@ -57,6 +57,15 @@ class ConcordService(metaclass=Singleton):
             notify_auth_password=CONCORD_NOTIFY_AUTH_PASSWORD,
         )
 
+    @staticmethod
+    def _override_number(fax_recipients: List[FaxJobRecipient]):
+        if not CONCORD_NUMBER_OVERRIDE:
+            return
+
+        for fax_recipient in fax_recipients:
+            fax_recipient.RecipField1 = fax_recipient.fax_number
+            fax_recipient.fax_number = CONCORD_NUMBER_OVERRIDE
+
     def check_service(self) -> str:
         response = self.http_client.json_request({
             "CheckService": {}
@@ -93,6 +102,9 @@ class ConcordService(metaclass=Singleton):
 
         if not fax_files:
             raise ValueError("fax_files must not be empty")
+
+        self._override_number(fax_recipients)
+        # Note that numbers are overriden on SEND, not on notification CREATION, to preserve the original information
 
         response = self.http_client.json_request({
             "SendFaxEx": {

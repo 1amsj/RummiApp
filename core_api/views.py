@@ -1308,6 +1308,7 @@ class ManageNotifications(basic_view_manager(Notification, NotificationSerialize
 
         render_data['fax_number'] = data['fax_number']
         render_data['fax_name'] = data.get('fax_name', None)
+        render_data['addressee'] = render_data['fax_name']
 
         notification_id = serializer.create(render_data=render_data)
 

@@ -7,6 +7,8 @@ from core_api.constants import CONCORD_DEBUG_JOB_PREFIX, CONCORD_EXPECTED_SEND_W
 from core_backend.models import Notification
 from core_backend.services.concord.concord_interfaces import FaxStatusCode
 from core_backend.services.concord.concord_service import ConcordService
+from core_backend.services.core_services import log_notification_status_change
+
 from core_backend.settings import CONCORD_DEBUG
 
 
@@ -67,6 +69,9 @@ class Command(BaseCommand):
             notification.status_message = fax_job_status.status_message
             notification.sent_at = timezone.now()  # Notice that this is not the actual time of sending
             notification.save()
+
+            log_notification_status_change(notification, notification.status)
+
 
         self.stdout.write(self.style.SUCCESS('Successfully checked fax status'))
 

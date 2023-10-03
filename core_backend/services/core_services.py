@@ -196,3 +196,29 @@ def generate_public_id():
 
     # Unique identifier field value
     return '{}-{:03d}'.format(datetime_pst.strftime('%y%m%d'), sequence_number)
+
+
+def log_notification_status_change(notification: app_models.Notification, status: app_models.Notification.Status):
+    if not notification.booking_to_log:
+        return
+
+    send_method = notification.get_send_method_display()
+    addressee = notification.data.get('addressee', 'Unknown')
+
+    if status == app_models.Notification.Status.SUBMITTED:
+        text = F"{send_method} sent to {addressee}"
+
+    elif status == app_models.Notification.Status.SENT:
+        text = F"{send_method} received by {addressee}"
+
+    elif status == app_models.Notification.Status.FAILED:
+        text = F"{send_method} failed to send to {addressee}"
+
+    else:
+        return
+
+    app_models.Note.objects.create(
+        booking=notification.booking_to_log,
+        notification=notification,
+        text=text,
+    )

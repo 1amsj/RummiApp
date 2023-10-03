@@ -672,6 +672,9 @@ class Notification(HistoricalModel, SoftDeletableModel):
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.PENDING)
     status_message = models.TextField(null=True, blank=True)
 
+    booking_to_log = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notifications', null=True, blank=True)
+
+
     class Meta:
         verbose_name = _('notification')
         verbose_name_plural = _('notifications')
@@ -719,6 +722,7 @@ class Note(SoftDeletableModel):
     text = models.TextField(blank=True, default='')
     booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
     payer = models.ForeignKey(Payer, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)
     recipient = models.ForeignKey(Recipient, on_delete=models.CASCADE, related_name='notes', blank=True, null=True)

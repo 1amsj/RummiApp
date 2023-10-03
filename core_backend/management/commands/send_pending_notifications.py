@@ -5,6 +5,7 @@ from django.core.management import BaseCommand
 from core_backend.models import Notification
 from core_backend.services.concord.concord_interfaces import FaxJobFile, FaxJobRecipient, FileFormats
 from core_backend.services.concord.concord_service import ConcordService
+from core_backend.services.core_services import log_notification_status_change
 
 
 def send_fax(data: dict, fax_service: ConcordService):
@@ -62,5 +63,7 @@ class Command(BaseCommand):
             notification.submitted_at = datetime.now()
             notification.expected_send_at = datetime.fromtimestamp(job_begin_time)
             notification.save()
+
+            log_notification_status_change(notification, Notification.Status.SUBMITTED)
 
         self.stdout.write(self.style.SUCCESS('Successfully sent notifications'))

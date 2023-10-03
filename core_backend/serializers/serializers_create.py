@@ -240,6 +240,7 @@ class NoteCreateSerializer(NoteSerializer):
 
 class NotificationCreateSerializer(NotificationSerializer):
     data = serializers.ReadOnlyField()
+    booking_to_log = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all(), required=False)
 
     def create(self, validated_data=None, render_data=None) -> int:
         data: dict = validated_data or self.validated_data
