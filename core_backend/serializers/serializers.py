@@ -75,7 +75,6 @@ class PayerBaseSerializer(user_subtype_serializer(Payer)):
 
 
 class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
-    bookings = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all(), many=True)
     categories = CategorySerializer(many=True)
     services = serializers.PrimaryKeyRelatedField(queryset=Service.objects.all(), many=True)
 
@@ -90,10 +89,6 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
             .all()
             .not_deleted()
             .prefetch_related(
-                Prefetch(
-                    'bookings',
-                    queryset=Booking.objects.all().not_deleted('business'),
-                ),
                 Prefetch(
                     'categories',
                     queryset=CategorySerializer.get_default_queryset(),
@@ -273,7 +268,6 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
 
 class ProviderSerializer(user_subtype_serializer(Provider)):
     companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
-    services = ServiceNoProviderSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
 
     class Meta:
@@ -296,10 +290,6 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
                     queryset=ExtraAttrSerializer.get_default_queryset(),
                 ),
                 Prefetch(
-                    'services',
-                    queryset=ServiceNoProviderSerializer.get_default_queryset(),
-                ),
-                Prefetch(
                     'user',
                     queryset=UserSerializer.get_default_queryset(),
                 ),
@@ -312,7 +302,17 @@ class ServiceSerializer(ServiceNoProviderSerializer):
 
     class Meta:
         model = Service
-        fields = '__all__'
+        fields = [
+        "id",
+        "bill_rate",
+        "bill_amount",
+        "is_deleted",
+        "bill_rate_type",
+        "bill_min_payment",
+        "bill_no_show_fee",
+        "bill_rate_minutes_threshold",
+        "business",
+        "provider"]
 
     @staticmethod
     def get_default_queryset():
