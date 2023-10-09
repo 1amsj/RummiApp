@@ -297,7 +297,7 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
         )
 
 
-class ProviderSerializerForService(ProviderSerializer):
+class ProviderSerializer(ProviderNoServiceSerializer):
     services = ServiceNoProviderSerializer(many=True)
 
     @staticmethod
