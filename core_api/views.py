@@ -34,7 +34,7 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
-    PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
+    PayerSerializer, ProviderSerializer, ProviderSerializerForService, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
@@ -573,7 +573,7 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
 
 
 
-class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
+class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializerForService)):
     @staticmethod
     def apply_nested_filters(queryset, nested_params):
         if nested_params.is_empty():
@@ -593,16 +593,16 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     def get(cls, request, business_name=None, provider_id=None):
         if provider_id:
             provider = Provider.objects.all().not_deleted('user').get(id=provider_id)
-            serialized = ProviderSerializer(provider)
+            serialized = ProviderSerializerForService(provider)
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
 
-        queryset = ProviderSerializer.get_default_queryset()
+        queryset = ProviderSerializerForService.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
 
-        serialized = ProviderSerializer(queryset, many=True)
+        serialized = ProviderSerializerForService(queryset, many=True)
         return Response(serialized.data)
 
     @staticmethod
