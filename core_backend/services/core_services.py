@@ -96,6 +96,7 @@ def manage_extra_attrs(business: Union[None, str, app_models.Business], inst: mo
                 **query,
                 defaults={
                     'value': value,
+                    'is_deleted': False,
                 }
             )
 
