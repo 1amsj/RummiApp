@@ -34,7 +34,7 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
-    PayerSerializer, ProviderSerializer, ProviderNoServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
+    PayerSerializer, ProviderNoServiceSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
