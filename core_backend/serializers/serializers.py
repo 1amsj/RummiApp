@@ -266,7 +266,7 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
         )
 
 
-class ProviderSerializer(user_subtype_serializer(Provider)):
+class ProviderNoServiceSerializer(user_subtype_serializer(Provider)):
     companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
     notes = NoteSerializer(many=True, default=[])
 
@@ -297,7 +297,7 @@ class ProviderSerializer(user_subtype_serializer(Provider)):
         )
 
 
-class ProviderNoServiceSerializer(ProviderSerializer):
+class ProviderSerializer(ProviderNoServiceSerializer):
     services = ServiceNoProviderSerializer(many=True)
 
     @staticmethod
@@ -315,7 +315,7 @@ class ProviderNoServiceSerializer(ProviderSerializer):
         )
     
 class ServiceSerializer(ServiceNoProviderSerializer):
-    provider = ProviderSerializer()
+    provider = ProviderNoServiceSerializer()
 
     class Meta:
         model = Service
@@ -339,7 +339,7 @@ class ServiceSerializer(ServiceNoProviderSerializer):
             .prefetch_related(
                 Prefetch(
                     'provider',
-                    queryset=ProviderSerializer.get_default_queryset(),
+                    queryset=ProviderNoServiceSerializer.get_default_queryset(),
                 ),
             )
         )
@@ -786,7 +786,7 @@ class CompanyWithRolesSerializer(CompanyWithParentSerializer):
     agents = AgentSerializer(many=True)
     operators = OperatorSerializer(many=True)
     payers = PayerSerializer(many=True)
-    providers = ProviderSerializer(many=True)
+    providers = ProviderNoServiceSerializer(many=True)
     recipients = RecipientSerializer(many=True)
     requesters = RequesterSerializer(many=True)
 
@@ -815,7 +815,7 @@ class CompanyWithRolesSerializer(CompanyWithParentSerializer):
                 ),
                 Prefetch(
                     'providers',
-                    queryset=ProviderSerializer.get_default_queryset(),
+                    queryset=ProviderNoServiceSerializer.get_default_queryset(),
                 ),
                 Prefetch(
                     'recipients',
