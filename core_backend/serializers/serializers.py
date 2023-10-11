@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, Contact, Event, \
     Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
-    Service, ServiceRoot
+    Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
     ExtraAttrSerializer, \
@@ -340,6 +340,25 @@ class ServiceSerializer(ServiceNoProviderSerializer):
                 Prefetch(
                     'provider',
                     queryset=ProviderNoServiceSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
+class ServiceAreaSerializer(BaseSerializer):
+    class Meta:
+        model = ServiceArea
+        fields = '__all__'
+    
+    @staticmethod
+    def get_default_queryset():
+        return (
+            ServiceArea.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'service_area',
+                    queryset=ServiceAreaSerializer.get_default_queryset(),
                 ),
             )
         )

@@ -1,12 +1,12 @@
 from rest_framework import serializers
 
 from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Expense, Language, \
-    Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, Service, ServiceRoot, User
+    Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyWithParentSerializer, \
     ContactSerializer, LocationSerializer, NoteSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, \
     EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, \
-    RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, \
+    RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer,ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
@@ -212,6 +212,16 @@ class ServiceUpdateSerializer(ServiceCreateSerializer):
 
         manage_extra_attrs(instance.business, instance, extras)
 
+class ServiceAreaUpdateSerializer(ServiceAreaCreateSerializer):
+    def update(self, instance: ServiceArea, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        manage_extra_attrs(instance.business, instance, extras)
 
 class ServiceRootUpdateSerializer(ServiceRootCreateSerializer):
     def update(self, instance: ServiceRoot, validated_data=None):
