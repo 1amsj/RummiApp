@@ -530,6 +530,21 @@ class Service(ExtendableModel, HistoricalModel, SoftDeletableModel):
         # TODO review since this is a m2m
         self.bookings.all().delete()
 
+class ServiceArea(SoftDeletableModel, HistoricalModel):
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='service_areas')
+    country = models.TextField(_('country'), null=True, blank=True)
+    state = models.TextField(_('state or province'), null=True, blank=True)
+    county = models.TextField(_('county'), null=True, blank=True)
+    city = models.TextField(_('city'), null=True, blank=True)
+    zip = models.TextField(_('ZIP code'), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _('service area')
+        verbose_name_plural = _('service areas')
+
+    def __str__(self):
+        return F"Provider {self.provider} works in: {self.country}, {self.state}, {self.county}, {self.city}, {self.zip}"
+
 
 class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='bookings')
