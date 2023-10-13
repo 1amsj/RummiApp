@@ -686,6 +686,10 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
                     queryset=AuthorizationBaseSerializer.get_default_queryset(),
                 ),
                 Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset(),
+                ),
+                Prefetch(
                     'agents',
                     queryset=AgentSerializer.get_default_queryset(),
                 ),

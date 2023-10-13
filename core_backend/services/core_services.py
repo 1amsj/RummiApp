@@ -74,25 +74,34 @@ def filter_extra_attrs(model: Type[models.Model], fields: dict) -> dict:
         for (k, v) in iter_extra_attrs(model, fields)
     }
 
-# FIXME this function is being used for updating instances, but it does not delete extra attrs that are not in the fields
 def manage_extra_attrs(business: Union[None, str, app_models.Business], inst: models.Model, fields: dict):
     if not business:
         raise BusinessNotProvidedException
 
     if isinstance(business, str):
         business = app_models.Business.objects.get(name=business)
+
     model = inst.__class__
     ct = ContentType.objects.get_for_model(model)
-    for (k, v) in iter_extra_attrs(model, fields):
-        app_models.Extra.objects.update_or_create(
-            business=business,
-            parent_ct=ct,
-            parent_id=inst.id,
-            key=k,
-            defaults={
-                'value': v,
-            }
-        )
+    for (key, value) in iter_extra_attrs(model, fields):
+        query = {
+            'business': business,
+            'parent_ct': ct,
+            'parent_id': inst.id,
+            'key': key,
+        }
+
+        if value is not None:
+            app_models.Extra.objects.update_or_create(
+                **query,
+                defaults={
+                    'value': value,
+                    'is_deleted': False,
+                }
+            )
+
+        else:
+            app_models.Extra.objects.filter(**query).delete()
 
 
 def filter_params(model: Type[models.Model], params: QueryParams) -> Tuple[QueryParams, QueryParams, QueryParams]:
