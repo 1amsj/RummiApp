@@ -30,6 +30,7 @@ class ApiSpecialKeys(str, Enum):
     REPORT_DATALIST = '_report_datalist'
     REQUESTER_DATA = '_requester_data'
     SERVICE_DATALIST = '_service_datalist'
+    SERVICE_AREA_DATALIST = '_service_area_datalist'
 
 
 FIELDS_BLACKLIST = [key for key in ApiSpecialKeys]

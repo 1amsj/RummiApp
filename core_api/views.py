@@ -364,6 +364,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
         if provider_data:
             service_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_DATALIST, None)
+            service_area_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_AREA_DATALIST, None)
 
             provider_id = create_provider_wrap(
                 provider_data,
@@ -378,6 +379,14 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
                     provider_id=provider_id,
                 )
                 response["service_ids"] = service_ids
+
+            if service_area_datalist:
+                service_area_ids = create_services_wrap(
+                    service_area_datalist,
+                    business_name,
+                    provider_id=provider_id,
+                )
+                response["service_area_ids"] = service_area_ids
 
             response["provider_id"] = provider_id
 
@@ -438,6 +447,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         # Update provider
         if provider_data:
             service_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_DATALIST, None)
+            service_area_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_AREA_DATALIST, None)
 
             update_provider_wrap(
                 provider_data,
@@ -449,6 +459,13 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             if service_datalist:
                 handle_services_bulk(
                     service_datalist,
+                    business_name,
+                    provider_id=user.as_provider.id,
+                )
+            
+            if service_area_datalist:
+                handle_service_areas_bulk(
+                    service_area_datalist,
                     business_name,
                     provider_id=user.as_provider.id,
                 )
