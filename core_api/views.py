@@ -21,7 +21,7 @@ from core_api.services_datamanagement import create_affiliations_wrap, create_ag
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
     create_reports_wrap, create_requester_wrap, create_services_wrap, create_user, handle_events_bulk, \
-    handle_services_bulk, update_event_wrap, \
+    handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams

@@ -213,15 +213,13 @@ class ServiceUpdateSerializer(ServiceCreateSerializer):
         manage_extra_attrs(instance.business, instance, extras)
 
 class ServiceAreaUpdateSerializer(ServiceAreaCreateSerializer):
-    def update(self, instance: ServiceArea, validated_data=None):
+    def update(self, instance: ServiceArea, business_name, validated_data=None):
         data = validated_data or self.validated_data
-        extras = data.pop('extra', {})
 
         for (k, v) in data.items():
             setattr(instance, k, v)
         instance.save()
 
-        manage_extra_attrs(instance.business, instance, extras)
 
 class ServiceRootUpdateSerializer(ServiceRootCreateSerializer):
     def update(self, instance: ServiceRoot, validated_data=None):

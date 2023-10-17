@@ -3,16 +3,16 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Event, Report, Service
+from core_backend.models import Event, Report, Service, ServiceArea
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
     ProviderCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, \
-    ServiceCreateSerializer, UserCreateSerializer
+    ServiceCreateSerializer, ServiceAreaCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, ReportUpdateSerializer, \
-    ServiceUpdateSerializer, UserUpdateSerializer
+    ServiceUpdateSerializer, ServiceAreaUpdateSerializer, UserUpdateSerializer
 
 
 # Creation
@@ -281,7 +281,7 @@ def create_service_area(data, business_name, provider_id):
 
     serializer = ServiceAreaCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
-    return serializer.create()
+    return serializer.create(business_name)
 
 
 @transaction.atomic
@@ -406,7 +406,7 @@ def update_service_area_wrap(data, business_name, provider_id, service_area_inst
         data['business'] = business_name
         serializer = ServiceAreaUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.update(service_area_instance)
+        serializer.update(service_area_instance, business_name)
     
     except ValidationError as exc:
         # Wrap errors

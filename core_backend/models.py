@@ -543,7 +543,7 @@ class ServiceArea(SoftDeletableModel, HistoricalModel):
         verbose_name_plural = _('service areas')
 
     def __str__(self):
-        return F"Provider {self.provider} works in: {self.country}, {self.state}, {self.county}, {self.city}, {self.zip}"
+        return F"{self.provider} works in: {self.country}, {self.state}, {self.county}, {self.city}, {self.zip}"
 
 
 class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):

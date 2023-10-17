@@ -372,12 +372,10 @@ class ServiceAreaCreateSerializer(generic_serializer(ServiceArea)):
         model = ServiceArea
         fields = '__all__'
     
-    def create(self, validated_data=None) -> int:
+    def create(self, business_name, validated_data=None) -> int:
         data = validated_data or self.validated_data
-        extras = data.pop('extra', {})
 
         service_area = ServiceArea.objects.create(**data)
-        manage_extra_attrs(service_area.business, service_area, extras)
         
         return service_area.id
     
