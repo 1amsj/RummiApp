@@ -266,9 +266,30 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
         )
 
 
+class ServiceAreaSerializer(BaseSerializer):
+    class Meta:
+        model = ServiceArea
+        fields = '__all__'
+    
+    @staticmethod
+    def get_default_queryset():
+        return (
+            ServiceArea.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'service_area',
+                    queryset=ServiceAreaSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
+
 class ProviderNoServiceSerializer(user_subtype_serializer(Provider)):
     companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
     notes = NoteSerializer(many=True, default=[])
+    service_areas = ServiceAreaSerializer(many=True, default=[])
 
     class Meta:
         model = Provider
@@ -343,26 +364,7 @@ class ServiceSerializer(ServiceNoProviderSerializer):
                 ),
             )
         )
-
-class ServiceAreaSerializer(BaseSerializer):
-    class Meta:
-        model = ServiceArea
-        fields = '__all__'
     
-    @staticmethod
-    def get_default_queryset():
-        return (
-            ServiceArea.objects
-            .all()
-            .not_deleted()
-            .prefetch_related(
-                Prefetch(
-                    'service_area',
-                    queryset=ServiceAreaSerializer.get_default_queryset(),
-                ),
-            )
-        )
-
 
 class ServiceRootNoBookingSerializer(ServiceRootBaseSerializer):
     services = ServiceSerializer(many=True)
