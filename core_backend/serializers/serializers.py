@@ -279,8 +279,8 @@ class ServiceAreaSerializer(BaseSerializer):
             .not_deleted()
             .prefetch_related(
                 Prefetch(
-                    'service_area',
-                    queryset=ServiceAreaSerializer.get_default_queryset(),
+                    'provider',
+                    queryset=ProviderNoServiceSerializer.get_default_queryset(),
                 ),
             )
         )
@@ -331,6 +331,10 @@ class ProviderSerializer(ProviderNoServiceSerializer):
                 Prefetch(
                     'services',
                     queryset=ServiceNoProviderSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'service_areas',
+                    queryset=ServiceAreaSerializer.get_default_queryset(),
                 ),
             )
         )
