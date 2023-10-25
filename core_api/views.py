@@ -183,6 +183,9 @@ def search_bookings(request):
 
         queryset = queryset_dob_filtered.union(queryset_doi_filtered)
 
+    if booking_public_id := request.GET.get('booking_id'):
+        queryset = queryset.filter(public_id__contains=booking_public_id)
+
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.data)
 
@@ -1343,7 +1346,7 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Offer)
     def put(request, offer_id=None):
-        business_name = request.data.pop(ApiSpecialKeys.BUSINESS);
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         offer = Offer.objects.get(id=offer_id)
         serializer = OfferUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
