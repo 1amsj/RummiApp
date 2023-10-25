@@ -12,6 +12,8 @@ from django.utils.translation import gettext_lazy as _
 from phonenumber_field.modelfields import PhoneNumberField
 from simple_history.models import HistoricalRecords
 
+from core_backend.datastructures import QueryParams
+
 
 # Query sets
 class SoftDeletionQuerySet(models.QuerySet):
@@ -45,20 +47,39 @@ class ExtraQuerySet(SoftDeletionQuerySet):
     def prefetch_extra(self, business: Optional["Business"] = None):
         ct = ContentType.objects.get_for_model(self.model)
         query = Q(extra__parent_ct=ct)
+
         if business:
             query &= Q(extra__business=business)
+
         return self.prefetch_related('extra').filter(query)
 
     def filter_by_extra(self, related_prefix='', **fields):
         from core_backend.services.core_services import iter_extra_attrs
+
         queryset = self
+
         for (k, v) in iter_extra_attrs(self.model, fields):
             params = k.split('__')
+
             query_key = F'{related_prefix}extra__key'
-            query_value = F'{related_prefix}extra__value'
+            query_value = F'{related_prefix}extra__data'
+
             if len(params) > 1:
                 query_value += F'__{params[1]}'
+
             queryset = queryset.filter(**{query_key: params[0], query_value: v})
+
+        return queryset
+
+    def filter_by_extra_query_params(self, extra_params: QueryParams, related_prefix=''):
+        from core_backend.services.core_services import collect_queryset_filters_by_query_params
+
+        queryset = self
+
+        filters_collection = collect_queryset_filters_by_query_params(extra_params, related_prefix)
+        for filters in filters_collection:
+            queryset = self.filter(**filters)
+
         return queryset
 
 
@@ -118,7 +139,7 @@ class ExtendableModel(SoftDeletableModel):
         if business:
             queryset = queryset.filter(business=business)
         return {
-            e.key: e.value
+            e.key: e.data
             for e in queryset
         }
 
@@ -143,8 +164,8 @@ class Extra(SoftDeletableModel):
     parent_ct = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     parent = GenericForeignKey('parent_ct', 'parent_id')
     business = models.ForeignKey("Business", on_delete=models.CASCADE)
-    key = models.CharField(_('key'), max_length=256)
-    value = models.CharField(_('value'), max_length=512)
+    key = models.TextField(_('key'))
+    data = models.JSONField(_('data'))
 
     class Meta:
         verbose_name = verbose_name_plural = _('extra data')
@@ -155,7 +176,7 @@ class Extra(SoftDeletableModel):
         unique_together = ["parent_ct", "parent_id", "business", "key"]
 
     def __str__(self):
-        return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.value}"
+        return F"[{self.parent_ct} {self.parent_id}] {self.business}, {self.key}: {self.data}"
 
 
 class UniqueCondition(models.Model):
@@ -389,7 +410,6 @@ class Provider(ExtendableModel, SoftDeletableModel, HistoricalModel):
     payment_routing = models.CharField(max_length=255, blank=True, null=True)
     payment_account_type = models.CharField(max_length=255, blank=True, null=True)
     minimum_bookings = models.PositiveIntegerField(default=0)
-    certifications = ArrayField(models.CharField(max_length=255, blank=True), default=list, blank=True)
 
     class Meta:
         verbose_name = verbose_name_plural = _('provider data')
