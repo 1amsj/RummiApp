@@ -188,8 +188,8 @@ class EventCreateSerializer(extendable_serializer(Event)):
     affiliates = serializers.PrimaryKeyRelatedField(many=True, queryset=Affiliation.objects.all(), required=False)
     agents = serializers.PrimaryKeyRelatedField(many=True, queryset=Agent.objects.all(), required=False)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
-    payer = serializers.PrimaryKeyRelatedField(queryset=Payer.objects.all(), required=False)
-    payer_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all().not_deleted(), required=False)
+    payer = serializers.PrimaryKeyRelatedField(queryset=Payer.objects.all(), required=False, allow_null=True)
+    payer_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all().not_deleted(), required=False, allow_null=True)
     requester = serializers.PrimaryKeyRelatedField(queryset=Requester.objects.all())
 
     class Meta:

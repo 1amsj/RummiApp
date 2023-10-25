@@ -156,7 +156,7 @@ class LanguageUpdateSerializer(LanguageCreateSerializer):
         instance.save()
 
 
-class ProviderUpdateSerializer(extendable_serializer(Event)):
+class ProviderUpdateSerializer(extendable_serializer(Provider)):
     user = serializers.ReadOnlyField()
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
     notes = NoteUnsafeSerializer(many=True, default=[])

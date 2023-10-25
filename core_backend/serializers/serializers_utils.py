@@ -1,3 +1,4 @@
+import json
 from typing import Type
 
 from django.db import models
@@ -35,7 +36,7 @@ def extendable_serializer(serializer_model: Type[models.Model], serializer_field
             representation = super().to_representation(instance)
             extra_representation = representation.pop('extra', {})
             for k in extra_representation:
-                representation[k] = extra_representation[k]
+                representation[k] = json.loads(extra_representation[k])
             return representation
 
         def to_internal_value(self, data: dict):

@@ -183,6 +183,9 @@ def search_bookings(request):
 
         queryset = queryset_dob_filtered.union(queryset_doi_filtered)
 
+    if booking_public_id := request.GET.get('booking_id'):
+        queryset = queryset.filter(public_id__contains=booking_public_id)
+
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.data)
 
@@ -229,9 +232,10 @@ def basic_view_manager(model: Type[models.Model], serializer: Type[serializers.M
                 queryset = queryset.filter(**base_params.to_dict())
 
             if is_extendable(model) and not extra_params.is_empty():
-                queryset = queryset.filter_by_extra(**extra_params.to_dict())
+                queryset = queryset.filter_by_extra_query_params(extra_params)
 
-            queryset = cls.apply_nested_filters(queryset, nested_params)
+            if not nested_params.is_empty():
+                queryset = cls.apply_nested_filters(queryset, nested_params)
 
             return queryset.distinct()
 
@@ -268,7 +272,7 @@ def user_subtype_view_manager(model: Type[models.Model], serializer: Type[serial
                 queryset = queryset.filter(**user_params.to_dict('user__'))
 
             if is_extendable(model) and not extra_params.is_empty():
-                queryset = queryset.filter_by_extra(**extra_params.to_dict())
+                queryset = queryset.filter_by_extra_query_params(extra_params)
 
             queryset = cls.apply_nested_filters(queryset, nested_params)
 
@@ -530,7 +534,7 @@ class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
             queryset = queryset.filter(**service_params.to_dict('services__'))
 
         if not extra_params.is_empty():
-            queryset = queryset.filter_by_extra(related_prefix='services__', **extra_params.to_dict())
+            queryset = queryset.filter_by_extra_query_params(extra_params, related_prefix='services')
 
         return queryset
     
@@ -601,7 +605,7 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
             queryset = queryset.filter(**service_params.to_dict('services__'))
 
         if not extra_params.is_empty():
-            queryset = queryset.filter_by_extra(related_prefix='services__', **extra_params.to_dict())
+            queryset = queryset.filter_by_extra_query_params(extra_params, related_prefix='services')
 
         return queryset
 
@@ -707,7 +711,7 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
                 queryset = queryset.filter(**user_params.to_dict('recipient__user__'))
 
             if is_extendable(Recipient) and not extra_params.is_empty():
-                queryset = queryset.filter_by_extra(**extra_params.to_dict('recipient__'))
+                queryset = queryset.filter_by_extra_query_params(extra_params, related_prefix='recipient')
 
         company_params = nested_params.pop('company')
         if company_params:
@@ -717,7 +721,7 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
                 queryset = queryset.filter(**base_params.to_dict('company__'))
 
             if is_extendable(Company) and not extra_params.is_empty():
-                queryset = queryset.filter_by_extra(**extra_params.to_dict('company__'))
+                queryset = queryset.filter_by_extra_query_params(extra_params, related_prefix='company')
 
         return queryset
 
@@ -1230,7 +1234,7 @@ class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSe
             queryset = queryset.filter(**event_params.to_dict('events__'))
 
         if not extra_params.is_empty():
-            queryset = queryset.filter_by_extra(related_prefix='events__', **extra_params.to_dict())
+            queryset = queryset.filter_by_extra_query_params(extra_params, related_prefix='events__')
 
         return queryset
 
@@ -1402,7 +1406,7 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Offer)
     def put(request, offer_id=None):
-        business_name = request.data.pop(ApiSpecialKeys.BUSINESS);
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         offer = Offer.objects.get(id=offer_id)
         serializer = OfferUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

@@ -1,6 +1,7 @@
+import json
 from datetime import datetime
 from functools import lru_cache
-from typing import Iterator, Set, Tuple, Type, Union
+from typing import Dict, Iterator, List, Set, Tuple, Type, Union
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models, transaction
@@ -9,7 +10,7 @@ from pytz import timezone
 import core_backend.models as app_models
 from core_api.constants import FIELDS_BLACKLIST
 from core_api.exceptions import BusinessNotProvidedException
-from core_backend.datastructures import QueryParams
+from core_backend.datastructures import Param, QueryParams
 from core_backend.exceptions import ModelNotExtendableException
 
 
@@ -74,41 +75,62 @@ def filter_extra_attrs(model: Type[models.Model], fields: dict) -> dict:
         for (k, v) in iter_extra_attrs(model, fields)
     }
 
-# FIXME this function is being used for updating instances, but it does not delete extra attrs that are not in the fields
+
 def manage_extra_attrs(business: Union[None, str, app_models.Business], inst: models.Model, fields: dict):
     if not business:
         raise BusinessNotProvidedException
 
     if isinstance(business, str):
         business = app_models.Business.objects.get(name=business)
+
     model = inst.__class__
     ct = ContentType.objects.get_for_model(model)
-    for (k, v) in iter_extra_attrs(model, fields):
-        app_models.Extra.objects.update_or_create(
-            business=business,
-            parent_ct=ct,
-            parent_id=inst.id,
-            key=k,
-            defaults={
-                'value': v,
-            }
-        )
+    for (key, data) in iter_extra_attrs(model, fields):
+        query = {
+            'business': business,
+            'parent_ct': ct,
+            'parent_id': inst.id,
+            'key': key,
+        }
+
+        if data is not None:
+            try:
+                json.loads(data)
+                json_data = data
+            except (json.JSONDecodeError, TypeError):
+                json_data = json.dumps(str(data)) if isinstance(data, int) else json.dumps(data)
+
+            app_models.Extra.objects.update_or_create(
+                **query,
+                defaults={
+                    'data': json_data,
+                    'is_deleted': False,
+                }
+            )
+
+        else:
+            app_models.Extra.objects.filter(**query).delete()
 
 
-def filter_params(model: Type[models.Model], params: QueryParams) -> Tuple[QueryParams, QueryParams, QueryParams]:
-    field_names = get_model_field_names(model)
+def filter_params(model_cls: Type[models.Model], params: QueryParams) -> Tuple[QueryParams, QueryParams, QueryParams]:
+    model_field_names = get_model_field_names(model_cls)
+
     base_params = QueryParams()
     nested_params = QueryParams()
     extra_params = QueryParams()
-    for (f, p) in params.items():
-        if f in FIELDS_BLACKLIST:
+
+    for (field, param) in params.items():
+        if field in FIELDS_BLACKLIST:
             continue
 
-        if isinstance(p, QueryParams):
-            nested_params[f] = p
+        if field in model_field_names:
+            if isinstance(param, QueryParams):
+                nested_params[field] = param
+            else:
+                base_params[field] = param
 
         else:
-            (base_params if f in field_names else extra_params)[f] = p
+            extra_params[field] = param
 
     return base_params, extra_params, nested_params
 
@@ -124,7 +146,6 @@ def sync_sets(original_set, new_set, add, remove):
     created = new_set.difference(original_set)
     if created:
         add(created)
-
 
 
 def sync_m2m(manager, new_set, field='id'):
@@ -152,7 +173,7 @@ def fetch_updated_from_validated_data(
             obj = obj_type(**data)
             created.append(obj)
             continue
-        
+
         # Updated
         obj = obj_type.objects.get(id=obj_id)
         for (k, v) in data.items():
@@ -164,7 +185,7 @@ def fetch_updated_from_validated_data(
     # Deleted
     usable_current_ids = set()
 
-    for (id, ) in current_ids:
+    for (id,) in current_ids:
         usable_current_ids.add(id)
 
     deleted = usable_current_ids.difference(ids_list)
@@ -198,7 +219,8 @@ def generate_public_id():
     return '{}-{:03d}'.format(datetime_pst.strftime('%y%m%d'), sequence_number)
 
 
-def generate_unique_field(business: Union[str, app_models.Business], instance: Union[models.Model, app_models.ExtendableModel], fields: list):
+def generate_unique_field(business: Union[str, app_models.Business],
+                          instance: Union[models.Model, app_models.ExtendableModel], fields: list):
     """
     Generates a unique field for a model instance
     :param business: Business
@@ -227,7 +249,7 @@ def generate_unique_field(business: Union[str, app_models.Business], instance: U
         else:
             assert_extendable(instance.__class__)
             try:
-                value = extras.get(key=field).value
+                value = extras.get(key=field).data
             except app_models.Extra.DoesNotExist:
                 value = None
 
@@ -297,3 +319,75 @@ def log_notification_status_change(notification: app_models.Notification, status
         notification=notification,
         text=text,
     )
+
+
+def collect_queryset_filters_by_query_params(query_params: QueryParams,
+                                             related_prefix: str = '') -> List[dict]:
+    """
+    Collect filter values based on extra query parameters.
+
+    :param query_params: Dictionary of query parameters.
+    :param related_prefix: Prefix for related query parameters.
+    :return: List of filters.
+    """
+    prefix = f'{related_prefix}__' if related_prefix else ''
+    filters_dict = {}
+
+    def apply_filter(filter_key: str, filter_param: Param, suffix: str):
+        """
+        Apply filter values based on given key and param.
+
+        :param filter_key: Key for the filter.
+        :param filter_param: Parameter for the filter.
+        :param suffix: Suffix for nested query keys.
+        """
+        extra_data_field = 'data'
+        query_value = f'{prefix}extra__{extra_data_field}{suffix}'
+        if filter_param.lookup:
+            query_value += f'__{filter_param.lookup}'
+
+        param_value = json.dumps(str(filter_param.value))
+
+        if filter_key in filters_dict:
+            filters_dict[filter_key][query_value] = param_value
+        else:
+            filters_dict[filter_key] = {query_value: param_value}
+
+    def collect_nested_filters(main_key: str,
+                               nested_params: Dict[str, Union[Param, QueryParams]],
+                               nested_suffix: str):
+        """
+        Recursively collect filter values with nested parameters.
+
+        :param main_key: Main key for the filter.
+        :param nested_params: Nested query parameters.
+        :param nested_suffix: Suffix for nested query keys.
+        """
+        for nested_key, nested_param in nested_params.items():
+            new_prefix = f'{nested_suffix}__{nested_key}'
+            if isinstance(nested_param, Param):
+                apply_filter(main_key, nested_param, new_prefix)
+            elif isinstance(nested_param, QueryParams):
+                collect_nested_filters(main_key, nested_param, new_prefix)
+            else:
+                raise ValueError(f"Invalid type {type(nested_param)}: expected Param or QueryParams")
+
+    # Collect filters, starts recursion
+    for key, param in query_params.items():
+        if isinstance(param, Param):
+            apply_filter(key, param, '')
+        elif isinstance(param, QueryParams):
+            collect_nested_filters(key, param, '')
+        else:
+            raise ValueError(f"Invalid type {type(param)}: expected Param or QueryParams")
+
+    # Return filters
+    query_key = f'{prefix}extra__key'
+    query_filters = [
+        {
+            query_key: key,  # Filter for extra key
+            **data_filters,  # Filters for extra data
+        }
+        for key, data_filters in filters_dict.items()
+    ]
+    return query_filters
