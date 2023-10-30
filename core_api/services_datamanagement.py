@@ -308,12 +308,11 @@ def create_services_wrap(datalist, business_name, provider_id):
     return service_ids
 
 @transaction.atomic
-def create_service_areas_wrap(datalist, business_name, provider_id):
+def create_service_areas_wrap(datalist, provider_id):
     service_area_ids = []
     service_area_errors = []
     for service_area_data in datalist:
         try:
-            service_area_data['business'] = business_name
             service_area_data['provider'] = provider_id
             serializer = ServiceAreaCreateSerializer(data=service_area_data)
             serializer.is_valid(raise_exception=True)

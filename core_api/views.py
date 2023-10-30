@@ -20,7 +20,7 @@ from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_user, handle_events_bulk, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_events_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
@@ -367,6 +367,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             response["payer_id"] = payer_id
 
         if provider_data:
+            print(provider_data)
             service_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_DATALIST, None)
             service_area_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_AREA_DATALIST, None)
 
@@ -385,9 +386,8 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
                 response["service_ids"] = service_ids
 
             if service_area_datalist:
-                service_area_ids = create_services_wrap(
+                service_area_ids = create_service_areas_wrap(
                     service_area_datalist,
-                    business_name,
                     provider_id=provider_id,
                 )
                 response["service_area_ids"] = service_area_ids
@@ -470,7 +470,6 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             if service_area_datalist:
                 handle_service_areas_bulk(
                     service_area_datalist,
-                    business_name,
                     provider_id=user.as_provider.id,
                 )
 

@@ -372,7 +372,7 @@ class ServiceAreaCreateSerializer(generic_serializer(ServiceArea)):
         model = ServiceArea
         fields = '__all__'
     
-    def create(self, business_name, validated_data=None) -> int:
+    def create(self, validated_data=None) -> int:
         data = validated_data or self.validated_data
 
         service_area = ServiceArea.objects.create(**data)
