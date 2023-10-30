@@ -3,16 +3,16 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Event, Report, Service
+from core_backend.models import Event, Report, Service, ServiceArea
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
     ProviderCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, \
-    ServiceCreateSerializer, UserCreateSerializer
+    ServiceCreateSerializer, ServiceAreaCreateSerializer, UserCreateSerializer
 from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, ReportUpdateSerializer, \
-    ServiceUpdateSerializer, UserUpdateSerializer
+    ServiceUpdateSerializer, ServiceAreaUpdateSerializer, UserUpdateSerializer
 
 
 # Creation
@@ -273,6 +273,14 @@ def create_service(data, business_name, provider_id):
     serializer.is_valid(raise_exception=True)
     return serializer.create()
 
+def create_service_area(data, provider_id):
+    if not data.get('provider'):
+        data['provider'] = provider_id
+
+    serializer = ServiceAreaCreateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    return serializer.create()
+
 
 @transaction.atomic
 def create_services_wrap(datalist, business_name, provider_id):
@@ -296,6 +304,28 @@ def create_services_wrap(datalist, business_name, provider_id):
         })
 
     return service_ids
+
+@transaction.atomic
+def create_service_areas_wrap(datalist, provider_id):
+    service_area_ids = []
+    service_area_errors = []
+    for service_area_data in datalist:
+        try:
+            service_area_data['provider'] = provider_id
+            serializer = ServiceAreaCreateSerializer(data=service_area_data)
+            serializer.is_valid(raise_exception=True)
+            service_area_id = serializer.create()
+            service_area_ids.append(service_area_id)
+        
+        except ValidationError as exc:
+            service_area_errors.append(exc.detail)
+    
+    if service_area_errors:
+        raise ValidationError({
+            ApiSpecialKeys.SERVICE_AREA_DATALIST: service_area_errors
+        })
+    
+    return service_area_ids
 
 
 # Update
@@ -360,6 +390,21 @@ def update_service_wrap(data, business_name, provider_id, service_instance):
         # Wrap errors
         raise ValidationError({
             ApiSpecialKeys.SERVICE_DATALIST: exc.detail,
+        })
+
+@transaction.atomic
+def update_service_area_wrap(data, provider_id, service_area_instance):
+    # Handle service area update
+    try:
+        data['provider'] = provider_id
+        serializer = ServiceAreaUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(service_area_instance)
+    
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.SERVICE_AREA_DATALIST: exc.detail,
         })
 
 
@@ -564,3 +609,50 @@ def handle_services_bulk(datalist: list, business_name, provider_id):
         raise ValidationError(service_errors)
 
     return service_ids
+
+@transaction.atomic
+def handle_service_areas_bulk(datalist: list, provider_id):
+    """
+    Create, update or delete the service areas in bulk, depending on whether the payload includes an ID or not
+    """
+    # TODO It is noteworthy that currently this is not a true bulk operation.
+    #  Also, service areas get created even if an error was found before,
+    #  this might make the transaction rollback expensive.
+
+    service_area_ids = []
+    service_area_errors = []
+    error_found = False
+
+    for data in datalist:
+        service_area_id = data.pop('id', None)
+        deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if not service_area_id and deleted_flag:
+            raise BadRequestException('Service Area flagged as deleted but no ID provided')
+        try:
+            if not service_area_id:
+                service_area_id = create_service_area(
+                    data,
+                    provider_id
+                )
+            elif not deleted_flag:
+                update_service_area_wrap(
+                    data,
+                    provider_id,
+                    service_area_instance=ServiceArea.objects.get(id=service_area_id)
+                )
+            else:
+                ServiceArea.objects.get(id=service_area_id).delete()
+            
+            # Append empty error to object so that the indexes of the errors correspond to the indexes of the data
+            service_area_errors.append({})
+            service_area_ids.append(service_area_id)
+        
+        except ValidationError as exc:
+            error_found = True
+            service_area_errors.append(exc.detail)
+    
+    if error_found:
+        raise ValidationError(service_area_errors)
+    
+    return service_area_ids

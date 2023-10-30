@@ -13,7 +13,7 @@ def update_languages_management(apps, schema_editor):
     def get_language_by_id(language_id):
         found_language = Language.objects.get(id=language_id)
         if not found_language.alpha3:
-            raise Exception('Failed to migrate because of missing alpha3')
+            raise Exception(f'Failed to migrate because of missing alpha3, language_id={language_id}')
 
         return found_language
 

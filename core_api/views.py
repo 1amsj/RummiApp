@@ -20,32 +20,32 @@ from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_user, handle_events_bulk, \
-    handle_services_bulk, update_event_wrap, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_events_bulk, \
+    handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
     Expense, ExtraQuerySet, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
     Service, \
-    ServiceRoot, User
+    ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
-    ServiceRootNoBookingSerializer, ServiceSerializer, UserSerializer
+    ServiceRootNoBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
     LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
     OperatorCreateSerializer, \
-    PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceRootCreateSerializer, \
+    PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
     CategoryUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
-    OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceRootUpdateSerializer
+    OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceAreaUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
@@ -367,7 +367,9 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             response["payer_id"] = payer_id
 
         if provider_data:
+            print(provider_data)
             service_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_DATALIST, None)
+            service_area_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_AREA_DATALIST, None)
 
             provider_id = create_provider_wrap(
                 provider_data,
@@ -382,6 +384,13 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
                     provider_id=provider_id,
                 )
                 response["service_ids"] = service_ids
+
+            if service_area_datalist:
+                service_area_ids = create_service_areas_wrap(
+                    service_area_datalist,
+                    provider_id=provider_id,
+                )
+                response["service_area_ids"] = service_area_ids
 
             response["provider_id"] = provider_id
 
@@ -442,6 +451,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         # Update provider
         if provider_data:
             service_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_DATALIST, None)
+            service_area_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_AREA_DATALIST, None)
 
             update_provider_wrap(
                 provider_data,
@@ -454,6 +464,12 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
                 handle_services_bulk(
                     service_datalist,
                     business_name,
+                    provider_id=user.as_provider.id,
+                )
+            
+            if service_area_datalist:
+                handle_service_areas_bulk(
+                    service_area_datalist,
                     provider_id=user.as_provider.id,
                 )
 
@@ -1093,7 +1109,50 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
 
+class ManageServiceArea(basic_view_manager(ServiceArea, ServiceAreaSerializer)):
+    @classmethod
+    @expect_does_not_exist(ServiceArea)
+    def get(cls, request, service_area_id=None):
+        if service_area_id:
+            service_area = ServiceArea.objects.all().get(id=service_area_id)
+            serialized = ServiceAreaSerializer(service_area)
+            return Response(serialized.data)
 
+        query_params = prepare_query_params(request.GET)
+
+        queryset = ServiceAreaSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = ServiceAreaSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    def post(request):
+        data = request.data
+        serializer = ServiceAreaCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        service_area_id = serializer.create()
+        return Response(service_area_id, status=status.HTTP_201_CREATED)
+    
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(ServiceArea)
+    def put(request, service_area_id=None):
+        service_area = ServiceArea.objects.get(id=service_area_id)
+        serializer = ServiceAreaUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(service_area)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(ServiceArea)
+    def delete(request, service_area_id=None):
+        ServiceArea.objects.get(id=service_area_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
 class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None, service_root_id=None):

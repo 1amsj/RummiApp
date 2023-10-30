@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, Contact, Event, \
     Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
-    Service, ServiceRoot
+    Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
     ExtraAttrSerializer, \
@@ -266,9 +266,30 @@ class ServiceNoProviderSerializer(extendable_serializer(Service)):
         )
 
 
+class ServiceAreaSerializer(BaseSerializer):
+    class Meta:
+        model = ServiceArea
+        fields = '__all__'
+    
+    @staticmethod
+    def get_default_queryset():
+        return (
+            ServiceArea.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'provider',
+                    queryset=ProviderNoServiceSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
+
 class ProviderNoServiceSerializer(user_subtype_serializer(Provider)):
     companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
     notes = NoteSerializer(many=True, default=[])
+    service_areas = ServiceAreaSerializer(many=True, default=[])
 
     class Meta:
         model = Provider
@@ -311,6 +332,10 @@ class ProviderSerializer(ProviderNoServiceSerializer):
                     'services',
                     queryset=ServiceNoProviderSerializer.get_default_queryset(),
                 ),
+                Prefetch(
+                    'service_areas',
+                    queryset=ServiceAreaSerializer.get_default_queryset(),
+                ),
             )
         )
     
@@ -343,7 +368,7 @@ class ServiceNoRootSerializer(ServiceNoProviderSerializer):
                 ),
             )
         )
-
+    
 
 class ServiceSerializer(ServiceNoProviderSerializer):
     provider = ProviderNoServiceSerializer()

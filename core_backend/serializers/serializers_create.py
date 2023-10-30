@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, Event, \
     Expense, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
-    Service, ServiceRoot, User
+    Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, \
     CompanyWithParentSerializer, \
@@ -364,6 +364,20 @@ class ServiceCreateSerializer(ServiceNoProviderSerializer):
         manage_extra_attrs(service.business, service, extras)
 
         return service.id
+    
+class ServiceAreaCreateSerializer(generic_serializer(ServiceArea)):
+    provider = serializers.PrimaryKeyRelatedField(queryset=Provider.objects.all())
+
+    class Meta:
+        model = ServiceArea
+        fields = '__all__'
+    
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+
+        service_area = ServiceArea.objects.create(**data)
+        
+        return service_area.id
     
 
 class ServiceRootCreateSerializer(generic_serializer(ServiceRoot)):
