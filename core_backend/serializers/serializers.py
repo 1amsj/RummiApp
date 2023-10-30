@@ -339,7 +339,7 @@ class ProviderSerializer(ProviderNoServiceSerializer):
             )
         )
     
-class ServiceSerializer(ServiceNoProviderSerializer):
+class ServiceNoRootSerializer(ServiceNoProviderSerializer):
     provider = ProviderNoServiceSerializer()
 
     class Meta:
@@ -369,6 +369,13 @@ class ServiceSerializer(ServiceNoProviderSerializer):
             )
         )
     
+
+class ServiceSerializer(ServiceNoProviderSerializer):
+    provider = ProviderNoServiceSerializer()
+    class Meta:
+        model = Service
+        fields = '__all__'
+
 
 class ServiceRootNoBookingSerializer(ServiceRootBaseSerializer):
     services = ServiceSerializer(many=True)
@@ -549,7 +556,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     expenses = ExpenseSerializer(many=True)
     operators = OperatorSerializer(many=True)
     parent = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'), allow_null=True)
-    services = ServiceSerializer(many=True)
+    services = ServiceNoRootSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
     offers = OfferSerializer(many=True, default=[])
     service_root = ServiceRootBaseSerializer(allow_null=True)
