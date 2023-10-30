@@ -395,17 +395,13 @@ def update_service_wrap(data, business_name, provider_id, service_instance):
         })
 
 @transaction.atomic
-def update_service_area_wrap(data, business_name, provider_id, service_area_instance):
-    if not business_name:
-        raise BusinessNotProvidedException
-
+def update_service_area_wrap(data, provider_id, service_area_instance):
     # Handle service area update
     try:
         data['provider'] = provider_id
-        data['business'] = business_name
         serializer = ServiceAreaUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.update(service_area_instance, business_name)
+        serializer.update(service_area_instance)
     
     except ValidationError as exc:
         # Wrap errors
@@ -617,7 +613,7 @@ def handle_services_bulk(datalist: list, business_name, provider_id):
     return service_ids
 
 @transaction.atomic
-def handle_service_areas_bulk(datalist: list, business_name, provider_id):
+def handle_service_areas_bulk(datalist: list, provider_id):
     """
     Create, update or delete the service areas in bulk, depending on whether the payload includes an ID or not
     """
@@ -639,13 +635,11 @@ def handle_service_areas_bulk(datalist: list, business_name, provider_id):
             if not service_area_id:
                 service_area_id = create_service_area(
                     data,
-                    business_name,
                     provider_id
                 )
             elif not deleted_flag:
                 update_service_area_wrap(
                     data,
-                    business_name,
                     provider_id,
                     service_area_instance=ServiceArea.objects.get(id=service_area_id)
                 )
