@@ -273,15 +273,13 @@ def create_service(data, business_name, provider_id):
     serializer.is_valid(raise_exception=True)
     return serializer.create()
 
-def create_service_area(data, business_name, provider_id):
+def create_service_area(data, provider_id):
     if not data.get('provider'):
         data['provider'] = provider_id
-    if not data.get('business'):
-        data['business'] = business_name
 
     serializer = ServiceAreaCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
-    return serializer.create(business_name)
+    return serializer.create()
 
 
 @transaction.atomic
