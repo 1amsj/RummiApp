@@ -207,7 +207,6 @@ def generate_public_id():
 
     # Get the last object with the same date prefix
     queryset = app_models.Booking.objects.filter(public_id__startswith=datetime_pst.strftime('%y%m%d'))
-    print("queryset", queryset.last())
     last_object = queryset.last()
 
     # Increment the sequence number
