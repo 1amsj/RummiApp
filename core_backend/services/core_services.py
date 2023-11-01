@@ -207,12 +207,13 @@ def generate_public_id():
 
     # Get the last object with the same date prefix
     queryset = app_models.Booking.objects.filter(public_id__startswith=datetime_pst.strftime('%y%m%d'))
-    last_object = queryset.order_by(F"-public_id").first()
+    print("queryset", queryset.last())
+    last_object = queryset.last()
 
     # Increment the sequence number
     sequence_number = 1
     if last_object:
-        last_sequence_number = int(last_object.public_id[9:])
+        last_sequence_number = int(last_object.public_id[7:])
         sequence_number = last_sequence_number + 1
 
     # Unique identifier field value
