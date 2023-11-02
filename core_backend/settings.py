@@ -241,3 +241,8 @@ CONCORD_NUMBER_OVERRIDE = os.environ.get('CONCORD_NUMBER_OVERRIDE', None)
 
 CONCORD_NOTIFY_AUTH_USERNAME = os.environ.get('CONCORD_NOTIFY_AUTH_USERNAME', None)
 CONCORD_NOTIFY_AUTH_PASSWORD = os.environ.get('CONCORD_NOTIFY_AUTH_PASSWORD', None)
+
+# Phone number default region
+# https://django-phonenumber-field.readthedocs.io/en/latest/reference.html
+
+PHONENUMBER_DEFAULT_REGION = 'US'
