@@ -394,6 +394,23 @@ class ServiceRootNoBookingSerializer(ServiceRootBaseSerializer):
             )
         )
 
+class ServiceRootBookingSerializer(ServiceRootNoBookingSerializer):
+    bookings = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all(), many=True)
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            ServiceRoot.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'bookings',
+                    queryset=Booking.objects.all().not_deleted('business'),
+                ),
+            )
+        )
+
 
 class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
     company = CompanyWithParentSerializer()
