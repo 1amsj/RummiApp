@@ -35,7 +35,7 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentSer
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
-    ServiceRootNoBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
+    ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
     LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
@@ -1153,7 +1153,7 @@ class ManageServiceArea(basic_view_manager(ServiceArea, ServiceAreaSerializer)):
         ServiceArea.objects.get(id=service_area_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSerializer)):
+class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootBookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None, service_root_id=None):
         if service_root_id:
@@ -1162,11 +1162,11 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSeri
             return Response(serialized.data)
         query_params = prepare_query_params(request.GET)
 
-        queryset = ServiceRootNoBookingSerializer.get_default_queryset()
+        queryset = ServiceRootBookingSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
 
-        serialized = ServiceRootNoBookingSerializer(queryset, many=True)
+        serialized = ServiceRootBookingSerializer(queryset, many=True)
         return Response(serialized.data)
     
     @staticmethod
