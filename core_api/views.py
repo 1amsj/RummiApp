@@ -30,7 +30,7 @@ from core_backend.models import Affiliation, Agent, Authorization, Booking, Busi
     Service, \
     ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
-from core_backend.serializers.serializers_light import BookingLightSerializer, EventLightSerializer
+from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
@@ -754,18 +754,18 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
         return Response(affiliation.id, status=status.HTTP_201_CREATED)
 
 
-class ManageBooking(basic_view_manager(Booking, BookingLightSerializer)):
+class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None, booking_id=None):
         if booking_id:
             booking = Booking.objects.all().not_deleted('business').get(id=booking_id)
-            serialized = BookingLightSerializer(booking)
+            serialized = BookingSerializer(booking)
             return Response(serialized.data)
 
         include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
         query_params = prepare_query_params(request.GET)
 
-        serializer = BookingLightSerializer if include_events else BookingNoEventsSerializer
+        serializer = BookingSerializer if include_events else BookingNoEventsSerializer
 
         queryset = serializer.get_default_queryset()
 
