@@ -8,7 +8,7 @@ from core_backend.serializers.serializer_user import user_subtype_serializer
 from core_backend.serializers.serializers_utils import extendable_serializer, generic_serializer
 from core_backend.serializers.serializers import EventNoBookingSerializer, BookingSerializer, EventSerializer, \
     ContactSerializer, BaseSerializer, LocationSerializer, NoteSerializer, ExtraAttrSerializer, \
-    AuthorizationBaseSerializer, ServiceRootBaseSerializer, ServiceSerializer
+    AuthorizationBaseSerializer, ServiceRootBaseSerializer, ServiceSerializer, CompanyWithParentSerializer
 
 
 class UserLightSerializer(serializers.ModelSerializer):
@@ -128,10 +128,11 @@ class ServiceNoRootLightSerializer(ServiceNoProviderLightSerializer):
 class BookingLightNoEventsSerializer(extendable_serializer(Booking)):
     public_id = serializers.ReadOnlyField()
     services = ServiceNoRootLightSerializer(many=True)
+    companies = CompanyWithParentSerializer(many=True)
 
     class Meta:
         model = Booking
-        fields = ['id', 'business', 'public_id', 'services']
+        fields = ['id', 'business', 'public_id', 'services', 'companies']
         
     @staticmethod
     def get_default_queryset():
@@ -139,6 +140,12 @@ class BookingLightNoEventsSerializer(extendable_serializer(Booking)):
             Booking.objects
             .all()
             .not_deleted('business')
+            .prefetch_related(
+            Prefetch(
+                    'companies',
+                    queryset=CompanyWithParentSerializer.get_default_queryset(),
+                ),
+            )
         )
 
 class CompanyLightSerializer(BaseSerializer):
