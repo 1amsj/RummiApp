@@ -1,6 +1,5 @@
 from django.core.management.base import BaseCommand
 import requests
-from getpass import getpass
 
 class Command(BaseCommand):
     help = 'Show event data'
