@@ -6,7 +6,7 @@ class Command(BaseCommand):
     help = 'Show event data'
 
     def handle(self, *args, **options):
-        url = 'http://127.0.0.1:8000/api/v1/events/'  # Coloca la URL correcta aquí
+        url = 'http://127.0.0.1:8000/api/v1/events/interpretation/?_include_booking=true'  # Coloca la URL correcta aquí
         token = input("Ingrese el token Bearer: ")
         headers = {'Authorization': f'Bearer {token}'}
         response = requests.get(url, headers=headers)
