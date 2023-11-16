@@ -6,7 +6,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         url = 'http://127.0.0.1:8000/api/v1/events/interpretation/?_include_booking=true'
-        token = input("Ingrese el token Bearer: ")
+        token = input("Enter the token Bearer: ")
         headers = {'Authorization': f'Bearer {token}'}
         response = requests.get(url, headers=headers)
 
