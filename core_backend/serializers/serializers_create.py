@@ -75,7 +75,6 @@ class AuthorizationCreateSerializer(AuthorizationBaseSerializer):
 
 class BookingCreateSerializer(extendable_serializer(Booking)):
     business = BusinessField(required=False)
-    categories = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Category.objects.all())
     children = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Booking.objects.all())
     companies = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Company.objects.all())
     operators = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Operator.objects.all())
@@ -94,7 +93,6 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         data = validated_data or self.validated_data
         business = BusinessField().to_internal_value(data.get('business'))
         extras = data.pop('extra', {})
-        categories = data.pop('categories', [])
         children = data.pop('children', [])
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
@@ -104,8 +102,6 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
         data['public_id'] = generate_public_id()
 
         booking = Booking.objects.create(**data)
-        if categories:
-            booking.categories.add(*categories)
         if children:
             booking.children.add(*children)
         if companies:
