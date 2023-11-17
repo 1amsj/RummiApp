@@ -30,12 +30,13 @@ from core_backend.models import Affiliation, Agent, Authorization, Booking, Busi
     Service, \
     ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
+from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
-    ServiceRootNoBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
+    ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
     LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
@@ -826,20 +827,19 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
-class ManageEvents(basic_view_manager(Event, EventSerializer)):
+class ManageEventsMixin:
     @classmethod
     @expect_does_not_exist(Event)
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
-            event = EventSerializer.get_default_queryset().get(id=event_id)
-            serialized = EventSerializer(event)
+            event = cls.serializer_class.get_default_queryset().get(id=event_id)
+            serialized = cls.serializer_class(event)
             return Response(serialized.data)
 
         include_booking = request.GET.get(ApiSpecialKeys.INCLUDE_BOOKING, False)
         query_params = prepare_query_params(request.GET)
 
-        serializer = EventSerializer if include_booking else EventNoBookingSerializer
+        serializer = cls.serializer_class if include_booking else cls.no_booking_serializer_class
 
         queryset = serializer.get_default_queryset()
 
@@ -883,7 +883,6 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
 
         if report_datalist:
             create_reports_wrap(report_datalist, event_id)
-            
 
         return Response(event_id, status=status.HTTP_201_CREATED)
 
@@ -917,12 +916,12 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
 
         # Get target queryset
         query_params = prepare_query_params(patch_query)
-        queryset = EventSerializer.get_default_queryset()
+        queryset = cls.serializer_class.get_default_queryset()
         queryset = cls.apply_filters(queryset, query_params)
 
         # Apply patch to each event
         for event in queryset:
-            serializer = EventPatchSerializer(data=data)
+            serializer = cls.patch_serializer_class(data=data)
             serializer.is_valid(raise_exception=True)
             serializer.patch(event, business_name)
 
@@ -935,6 +934,17 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         Event.objects.get(id=event_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+
+class ManageEventsLight(ManageEventsMixin, basic_view_manager(Event, EventLightSerializer)):
+    serializer_class = EventLightSerializer
+    no_booking_serializer_class = EventNoBookingSerializer
+    patch_serializer_class = EventPatchSerializer
+
+
+class ManageEvents(ManageEventsMixin, basic_view_manager(Event, EventSerializer)):
+    serializer_class = EventSerializer
+    no_booking_serializer_class = EventNoBookingSerializer
+    patch_serializer_class = EventPatchSerializer
 
 class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
     @classmethod
@@ -1153,7 +1163,7 @@ class ManageServiceArea(basic_view_manager(ServiceArea, ServiceAreaSerializer)):
         ServiceArea.objects.get(id=service_area_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSerializer)):
+class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootBookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None, service_root_id=None):
         if service_root_id:
@@ -1162,11 +1172,11 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootNoBookingSeri
             return Response(serialized.data)
         query_params = prepare_query_params(request.GET)
 
-        queryset = ServiceRootNoBookingSerializer.get_default_queryset()
+        queryset = ServiceRootBookingSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
 
-        serialized = ServiceRootNoBookingSerializer(queryset, many=True)
+        serialized = ServiceRootBookingSerializer(queryset, many=True)
         return Response(serialized.data)
     
     @staticmethod
