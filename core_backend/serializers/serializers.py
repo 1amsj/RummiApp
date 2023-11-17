@@ -323,15 +323,13 @@ class ServiceAreaSerializer(BaseSerializer):
             )
         )
 
-
-class ProviderNoServiceSerializer(user_subtype_serializer(Provider)):
-    companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
+class ProviderNoServiceNoCompaniesSerializer(user_subtype_serializer(Provider)):
     notes = NoteSerializer(many=True, default=[])
     service_areas = ServiceAreaSerializer(many=True, default=[])
 
     class Meta:
         model = Provider
-        fields = '__all__'
+        exclude = ('companies', )
 
     @staticmethod
     def get_default_queryset():
@@ -352,6 +350,26 @@ class ProviderNoServiceSerializer(user_subtype_serializer(Provider)):
                     'user',
                     queryset=UserSerializer.get_default_queryset(),
                 ),
+            )
+        )
+
+class ProviderNoServiceSerializer(user_subtype_serializer(Provider)):
+    companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
+
+    class Meta:
+        model = Provider
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Provider.objects
+            .all()
+            .not_deleted('user')
+            .prefetch_related(
+                'notes',
+                'extra',
+                'user',
             )
         )
 
@@ -378,7 +396,7 @@ class ProviderSerializer(ProviderNoServiceSerializer):
         )
     
 class ServiceNoRootSerializer(ServiceNoProviderSerializer):
-    provider = ProviderNoServiceSerializer()
+    provider = ProviderNoServiceNoCompaniesSerializer()
 
     class Meta:
         model = Service
@@ -409,7 +427,7 @@ class ServiceNoRootSerializer(ServiceNoProviderSerializer):
     
 
 class ServiceSerializer(ServiceNoProviderSerializer):
-    provider = ProviderNoServiceSerializer()
+    provider = ProviderNoServiceNoCompaniesSerializer()
     class Meta:
         model = Service
         fields = '__all__'
@@ -578,9 +596,32 @@ class RecipientSerializer(RecipientNoAffiliationSerializer):
             )
         )
 
+class RequesterNoCompaniesSerializer(user_subtype_serializer(Requester)):
 
-class RequesterSerializer(user_subtype_serializer(Requester)):
+    class Meta:
+        model = Requester
+        exclude = ('companies', )
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Requester.objects
+            .all()
+            .not_deleted('user')
+            .prefetch_related(
+                Prefetch(
+                    'user',
+                    queryset=UserSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
+class RequesterSerializer(RequesterNoCompaniesSerializer):
     companies = CompanyWithParentSerializer(many=True)
+
+    class Meta:
+        model = Requester
+        fields = '__all__'
 
     @staticmethod
     def get_default_queryset():
@@ -593,10 +634,7 @@ class RequesterSerializer(user_subtype_serializer(Requester)):
                     'companies',
                     queryset=CompanyWithParentSerializer.get_default_queryset()
                 ),
-                Prefetch(
-                    'user',
-                    queryset=UserSerializer.get_default_queryset(),
-                ),
+                'user',
             )
         )
 
@@ -636,7 +674,7 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     companies = CompanyWithParentSerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
     expenses = ExpenseSerializer(many=True)
-    operators = OperatorSerializer(many=True)
+    operators = OperatorNoCompaniesSerializer(many=True)
     parent = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'), allow_null=True)
     services = ServiceNoRootSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
@@ -774,7 +812,7 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
     payer = PayerSerializer(required=False)
     payer_company = CompanyWithParentSerializer(required=False)
     reports = ReportSerializer(many=True)
-    requester = RequesterSerializer()
+    requester = RequesterNoCompaniesSerializer()
 
     class Meta:
         model = Event
