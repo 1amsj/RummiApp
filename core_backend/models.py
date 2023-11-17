@@ -577,7 +577,6 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     public_id = models.CharField(max_length=30, null=True)
 
     # Constraints
-    categories = models.ManyToManyField(Category, blank=True, related_name='bookings')
     agents_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_agents')
     operators_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_operators')
     payers_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_payers')
