@@ -576,14 +576,6 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     created_at = models.DateTimeField(auto_now_add=True)
     public_id = models.CharField(max_length=30, null=True)
 
-    # Constraints
-    agents_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_agents')
-    operators_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_operators')
-    payers_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_payers')
-    providers_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_providers')
-    recipients_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_recipients')
-    requesters_companies = models.ManyToManyField(Company, blank=True, related_name='cstr_booking_requesters')
-
     class Meta:
         verbose_name = _('booking')
         verbose_name_plural = _('bookings')
