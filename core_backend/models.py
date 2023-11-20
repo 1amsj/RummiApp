@@ -224,6 +224,7 @@ class Company(SoftDeletableModel, HistoricalModel):
     parent_company = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
 
     class Meta:
+        ordering = ['name']
         verbose_name = _('company')
         verbose_name_plural = _('companies')
 
@@ -351,6 +352,7 @@ class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
     role = models.CharField(_('role'), max_length=64)
 
     class Meta:
+        ordering = ['user__first_name', 'user__last_name']
         verbose_name = _('agent')
         verbose_name_plural = _('agents')
 
@@ -412,6 +414,7 @@ class Provider(ExtendableModel, SoftDeletableModel, HistoricalModel):
     minimum_bookings = models.PositiveIntegerField(default=0)
 
     class Meta:
+        ordering = ['user__first_name', 'user__last_name']
         verbose_name = verbose_name_plural = _('provider data')
 
     def __str__(self):
@@ -443,6 +446,7 @@ class Affiliation(ExtendableModel, HistoricalModel, SoftDeletableModel):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, null=True, blank=True, related_name='affiliations')
 
     class Meta:
+        ordering = ['recipient__user__first_name', 'recipient__user__last_name']
         verbose_name = _('affiliation')
         verbose_name_plural = _('affiliations')
 
@@ -459,6 +463,7 @@ class Requester(HistoricalModel, SoftDeletableModel):
     companies = models.ManyToManyField(Company, related_name='requesters')
 
     class Meta:
+        ordering = ['user__first_name', 'user__last_name']
         verbose_name = verbose_name_plural = _('requester data')
 
     def __str__(self):
