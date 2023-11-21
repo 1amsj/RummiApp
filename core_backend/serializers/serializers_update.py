@@ -35,7 +35,6 @@ class BookingUpdateSerializer(BookingCreateSerializer):
         data.pop('business', None)  # Ensure business will not be modified accidentally
         business = BusinessField().to_internal_value(business)
         extras = data.pop('extra', {})
-        categories = data.pop('categories', [])
         children = data.pop('children', [])
         companies = data.pop('companies', [])
         operators = data.pop('operators', [])
@@ -49,7 +48,6 @@ class BookingUpdateSerializer(BookingCreateSerializer):
         instance.save()
         instance.children.set(children)
 
-        sync_m2m(instance.categories, categories)
         sync_m2m(instance.companies, companies)
         sync_m2m(instance.operators, operators)
         sync_m2m(instance.services, services)
