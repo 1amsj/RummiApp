@@ -19,7 +19,10 @@ class Command(BaseCommand):
                 fieldnames = ['ID', 'Company', 'Language', 'Operator', 'Type of Appointment', 'Authorized',
                               'Authorized By', 'DOS', 'Scheduled Time', 'Interpreter Start Time',
                               'Interpreter Arrive Time', 'Interpreter End Time', 'Patient First Name',
-                              'Patient Last Name', 'DOB', 'DOI', 'Claim Number', 'Public_id']
+                              'Patient Last Name', 'DOB', 'DOI', 'Claim Number', 'Clinic Addres', 
+                              'Clinic City', 'Clinic State', 'Clinic Zip', 
+                              'Interpreter First Name', 'Interpreter Last Name',
+                              'Public_id']
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
 
@@ -63,6 +66,14 @@ class Command(BaseCommand):
                         'DOB': event['affiliates'][0]['recipient']['date_of_birth'],
                         'DOI': date_of_injury if date_of_injury is not None else 'None',
                         'Claim Number': claim_number if claim_number is not None else 'None',
+                        'Clinic Addres': event['booking']['companies'][0]['locations'][0]['address'],
+                        'Clinic City': event['booking']['companies'][0]['locations'][0]['city'],
+                        'Clinic State': event['booking']['companies'][0]['locations'][0]['state'],
+                        'Clinic Zip': event['booking']['companies'][0]['locations'][0]['zip'],
+                        'Interpreter First Name': event['booking']['services'][0]['provider']['first_name'] 
+                                                if event['booking']['services'] != [] else 'None',
+                        'Interpreter Last Name': event['booking']['services'][0]['provider']['last_name'] 
+                                                if event['booking']['services'] != [] else 'None',
                         'Public_id': event['booking']['public_id']
                     })
 
