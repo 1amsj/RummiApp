@@ -162,37 +162,9 @@ class LanguageSerializer(BaseSerializer):
 
 # Roles serializers
 
-class AgentNoCompaniesSerializer(user_subtype_serializer(Agent)):
-    role = serializers.CharField()
-
-    class Meta:
-        model = Agent
-        exclude = ('companies',)
-
-    @staticmethod
-    def get_default_queryset():
-        return (
-            Agent.objects
-            .all()
-            .not_deleted('user')
-            .prefetch_related(
-                Prefetch(
-                    'extra',
-                    queryset=ExtraAttrSerializer.get_default_queryset(),
-                ),
-                Prefetch(
-                    'user',
-                    queryset=UserSerializer.get_default_queryset(),
-                ),
-            )
-        )
-
-class AgentSerializer(AgentNoCompaniesSerializer):
+class AgentSerializer(user_subtype_serializer(Agent)):
     companies = CompanyWithParentSerializer(many=True)
-
-    class Meta:
-        model = Agent
-        fields = '__all__'
+    role = serializers.CharField()
 
     @staticmethod
     def get_default_queryset():
@@ -205,8 +177,14 @@ class AgentSerializer(AgentNoCompaniesSerializer):
                     'companies',
                     queryset=CompanyWithParentSerializer.get_default_queryset()
                 ),
-                'extra',
-                'user',
+                Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'user',
+                    queryset=UserSerializer.get_default_queryset(),
+                ),
             )
         )
 
@@ -323,35 +301,6 @@ class ServiceAreaSerializer(BaseSerializer):
             )
         )
 
-class ProviderNoServiceNoCompaniesSerializer(user_subtype_serializer(Provider)):
-    notes = NoteSerializer(many=True, default=[])
-    service_areas = ServiceAreaSerializer(many=True, default=[])
-
-    class Meta:
-        model = Provider
-        exclude = ('companies', )
-
-    @staticmethod
-    def get_default_queryset():
-        return (
-            Provider.objects
-            .all()
-            .not_deleted('user')
-            .prefetch_related(
-                Prefetch(
-                    'notes',
-                    queryset=NoteSerializer.get_default_queryset()
-                ),
-                Prefetch(
-                    'extra',
-                    queryset=ExtraAttrSerializer.get_default_queryset(),
-                ),
-                Prefetch(
-                    'user',
-                    queryset=UserSerializer.get_default_queryset(),
-                ),
-            )
-        )
 
 class ProviderNoServiceSerializer(user_subtype_serializer(Provider)):
     companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
@@ -396,7 +345,7 @@ class ProviderSerializer(ProviderNoServiceSerializer):
         )
     
 class ServiceNoRootSerializer(ServiceNoProviderSerializer):
-    provider = ProviderNoServiceNoCompaniesSerializer()
+    provider = ProviderNoServiceSerializer()
 
     class Meta:
         model = Service
@@ -427,7 +376,7 @@ class ServiceNoRootSerializer(ServiceNoProviderSerializer):
     
 
 class ServiceSerializer(ServiceNoProviderSerializer):
-    provider = ProviderNoServiceNoCompaniesSerializer()
+    provider = ProviderNoServiceSerializer()
     class Meta:
         model = Service
         fields = '__all__'
@@ -490,36 +439,8 @@ class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
         )
 
 
-class RecipientNoCompaniesNoAffiliationSerializer(user_subtype_serializer(Recipient)):
-    notes = NoteSerializer(many=True, default=[])
 
-    class Meta:
-        model = Recipient
-        exclude = ('companies', )
-
-    @staticmethod
-    def get_default_queryset():
-        return (
-            Recipient.objects
-            .all()
-            .not_deleted('user')
-            .prefetch_related(
-                Prefetch(
-                    'extra',
-                    queryset=ExtraAttrSerializer.get_default_queryset(),
-                ),
-                Prefetch(
-                    'notes',
-                    queryset=NoteSerializer.get_default_queryset(),
-                ),
-                Prefetch(
-                    'user',
-                    queryset=UserSerializer.get_default_queryset(),
-                ),
-            )
-        )
-
-class RecipientNoAffiliationSerializer(RecipientNoCompaniesNoAffiliationSerializer):
+class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
 
     class Meta:
@@ -555,7 +476,7 @@ class RecipientNoAffiliationSerializer(RecipientNoCompaniesNoAffiliationSerializ
 
 class AffiliationSerializer(generic_serializer(Affiliation)):
     company = CompanyWithParentSerializer()
-    recipient = RecipientNoCompaniesNoAffiliationSerializer()
+    recipient = RecipientNoAffiliationSerializer()
 
     @staticmethod
     def get_default_queryset():
@@ -806,7 +727,7 @@ class BookingNoEventsHistorySerializer(BookingNoEventsSerializer):
 
 class EventNoBookingSerializer(extendable_serializer(Event)):
     affiliates = AffiliationSerializer(many=True)
-    agents = AgentNoCompaniesSerializer(many=True)
+    agents = AgentSerializer(many=True)
     authorizations = AuthorizationBaseSerializer(many=True)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
     payer = PayerSerializer(required=False)
