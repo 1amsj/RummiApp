@@ -617,7 +617,7 @@ class Event(ExtendableModel, HistoricalModel, SoftDeletableModel, UniquifiableMo
         verbose_name_plural = _('events')
 
     def __str__(self):
-        return F"From {self.start_at} to {self.end_at}, {'onsite' if self.is_onsite else 'online'}"
+        return F"Event #{self.id} - Booking ID: {self.booking.id} - {self.booking.public_id}"
 
     @property
     def is_onsite(self):
