@@ -1,6 +1,5 @@
 # CORE BE MODELS AND RELATIONS
 
-
 ## Business model
 
 The `Business` model consists only of a `name` field. This is what will be used to distinguish between different business in the same system. For example if we want to have coexisting "interpretation" and "care" businesses, each with their own bookings, services and invoices, we need to distinguish them using this field. For this reason, this field is asked for in almost every endpoint as a URL path param.
@@ -71,6 +70,8 @@ In the places where we would want to represent a beneficiary of a booking, we us
 
 - `ExternalApiToken`: represents a token for an external API. This is used to authenticate the system with external services.
 
+- `UniqueCondition`: used to generically represent a unique constraint in database.
+
 
 ## Other models
 
@@ -87,4 +88,15 @@ In the places where we would want to represent a beneficiary of a booking, we us
 
 ## Billing models
 
-TODO this is WIP
+These are still a work in progress
+
+
+## Observations
+
+`Rule`, `Ledger` and `Invoice` are some placeholder models currently not in use.
+
+Every model is [soft deletable](_soft_deletion.md), except for `UniqueCondition`, `ExternalApiToken` and the placeholders.
+
+Models marked with a star (☆) in this file are [extendable](_extras_system).
+
+Every model keeps track of its [history](_historical_models.md), except for `Extra`, `UniqueCondition`, `Business`, `Note`, `ExternalApiToken` and the placeholders.

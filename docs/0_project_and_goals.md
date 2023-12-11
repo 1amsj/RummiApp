@@ -9,3 +9,7 @@ The idea is to have a central backend system with a generic infrastructure, and 
 # Structure
 The central backend consists of models for representing people, models for representing services and models for representing bookings.
 See [models and relations](1_models_and_relations.md).
+
+
+TODO mention that payers can be either company or person.
+TODO further describe the non-generic stuff
