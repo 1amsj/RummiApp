@@ -97,6 +97,6 @@ These are still a work in progress
 
 Every model is [soft deletable](_soft_deletion.md), except for `UniqueCondition`, `ExternalApiToken` and the placeholders.
 
-Models marked with a star (☆) in this file are [extendable](_extras_system).
+Models marked with a star (☆) in this file are [extendable](2_extras_system).
 
 Every model keeps track of its [history](_historical_models.md), except for `Extra`, `UniqueCondition`, `Business`, `Note`, `ExternalApiToken` and the placeholders.
