@@ -81,7 +81,12 @@ For example, let's say for some reason we care about documenting in an event a d
 - We can query for all previous events with "bone" toys like
 ```python
 # Simple way assuming shallow extras, this will fail if toy is an object
-filtered_events = Event.objects.all().filter(end_at__lt=date.today()).filter_by_extra(toy__icontains="bone")
+filtered_events = (
+    Event.objects
+    .all()
+    .filter(end_at__lt=date.today())
+    .filter_by_extra(toy__icontains="bone")
+)
 
 # More flexible way using query params
 qp = QueryParams()
@@ -109,3 +114,4 @@ filtered_events = (
 ```
 
 Note that we need to query `end_at` separatedly because it is **not** an extra field.
+Also note that in `QueryParams`, we use `.` to access an object value's field for an extra and `__` to specify the [lookup](https://docs.djangoproject.com/en/5.0/topics/db/queries/#field-lookups).
