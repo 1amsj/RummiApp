@@ -95,8 +95,8 @@ def manage_extra_attrs(business: Union[None, str, app_models.Business], inst: mo
 
         if data is not None:
             try:
-                json.loads(data)
-                json_data = data
+                parsed_thing = json.loads(data)
+                json_data = json.dumps(str(parsed_thing)) if isinstance(parsed_thing, int) else data
             except (json.JSONDecodeError, TypeError):
                 json_data = json.dumps(str(data)) if isinstance(data, int) else json.dumps(data)
 
