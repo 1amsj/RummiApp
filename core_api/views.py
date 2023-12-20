@@ -856,6 +856,8 @@ class ManageEventsMixin:
 
          # Check for pagination parameters
         if 'page' in request.GET or 'page_size' in request.GET:
+            queryset = queryset.order_by('-id')
+
             # Apply pagination
             paginator = cls.pagination_class()
             paginated_queryset = paginator.paginate_queryset(queryset, request)
