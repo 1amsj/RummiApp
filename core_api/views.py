@@ -1072,6 +1072,9 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
 
 
 class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @classmethod
     @expect_does_not_exist(Company)
     def get(cls, request, company_id=None):
@@ -1085,11 +1088,21 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         query_params = prepare_query_params(request.GET)
         queryset = serializer.get_default_queryset()
-        queryset = cls.apply_filters(queryset, query_params)
-        serialized = serializer(queryset, many=True)
 
-        return Response(serialized.data)
+        if 'page' in request.GET or 'page_size' in request.GET:
+            queryset = queryset.order_by('-id')
 
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = serializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = serializer(queryset, many=True)
+            return Response(serialized.data)
+        
     @staticmethod
     @transaction.atomic
     @expect_key_error
