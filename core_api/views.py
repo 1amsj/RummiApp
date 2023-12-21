@@ -10,6 +10,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework.pagination import PageNumberPagination
 
 from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
@@ -67,6 +68,11 @@ class UserViewSet(generics.ListAPIView):
     permission_classes = (AllowAny,)
     serializer_class = UserSerializer
 
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 25
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+    page_query_param = 'page'
 
 @api_view(['POST'])
 @transaction.atomic
@@ -595,6 +601,9 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
 
 
 class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @staticmethod
     def apply_nested_filters(queryset, nested_params):
         if nested_params.is_empty():
@@ -621,10 +630,19 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
 
         queryset = ProviderSerializer.get_default_queryset()
 
-        queryset = cls.apply_filters(queryset, query_params)
+        if 'page' in request.GET or 'page_size' in request.GET:
+            queryset = queryset.order_by('-id')
 
-        serialized = ProviderSerializer(queryset, many=True)
-        return Response(serialized.data)
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = ProviderSerializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = ProviderSerializer(queryset, many=True)
+            return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
@@ -828,6 +846,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ManageEventsMixin:
+
     @classmethod
     @expect_does_not_exist(Event)
     def get(cls, request, business_name=None, event_id=None):
@@ -846,10 +865,20 @@ class ManageEventsMixin:
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
 
-        queryset = cls.apply_filters(queryset, query_params)
+         # Check for pagination parameters
+        if 'page' in request.GET or 'page_size' in request.GET:
+            queryset = queryset.order_by('-id')
 
-        serialized = serializer(queryset, many=True)
-        return Response(serialized.data)
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = serializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = serializer(queryset, many=True)
+            return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
@@ -939,12 +968,14 @@ class ManageEventsLight(ManageEventsMixin, basic_view_manager(Event, EventLightS
     serializer_class = EventLightSerializer
     no_booking_serializer_class = EventNoBookingSerializer
     patch_serializer_class = EventPatchSerializer
+    pagination_class = StandardResultsSetPagination
 
 
 class ManageEvents(ManageEventsMixin, basic_view_manager(Event, EventSerializer)):
     serializer_class = EventSerializer
     no_booking_serializer_class = EventNoBookingSerializer
     patch_serializer_class = EventPatchSerializer
+    pagination_class = StandardResultsSetPagination
 
 class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
     @classmethod
@@ -1041,6 +1072,9 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
 
 
 class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @classmethod
     @expect_does_not_exist(Company)
     def get(cls, request, company_id=None):
@@ -1054,11 +1088,21 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         query_params = prepare_query_params(request.GET)
         queryset = serializer.get_default_queryset()
-        queryset = cls.apply_filters(queryset, query_params)
-        serialized = serializer(queryset, many=True)
 
-        return Response(serialized.data)
+        if 'page' in request.GET or 'page_size' in request.GET:
+            queryset = queryset.order_by('-id')
 
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = serializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = serializer(queryset, many=True)
+            return Response(serialized.data)
+        
     @staticmethod
     @transaction.atomic
     @expect_key_error
