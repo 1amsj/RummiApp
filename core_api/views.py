@@ -601,6 +601,9 @@ class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
 
 
 class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @staticmethod
     def apply_nested_filters(queryset, nested_params):
         if nested_params.is_empty():
@@ -627,10 +630,19 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
 
         queryset = ProviderSerializer.get_default_queryset()
 
-        queryset = cls.apply_filters(queryset, query_params)
+        if 'page' in request.GET or 'page_size' in request.GET:
+            queryset = queryset.order_by('-id')
 
-        serialized = ProviderSerializer(queryset, many=True)
-        return Response(serialized.data)
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = ProviderSerializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = ProviderSerializer(queryset, many=True)
+            return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
@@ -852,7 +864,6 @@ class ManageEventsMixin:
 
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
-
 
          # Check for pagination parameters
         if 'page' in request.GET or 'page_size' in request.GET:
