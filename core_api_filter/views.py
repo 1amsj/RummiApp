@@ -53,7 +53,7 @@ class ManageEventsMixin:
             serializerComplete = serializer(queryset, many=True)
             serializeData = serializerComplete.data
 
-            # Check for pagination parameters
+            # Type of status
             if ('delivered' in reqBod):
                 for item in serializeData:
                     if('claim_number' in item and 'payer' != None and 
