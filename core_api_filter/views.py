@@ -31,17 +31,7 @@ class ManageEventsMixin:
         serializer = cls.serializer_class if include_booking else cls.no_booking_serializer_class
         
         queryset = serializer.get_default_queryset()
-        # itemsCompleted = serializer(queryset, many=True)
-        # objectsExtra = []
-        # for completedObjects in itemsCompleted.data:
-        #     extraFilt = completedObjects['id']
-        #     filtering = ext.filter(parent_id__gt=str(extraFilt))
-        #     for obj in filtering:
-        #         key_value = (obj.__dict__["parent_id"], obj.__dict__["key"], obj.__dict__["data"])
-        #         objectsExtra.append(key_value)
         
-        # filtered_tuple = tuple(filter(lambda item: item[1] == 'claim_number', objectsExtra))
-        # print(filtered_tuple)
         reqBod = request.GET.get('status')
         if 'page' in request.GET or 'page_size' in request.GET:
             if business_name:
@@ -72,8 +62,6 @@ class ManageEventsMixin:
                             filtered.append(item)
                             break
 
-                col.append('col_o')
-                
             if ('authorized' in reqBod):
                 for item in serializeData:
                     for report, authorization in zip(item.get('reports', []), item.get('authorizations', [])):
@@ -81,23 +69,16 @@ class ManageEventsMixin:
                             filtered.append(item)
                             break
 
-                col.append('col_a')
-                
             if('booked' in reqBod):
                 for item in serializeData:
                     if('claim_number' in item and 'payer' != None and 'payer_company' != None):
                         filtered.append(item)
                 
-                col.append('col_b')
-            
             if ('pending' in reqBod):
                 for item in serializeData:
                     if('claim_number' not in item or 'payer' == None or 'payer_company' == None):
                         filtered.append(item)
                 
-                col.append('col_p')
-                
-            print(col)
             sorted_filtered = sorted(filtered, key=lambda x: x['id'], reverse=True)
             
             unique_ids = set()
