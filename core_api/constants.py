@@ -8,7 +8,8 @@ class ApiSpecialKeys(str, Enum):
     # Querying
     EVENTS_QUERY = '_events_query'
     PATCH_QUERY = '_query'
-    PATIENT_ID = 'patientId'
+    RECIPIENT_ID = '_recipient_id'
+    DATE = 'date'
 
     # Includes
     INCLUDE_BOOKING = '_include_booking'

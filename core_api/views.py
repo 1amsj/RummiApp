@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Type, Union
 
 from django.db import models, transaction
@@ -781,14 +782,17 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             return Response(serialized.data)
 
         include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
-        recipientId = request.GET.get(ApiSpecialKeys.PATIENT_ID, False)
+        recipientId = request.GET.get(ApiSpecialKeys.RECIPIENT_ID, False)
+        date = request.GET.get(ApiSpecialKeys.DATE, False)
+
         print(f"Recipient ID: {recipientId}")
+        print(f"Date: {date}")
 
         query_params = prepare_query_params(request.GET)
 
         print(include_events)
 
-        serializer = BookingSerializer if (include_events or recipientId) else BookingNoEventsSerializer
+        serializer = BookingSerializer if (include_events or recipientId or date) else BookingNoEventsSerializer
         queryset = serializer.get_default_queryset()
         
         print("Booking IDs:", queryset.values_list('id', flat=True))
@@ -796,11 +800,15 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         if recipientId:
             queryset = queryset.filter(events__affiliates__recipient__user=recipientId)
             print("Booking IDs:", queryset.values_list('id', flat=True))
+
+        if date:
+             date_with_time = datetime.fromisoformat(date.replace("Z", "+00:00"))
+             date_only = date_with_time.date()
+
+             queryset = queryset.filter(events__start_at__date=date_only)
+             print("Booking IDs:", queryset.values_list('id', flat=True))
        
-       
-        print("Before apply_filters:", queryset.values_list('id', flat=True))
         queryset = cls.apply_filters(queryset, query_params)
-        print("After apply_filters:", queryset.values_list('id', flat=True))
 
         serialized = serializer(queryset, many=True)
         return Response(serialized.data)
