@@ -781,13 +781,26 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             return Response(serialized.data)
 
         include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
+        recipientId = request.GET.get(ApiSpecialKeys.PATIENT_ID, False)
+        print(f"Recipient ID: {recipientId}")
+
         query_params = prepare_query_params(request.GET)
 
-        serializer = BookingSerializer if include_events else BookingNoEventsSerializer
+        print(include_events)
 
+        serializer = BookingSerializer if (include_events or recipientId) else BookingNoEventsSerializer
         queryset = serializer.get_default_queryset()
+        
+        print("Booking IDs:", queryset.values_list('id', flat=True))
 
+        if recipientId:
+            queryset = queryset.filter(events__affiliates__recipient__user=recipientId)
+            print("Booking IDs:", queryset.values_list('id', flat=True))
+       
+       
+        print("Before apply_filters:", queryset.values_list('id', flat=True))
         queryset = cls.apply_filters(queryset, query_params)
+        print("After apply_filters:", queryset.values_list('id', flat=True))
 
         serialized = serializer(queryset, many=True)
         return Response(serialized.data)
