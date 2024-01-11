@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from requests import Response
 from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist
@@ -10,6 +11,7 @@ from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
 from core_api.exceptions import BadRequestException
 from django.db import transaction
+from django.db.models import Count, Q, F
 
 from core_backend.serializers.serializers import EventNoBookingSerializer, EventSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
@@ -32,60 +34,309 @@ class ManageEventsMixin:
         
         queryset = serializer.get_default_queryset()
         
-        reqBod = request.GET.get('status')
+        reqBod = request.GET.get(ApiSpecialKeys.STATUS)
         if 'page' in request.GET or 'page_size' in request.GET:
             if business_name:
                 queryset = queryset.filter(booking__business__name=business_name)
-            col = []
+                
             
-            filtered = []
+            # filtered = []
+            filters = []
             queryset = queryset.order_by('-id')
-            serializerComplete = serializer(queryset, many=True)
-            serializeData = serializerComplete.data
-
-            # Type of status
-            if ('delivered' in reqBod):
-                for item in serializeData:
-                    if('claim_number' in item and 'payer' != None and 
-                       'payer_company' != None and item['booking']['services'] != []):
-                        for report in item.get('reports', []):
-                            if report.get('status') == 'COMPLETED':
-                                filtered.append(item)
-                                break
-
-                col.append('col_d')
+            
+            if 'delivered' in reqBod:
+                query_delivered = queryset.filter(
+                    Q(extra__key='claim_number') &  
+                    ~Q(payer_company__isnull=True) &  
+                    ~Q(payer__isnull=True) 
+                ).annotate(
+                    has_completed_authorizations_accepted=Count('authorizations', filter=Q(authorizations__status='ACCEPTED' )),
+                    has_completed_authorizations_pending=Count('authorizations', filter=Q(authorizations__status='PENDING' )),
+                    has_completed_reports=Count('reports', filter=Q(reports__status='COMPLETED')),
+                    has_authorizations=Count('authorizations'),
+                    has_reports=Count('reports')
+                ).annotate(
+                    authorizations_count=Count('authorizations', distinct=True),
+                    reports_count=Count('reports', distinct=True)
+                ).filter(
+                    Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0) |  
+                    Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_accepted__gt=0) | 
+                    Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_pending__gt=0) | 
+                    Q(has_completed_authorizations_accepted__gt=0, has_completed_reports__gt=0)  |
+                    Q(has_completed_authorizations_pending__gt=0, has_completed_reports__gt=0)
+                )
                 
-            if ('override' in reqBod):
-                for item in serializeData:
-                    for report, authorization in zip(item.get('reports', []), item.get('authorizations', [])):
-                        if authorization.get('status') == 'OVERRIDE' and report.get('status') != 'COMPLETED':
-                            filtered.append(item)
-                            break
-
-            if ('authorized' in reqBod):
-                for item in serializeData:
-                    for report, authorization in zip(item.get('reports', []), item.get('authorizations', [])):
-                        if authorization.get('status') == 'ACCEPTED' and report.get('status') != 'COMPLETED':
-                            filtered.append(item)
-                            break
-
-            if('booked' in reqBod):
-                for item in serializeData:
-                    if('claim_number' in item and 'payer' != None and 'payer_company' != None):
-                        filtered.append(item)
+                filters.extend(query_delivered)
+            
+            if 'override' in reqBod:
+                query_override = queryset.filter(
+                    Q(extra__key='claim_number') &  
+                    ~Q(payer_company__isnull=True) &  
+                    ~Q(payer__isnull=True) 
+                ).annotate(
+                    has_completed_authorizations=Count('authorizations', filter=Q(authorizations__status='OVERRIDE' )),
+                    has_no_completed_reports=Count('reports', filter=~Q(reports__status ='COMPLETED')),
+                    has_authorizations=Count('authorizations'),
+                    has_reports=Count('reports')
+                ).annotate(
+                    authorizations_count=Count('authorizations', distinct=True),
+                    reports_count=Count('reports', distinct=True)
+                ).filter(
+                    Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations__gt=0) | 
+                    # Q(authorizations_count=0, reports_count__gt=0, has_no_completed_reports__gt=0) |  
+                    # Q(authorizations_count=0, reports_count=0, has_no_completed_reports__gt=0) | 
+                    Q(has_completed_authorizations__gt=0, has_no_completed_reports__gt=0)  |
+                    Q(has_completed_authorizations__gt=0, has_no_completed_reports=0)
+                )
                 
-            if ('pending' in reqBod):
-                for item in serializeData:
-                    if('claim_number' not in item or 'payer' == None or 'payer_company' == None):
-                        filtered.append(item)
+                filters.extend(query_override)
                 
-            sorted_filtered = sorted(filtered, key=lambda x: x['id'], reverse=True)
+            if 'authorized' in reqBod:
+                query_authorized = queryset.filter(
+                    Q(extra__key='claim_number') &  
+                    ~Q(payer_company__isnull=True) &  
+                    ~Q(payer__isnull=True) 
+                ).annotate(
+                    has_completed_authorizations=Count('authorizations', filter=Q(authorizations__status='ACCEPTED' )),
+                    has_no_completed_reports=Count('reports', filter=~Q(reports__status ='COMPLETED')),
+                ).filter(
+                    Q(has_completed_authorizations__gt=0, has_no_completed_reports__gt=0,)
+                )
+                
+                filters.extend(query_authorized)
+                
+            if 'booked' in reqBod:
+                query_booked = queryset.filter(
+                    Q(extra__key='claim_number') &
+                    (
+                        Q(payer_company__isnull=False) |
+                        Q(payer__isnull=False)
+                    )
+                ).annotate(
+                    authorization_count=Count('authorizations'),
+                    report_count=Count('reports'),
+                    # payer_company_type=F('payer_company__type'),
+                ).filter(
+                    Q(authorization_count=0, report_count=0) |
+                    (
+                        Q(authorization_count=0) &
+                        (
+                            (Q(report_count__gt=0) & Q(payer__isnull=False)) |
+                            (
+                                Q(report_count=0) |
+                                (Q(payer_company__type='clinic') | Q(payer_company__type='patient'))
+                            )
+                        )
+                    ) |
+                    (
+                        Q(report_count=0) &
+                        Q(authorization_count__gt=0)
+                    ) |
+                    (
+                        Q(authorization_count__gt=0) &
+                        Q(report_count__gt=0)
+                    )
+                ).exclude(
+                    Q(authorizations__status='ACCEPTED') |
+                    Q(authorizations__status='OVERRIDE') |
+                    Q(reports__status='COMPLETED')
+                ).exclude (
+                    Q(payer__isnull=True)
+                ).distinct()
+                
+                filters.extend(query_booked)
+
+                queryset_especific_booked = queryset.filter(
+                    # extra__key__in='claim_number',
+                    authorizations__isnull=True,
+                    reports__isnull=False,
+                    payer__isnull=True,
+                    payer_company__isnull=False,
+                    payer_company__type__in=['clinic', 'patient']
+                ).annotate(
+                    authorization_count=Count('authorizations'),
+                    report_count=Count('reports'),
+                ).filter(
+                    authorization_count=0,
+                    report_count__gt=0,
+                )
+                
+                filters.extend(queryset_especific_booked)
+            
+            # serializerComplete = serializer(queryset, many=True)
+            # serializeData = serializerComplete.data
+            
+            # serialize_two = serializer(filters, many=True)
+            # sDTwo = serialize_two.data
+
+            # # Type of status
+            # if ('delivered' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' in item and item['payer_company'] is not None and item['payer'] is not None):
+            #             folder = []
+            #             if(item['authorizations'] == []):
+            #                 for report in item['reports']:
+            #                     f = item['authorizations'], report['status'], item['id'],
+            #                     folder.append(f)
+            #             if(item['reports'] == []):
+            #                 for authorization in item['authorizations']:
+            #                     f = authorization, item['reports'], item['id'],
+            #                     folder.append(f)
+            #             for authorization in item['authorizations']:
+            #                 for report in item['reports']:
+            #                     f = authorization['status'], report['status'], item['id'],
+            #                     folder.append(f)
+            #             if(folder != []):
+            #                 if any('COMPLETED' in i for i in folder):
+            #                     filtered.append(item)
+                
+            # if ('override' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' in item and item['payer_company'] is not None and item['payer'] is not None):
+            #             folder = []
+            #             if(item['authorizations'] == []):
+            #                 for report in item['reports']:
+            #                     f = item['authorizations'], report['status'], item['id'],
+            #                     folder.append(f)
+            #             if(item['reports'] == []):
+            #                 for authorization in item['authorizations']:
+            #                     f = authorization, item['reports'], item['id'],
+            #                     folder.append(f)
+            #             for authorization in item['authorizations']:
+            #                 for report in item['reports']:
+            #                     f = authorization['status'], report['status'], item['id'],
+            #                     folder.append(f)
+            #             if(folder != []):
+            #                 if any('OVERRIDE' in i for i in folder) \
+            #                     and all('COMPLETED' not in i for i in folder):
+            #                     filtered.append(item)
+
+            # if ('authorized' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' in item and item['payer_company'] is not None and item['payer'] is not None):
+            #             folder = []
+            #             if(item['authorizations'] == []):
+            #                 for report in item['reports']:
+            #                     f = item['authorizations'], report['status'], item['id'],
+            #                     folder.append(f)
+            #             if(item['reports'] == []):
+            #                 for authorization in item['authorizations']:
+            #                     f = authorization, item['reports'], item['id'],
+            #                     folder.append(f)
+            #             for authorization in item['authorizations']:
+            #                 for report in item['reports']:
+            #                     f = authorization['status'], report['status'], item['id'],
+            #                     folder.append(f)
+            #             if(folder != []):
+            #                 if any('ACCEPTED' in i for i in folder) \
+            #                     and all('COMPLETED' not in i for i in folder):
+            #                     filtered.append(item)
+
+            # if('booked' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' in item and (item['payer_company'] is not None or item['payer'] is not None)):
+            #             folder = []
+            #             if(item['authorizations'] == [] and item['reports'] == [] and item['payer'] is not None):
+            #                 f = item['authorizations'], item['reports'], item['id'],
+            #                 folder.append(f)
+            #             if(item['authorizations'] == [] and item['reports'] == [] \
+            #                 and item['payer'] is not None and item['payer_company'] is not None):
+            #                 f = item['authorizations'], item['reports'], item['id'],
+            #                 folder.append(f)
+            #             if(item['authorizations'] == [] and item['reports'] == [] \
+            #                 and item['payer'] is None and item['payer_company'] is not None):
+            #                 if(item['payer_company']['type'] == 'clinic' or item['payer_company']['type'] == 'patient'):
+            #                     f = item['authorizations'], item['reports'], item['id'],
+            #                     folder.append(f)
+            #             if(item['authorizations'] == [] and item['reports'] is not None \
+            #                 and item['payer'] is None and item['payer_company'] is not None):
+            #                 if(item['payer_company']['type'] == 'clinic' or item['payer_company']['type'] == 'patient'):
+            #                     f = item['authorizations'], item['reports'], item['id'],
+            #                     folder.append(f)
+            #             if(item['authorizations'] == []):
+            #                 if(item['payer'] is not None):
+            #                     for report in item['reports']:
+            #                         f = item['authorizations'], report['status'], item['id'],
+            #                         folder.append(f)
+            #             if(item['reports'] == []):
+            #                 for authorization in item['authorizations']:
+            #                     f = authorization, item['reports'], item['id'],
+            #                     folder.append(f)
+            #             for authorization in item['authorizations']:
+            #                 for report in item['reports']:
+            #                     f = authorization['status'], report['status'], item['id'],
+            #                     folder.append(f)
+            #             if(folder != []):
+            #                 if all('ACCEPTED' not in i for i in folder) and all('OVERRIDE' not in i for i in folder) \
+            #                     and all('COMPLETED' not in i for i in folder):
+            #                     filtered.append(item)
+            
+            # if('no_case' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' not in item and (item['payer'] != None and item['payer_company'] != None) \
+            #             and item['booking']['services'] != []):
+            #                 if(item['payer_company']['type'] != 'clinic'):
+            #                     filtered.append(item)
+                        
+            # if('no_payer' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' in item and (item['payer'] == None or item['payer_company'] == None) \
+            #             and item['booking']['services'] != []):
+            #             if(item['payer'] == None):
+            #                 if(item['payer_company'] is not None):
+            #                     if(item['payer_company']['type'] != 'clinic'):
+            #                         filtered.append(item)
+            #             if(item['payer_company'] == None and item['payer'] == None):
+            #                 filtered.append(item)
+                        
+            # if('no_interpreter' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' in item and (item['payer'] != None and item['payer_company'] != None) \
+            #             and item['booking']['services'] == []):
+            #                 if(item['payer_company']['type'] != 'clinic' or item['payer_company']['type'] != 'patient'):
+            #                     folder = []
+            #                     for report in item['reports']:
+            #                         f = report['status'], item['id'],
+            #                         folder.append(f)
+            #                     if all('COMPLETED' not in i for i in folder):
+            #                         filtered.append(item)
+                                    
+            # if('no_payer' in reqBod and 'no_interpreter' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' in item and (item['payer'] == None or item['payer_company'] == None) \
+            #             and item['booking']['services'] == []):
+            #             filtered.append(item)
+                        
+            # if('no_payer' in reqBod and 'no_case' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' not in item and (item['payer'] == None or item['payer_company'] == None) \
+            #             and item['booking']['services'] != []):
+            #             filtered.append(item)
+                        
+            # if('no_case' in reqBod and 'no_interpreter' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' not in item and (item['payer'] != None or item['payer_company'] != None) \
+            #             and item['booking']['services'] == []):
+            #             filtered.append(item)
+                        
+            # if('no_payer' in reqBod and 'no_case' in reqBod and 'no_interpreter' in reqBod):
+            #     for item in serializeData:
+            #         if('claim_number' not in item and (item['payer'] == None or item['payer_company'] == None) \
+            #             and item['booking']['services'] == []):
+            #             filtered.append(item)
+            
+            # i = [tuple(item.items()) for item in filtered]
+            # j = [tuple(item.items()) for item in sDTwo]
+
+            # filt = [OrderedDict(item) for item in (i + j) if item not in i or item not in j]
+                
+            sorted_filtered = sorted(filters, key=lambda x: x.id, reverse=True)
             
             unique_ids = set()
             unique_filtered = []
 
             for item in sorted_filtered:
-                id_value = item['id']
+                id_value = item.id
                 if id_value not in unique_ids:
                     unique_ids.add(id_value)
                     unique_filtered.append(item)
@@ -95,7 +346,8 @@ class ManageEventsMixin:
             paginator = cls.pagination_class()
             paginated_two = paginator.paginate_queryset(sorted_filtered, request)
             serializedfilt = serializer(paginated_two, many=True)
-            return paginator.get_paginated_response(serializedfilt.__dict__['instance'])
+            # return paginator.get_paginated_response(serializedfilt.__dict__['instance'])
+            return paginator.get_paginated_response(serializedfilt.data)
         else:
             # No pagination parameters, return all results
             queryset = cls.apply_filters(queryset, query_params)

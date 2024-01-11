@@ -16,6 +16,9 @@ class ApiSpecialKeys(str, Enum):
 
     # Flags
     DELETED_FLAG = '_deleted'
+    
+    #Filters
+    STATUS = 'status'
 
     # Appended data
     AFFILIATION_DATALIST = '_affiliation_datalist'
