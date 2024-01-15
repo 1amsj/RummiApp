@@ -35,6 +35,7 @@ class ManageEventsMixin:
         queryset = serializer.get_default_queryset()
         
         reqBod = request.GET.get(ApiSpecialKeys.STATUS)
+        # print(reqBod)
         if 'page' in request.GET or 'page_size' in request.GET:
             if business_name:
                 queryset = queryset.filter(booking__business__name=business_name)
@@ -48,10 +49,17 @@ class ManageEventsMixin:
                 query_delivered = queryset.filter(
                     Q(extra__key='claim_number') &  
                     ~Q(payer_company__isnull=True) &  
-                    ~Q(payer__isnull=True) 
+                    (~Q(payer__isnull=True) |
+                    (Q(payer_company__type='clinic') | 
+                        (
+                        Q(extra__key='payer_company_type') & Q(extra__data='patient')
+                        )
+                    ) & Q(reports__status='COMPLETED'))
                 ).annotate(
                     has_completed_authorizations_accepted=Count('authorizations', filter=Q(authorizations__status='ACCEPTED' )),
                     has_completed_authorizations_pending=Count('authorizations', filter=Q(authorizations__status='PENDING' )),
+                    has_payer_company_clinic=Count('authorizations', filter=Q(payer_company__type='clinic')),
+                    has_payer_company_patient=Count('authorizations', filter=(Q(extra__key='payer_company_type') & Q(extra__data='patient'))),
                     has_completed_reports=Count('reports', filter=Q(reports__status='COMPLETED')),
                     has_authorizations=Count('authorizations'),
                     has_reports=Count('reports')
@@ -59,6 +67,8 @@ class ManageEventsMixin:
                     authorizations_count=Count('authorizations', distinct=True),
                     reports_count=Count('reports', distinct=True)
                 ).filter(
+                    Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0, has_payer_company_clinic=0) |  
+                    Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0, has_payer_company_patient=0) |  
                     Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0) |  
                     Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_accepted__gt=0) | 
                     Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_pending__gt=0) | 
@@ -115,7 +125,6 @@ class ManageEventsMixin:
                 ).annotate(
                     authorization_count=Count('authorizations'),
                     report_count=Count('reports'),
-                    # payer_company_type=F('payer_company__type'),
                 ).filter(
                     Q(authorization_count=0, report_count=0) |
                     (
@@ -147,21 +156,96 @@ class ManageEventsMixin:
                 filters.extend(query_booked)
 
                 queryset_especific_booked = queryset.filter(
-                    # extra__key__in='claim_number',
-                    authorizations__isnull=True,
-                    reports__isnull=False,
-                    payer__isnull=True,
-                    payer_company__isnull=False,
-                    payer_company__type__in=['clinic', 'patient']
+                    Q(extra__key='claim_number') &
+                    Q(authorizations__isnull=True) &
+                    Q(reports__isnull=False) &
+                    Q(payer__isnull=True) &
+                    Q(payer_company__isnull=False) &
+                    Q(payer_company__type__in=['clinic', 'patient'])
                 ).annotate(
                     authorization_count=Count('authorizations'),
                     report_count=Count('reports'),
                 ).filter(
                     authorization_count=0,
-                    report_count__gt=0,
+                    report_count__gt=0
+                ).exclude(
+                    Q(reports__status='COMPLETED')
                 )
                 
                 filters.extend(queryset_especific_booked)
+                
+            if 'no_case' in reqBod:
+                query_no_case = queryset.filter(
+                    ~Q(extra__key='claim_number') &
+                    (
+                        Q(payer_company__isnull=False) &
+                        Q(payer__isnull=False)
+                    ),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        ~Q(payer_company__type='patient')
+                    ),
+                    booking__services__isnull=False,
+                )
+                filters.extend(query_no_case)
+
+            if 'no_payer' in reqBod:
+                query_no_payer = queryset.filter(
+                    Q(payer__isnull=True) | Q(payer_company__isnull=True),
+                    Q(extra__key='claim_number'),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        Q(payer__isnull=True)
+                    ),
+                    booking__services__isnull=False
+                )
+                filters.extend(query_no_payer)
+
+            if 'no_interpreter' in reqBod:
+                query_no_interpreter = queryset.filter(
+                    Q(extra__key='claim_number') &
+                    (~Q(payer_company__type='clinic') | (Q(extra__key='payer_company_type') & ~Q(extra__data='patient'))),
+                    payer__isnull=False,
+                    payer_company__isnull=False,
+                    booking__services__isnull=True,
+                ).annotate(
+                    has_completed_reports=Count('reports', filter=~Q(reports__status ='COMPLETED')),
+                ).filter(
+                    Q(has_completed_reports__gt=0) | Q(has_completed_reports=0)
+                )
+                filters.extend(query_no_interpreter)
+
+            if 'no_payer' in reqBod and 'no_interpreter' in reqBod:
+                query_no_payer_no_interpreter = queryset.filter(
+                    Q(payer__isnull=True) | Q(payer_company__isnull=True),
+                    Q(extra__key='claim_number'),
+                    booking__services__isnull=True
+                )
+                filters.extend(query_no_payer_no_interpreter)
+
+            if 'no_payer' in reqBod and 'no_case' in reqBod:
+                query_no_payer_no_case = queryset.filter(
+                    Q(payer__isnull=True) | Q(payer_company__isnull=True),
+                    ~Q(extra__key='claim_number'),
+                    booking__services__isnull=False
+                )
+                filters.extend(query_no_payer_no_case)
+
+            if 'no_case' in reqBod and 'no_interpreter' in reqBod:
+                query_no_case_no_interpreter = queryset.filter(
+                    Q(payer__isnull=False) | Q(payer_company__isnull=False),
+                    ~Q(extra__key='claim_number'),
+                    booking__services__isnull=True
+                )
+                filters.extend(query_no_case_no_interpreter)
+
+            if 'no_payer' in reqBod and 'no_case' in reqBod and 'no_interpreter' in reqBod:
+                query_no_payer_no_case_no_interpreter = queryset.filter(
+                    Q(payer__isnull=True) | Q(payer_company__isnull=True),
+                    ~Q(extra__key='claim_number'),
+                    booking__services__isnull=True
+                )
+                filters.extend(query_no_payer_no_case_no_interpreter)
             
             # serializerComplete = serializer(queryset, many=True)
             # serializeData = serializerComplete.data
@@ -325,26 +409,52 @@ class ManageEventsMixin:
             #             and item['booking']['services'] == []):
             #             filtered.append(item)
             
-            # i = [tuple(item.items()) for item in filtered]
-            # j = [tuple(item.items()) for item in sDTwo]
+                
+            # sorted_filtered_f = sorted(filtered, key=lambda x: x['id'], reverse=True)
+            
+            # unique_ids_f = set()
+            # unique_filtered_f = []
+
+            # for item in sorted_filtered_f:
+            #     id_value = item['id']
+            #     if id_value not in unique_ids_f:
+            #         unique_ids_f.add(id_value)
+            #         unique_filtered_f.append(item)
+
+            # sorted_filtered_f = unique_filtered_f
+            
+            sorted_filtered_s = sorted(filters, key=lambda x: x.id, reverse=True)
+            
+            unique_ids_s = set()
+            unique_filtered_s = []
+
+            for item in sorted_filtered_s:
+                id_value = item.id
+                if id_value not in unique_ids_s:
+                    unique_ids_s.add(id_value)
+                    unique_filtered_s.append(item)
+
+            sorted_filtered_s = unique_filtered_s
+            # i = [tuple(item.items()) for item in sorted_filtered_f]
+            # j = [tuple(item.items()) for item in sorted_filtered_s]
 
             # filt = [OrderedDict(item) for item in (i + j) if item not in i or item not in j]
-                
-            sorted_filtered = sorted(filters, key=lambda x: x.id, reverse=True)
             
-            unique_ids = set()
-            unique_filtered = []
+            # sorted_filtered = sorted(filt, key=lambda x: x['id'], reverse=True)
+            
+            # unique_ids = set()
+            # unique_filtered = []
 
-            for item in sorted_filtered:
-                id_value = item.id
-                if id_value not in unique_ids:
-                    unique_ids.add(id_value)
-                    unique_filtered.append(item)
+            # for item in sorted_filtered:
+            #     id_value = item['id']
+            #     if id_value not in unique_ids:
+            #         unique_ids.add(id_value)
+            #         unique_filtered.append(item)
 
-            sorted_filtered = unique_filtered
+            # sorted_filtered = unique_filtered
                 
             paginator = cls.pagination_class()
-            paginated_two = paginator.paginate_queryset(sorted_filtered, request)
+            paginated_two = paginator.paginate_queryset(sorted_filtered_s, request)
             serializedfilt = serializer(paginated_two, many=True)
             # return paginator.get_paginated_response(serializedfilt.__dict__['instance'])
             return paginator.get_paginated_response(serializedfilt.data)
