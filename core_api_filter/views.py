@@ -35,13 +35,10 @@ class ManageEventsMixin:
         queryset = serializer.get_default_queryset()
         
         reqBod = request.GET.get(ApiSpecialKeys.STATUS)
-        # print(reqBod)
         if 'page' in request.GET or 'page_size' in request.GET:
             if business_name:
                 queryset = queryset.filter(booking__business__name=business_name)
-                
-            
-            # filtered = []
+
             filters = []
             queryset = queryset.order_by('-id')
             
@@ -92,9 +89,7 @@ class ManageEventsMixin:
                     authorizations_count=Count('authorizations', distinct=True),
                     reports_count=Count('reports', distinct=True)
                 ).filter(
-                    Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations__gt=0) | 
-                    # Q(authorizations_count=0, reports_count__gt=0, has_no_completed_reports__gt=0) |  
-                    # Q(authorizations_count=0, reports_count=0, has_no_completed_reports__gt=0) | 
+                    Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations__gt=0) |
                     Q(has_completed_authorizations__gt=0, has_no_completed_reports__gt=0)  |
                     Q(has_completed_authorizations__gt=0, has_no_completed_reports=0)
                 )
@@ -247,216 +242,22 @@ class ManageEventsMixin:
                 )
                 filters.extend(query_no_payer_no_case_no_interpreter)
             
-            # serializerComplete = serializer(queryset, many=True)
-            # serializeData = serializerComplete.data
+            sorted_filtered = sorted(filters, key=lambda x: x.id, reverse=True)
             
-            # serialize_two = serializer(filters, many=True)
-            # sDTwo = serialize_two.data
+            unique_ids = set()
+            unique_filtered = []
 
-            # # Type of status
-            # if ('delivered' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' in item and item['payer_company'] is not None and item['payer'] is not None):
-            #             folder = []
-            #             if(item['authorizations'] == []):
-            #                 for report in item['reports']:
-            #                     f = item['authorizations'], report['status'], item['id'],
-            #                     folder.append(f)
-            #             if(item['reports'] == []):
-            #                 for authorization in item['authorizations']:
-            #                     f = authorization, item['reports'], item['id'],
-            #                     folder.append(f)
-            #             for authorization in item['authorizations']:
-            #                 for report in item['reports']:
-            #                     f = authorization['status'], report['status'], item['id'],
-            #                     folder.append(f)
-            #             if(folder != []):
-            #                 if any('COMPLETED' in i for i in folder):
-            #                     filtered.append(item)
-                
-            # if ('override' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' in item and item['payer_company'] is not None and item['payer'] is not None):
-            #             folder = []
-            #             if(item['authorizations'] == []):
-            #                 for report in item['reports']:
-            #                     f = item['authorizations'], report['status'], item['id'],
-            #                     folder.append(f)
-            #             if(item['reports'] == []):
-            #                 for authorization in item['authorizations']:
-            #                     f = authorization, item['reports'], item['id'],
-            #                     folder.append(f)
-            #             for authorization in item['authorizations']:
-            #                 for report in item['reports']:
-            #                     f = authorization['status'], report['status'], item['id'],
-            #                     folder.append(f)
-            #             if(folder != []):
-            #                 if any('OVERRIDE' in i for i in folder) \
-            #                     and all('COMPLETED' not in i for i in folder):
-            #                     filtered.append(item)
-
-            # if ('authorized' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' in item and item['payer_company'] is not None and item['payer'] is not None):
-            #             folder = []
-            #             if(item['authorizations'] == []):
-            #                 for report in item['reports']:
-            #                     f = item['authorizations'], report['status'], item['id'],
-            #                     folder.append(f)
-            #             if(item['reports'] == []):
-            #                 for authorization in item['authorizations']:
-            #                     f = authorization, item['reports'], item['id'],
-            #                     folder.append(f)
-            #             for authorization in item['authorizations']:
-            #                 for report in item['reports']:
-            #                     f = authorization['status'], report['status'], item['id'],
-            #                     folder.append(f)
-            #             if(folder != []):
-            #                 if any('ACCEPTED' in i for i in folder) \
-            #                     and all('COMPLETED' not in i for i in folder):
-            #                     filtered.append(item)
-
-            # if('booked' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' in item and (item['payer_company'] is not None or item['payer'] is not None)):
-            #             folder = []
-            #             if(item['authorizations'] == [] and item['reports'] == [] and item['payer'] is not None):
-            #                 f = item['authorizations'], item['reports'], item['id'],
-            #                 folder.append(f)
-            #             if(item['authorizations'] == [] and item['reports'] == [] \
-            #                 and item['payer'] is not None and item['payer_company'] is not None):
-            #                 f = item['authorizations'], item['reports'], item['id'],
-            #                 folder.append(f)
-            #             if(item['authorizations'] == [] and item['reports'] == [] \
-            #                 and item['payer'] is None and item['payer_company'] is not None):
-            #                 if(item['payer_company']['type'] == 'clinic' or item['payer_company']['type'] == 'patient'):
-            #                     f = item['authorizations'], item['reports'], item['id'],
-            #                     folder.append(f)
-            #             if(item['authorizations'] == [] and item['reports'] is not None \
-            #                 and item['payer'] is None and item['payer_company'] is not None):
-            #                 if(item['payer_company']['type'] == 'clinic' or item['payer_company']['type'] == 'patient'):
-            #                     f = item['authorizations'], item['reports'], item['id'],
-            #                     folder.append(f)
-            #             if(item['authorizations'] == []):
-            #                 if(item['payer'] is not None):
-            #                     for report in item['reports']:
-            #                         f = item['authorizations'], report['status'], item['id'],
-            #                         folder.append(f)
-            #             if(item['reports'] == []):
-            #                 for authorization in item['authorizations']:
-            #                     f = authorization, item['reports'], item['id'],
-            #                     folder.append(f)
-            #             for authorization in item['authorizations']:
-            #                 for report in item['reports']:
-            #                     f = authorization['status'], report['status'], item['id'],
-            #                     folder.append(f)
-            #             if(folder != []):
-            #                 if all('ACCEPTED' not in i for i in folder) and all('OVERRIDE' not in i for i in folder) \
-            #                     and all('COMPLETED' not in i for i in folder):
-            #                     filtered.append(item)
-            
-            # if('no_case' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' not in item and (item['payer'] != None and item['payer_company'] != None) \
-            #             and item['booking']['services'] != []):
-            #                 if(item['payer_company']['type'] != 'clinic'):
-            #                     filtered.append(item)
-                        
-            # if('no_payer' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' in item and (item['payer'] == None or item['payer_company'] == None) \
-            #             and item['booking']['services'] != []):
-            #             if(item['payer'] == None):
-            #                 if(item['payer_company'] is not None):
-            #                     if(item['payer_company']['type'] != 'clinic'):
-            #                         filtered.append(item)
-            #             if(item['payer_company'] == None and item['payer'] == None):
-            #                 filtered.append(item)
-                        
-            # if('no_interpreter' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' in item and (item['payer'] != None and item['payer_company'] != None) \
-            #             and item['booking']['services'] == []):
-            #                 if(item['payer_company']['type'] != 'clinic' or item['payer_company']['type'] != 'patient'):
-            #                     folder = []
-            #                     for report in item['reports']:
-            #                         f = report['status'], item['id'],
-            #                         folder.append(f)
-            #                     if all('COMPLETED' not in i for i in folder):
-            #                         filtered.append(item)
-                                    
-            # if('no_payer' in reqBod and 'no_interpreter' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' in item and (item['payer'] == None or item['payer_company'] == None) \
-            #             and item['booking']['services'] == []):
-            #             filtered.append(item)
-                        
-            # if('no_payer' in reqBod and 'no_case' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' not in item and (item['payer'] == None or item['payer_company'] == None) \
-            #             and item['booking']['services'] != []):
-            #             filtered.append(item)
-                        
-            # if('no_case' in reqBod and 'no_interpreter' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' not in item and (item['payer'] != None or item['payer_company'] != None) \
-            #             and item['booking']['services'] == []):
-            #             filtered.append(item)
-                        
-            # if('no_payer' in reqBod and 'no_case' in reqBod and 'no_interpreter' in reqBod):
-            #     for item in serializeData:
-            #         if('claim_number' not in item and (item['payer'] == None or item['payer_company'] == None) \
-            #             and item['booking']['services'] == []):
-            #             filtered.append(item)
-            
-                
-            # sorted_filtered_f = sorted(filtered, key=lambda x: x['id'], reverse=True)
-            
-            # unique_ids_f = set()
-            # unique_filtered_f = []
-
-            # for item in sorted_filtered_f:
-            #     id_value = item['id']
-            #     if id_value not in unique_ids_f:
-            #         unique_ids_f.add(id_value)
-            #         unique_filtered_f.append(item)
-
-            # sorted_filtered_f = unique_filtered_f
-            
-            sorted_filtered_s = sorted(filters, key=lambda x: x.id, reverse=True)
-            
-            unique_ids_s = set()
-            unique_filtered_s = []
-
-            for item in sorted_filtered_s:
+            for item in sorted_filtered:
                 id_value = item.id
-                if id_value not in unique_ids_s:
-                    unique_ids_s.add(id_value)
-                    unique_filtered_s.append(item)
+                if id_value not in unique_ids:
+                    unique_ids.add(id_value)
+                    unique_filtered.append(item)
 
-            sorted_filtered_s = unique_filtered_s
-            # i = [tuple(item.items()) for item in sorted_filtered_f]
-            # j = [tuple(item.items()) for item in sorted_filtered_s]
-
-            # filt = [OrderedDict(item) for item in (i + j) if item not in i or item not in j]
-            
-            # sorted_filtered = sorted(filt, key=lambda x: x['id'], reverse=True)
-            
-            # unique_ids = set()
-            # unique_filtered = []
-
-            # for item in sorted_filtered:
-            #     id_value = item['id']
-            #     if id_value not in unique_ids:
-            #         unique_ids.add(id_value)
-            #         unique_filtered.append(item)
-
-            # sorted_filtered = unique_filtered
+            sorted_filtered = unique_filtered
                 
             paginator = cls.pagination_class()
-            paginated_two = paginator.paginate_queryset(sorted_filtered_s, request)
+            paginated_two = paginator.paginate_queryset(sorted_filtered, request)
             serializedfilt = serializer(paginated_two, many=True)
-            # return paginator.get_paginated_response(serializedfilt.__dict__['instance'])
             return paginator.get_paginated_response(serializedfilt.data)
         else:
             # No pagination parameters, return all results
