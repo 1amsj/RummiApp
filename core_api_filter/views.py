@@ -41,6 +41,7 @@ class ManageEventsMixin:
 
             filters = []
             queryset = queryset.order_by('-id')
+            #TYPE OF STATUS
             
             if 'delivered' in reqBod:
                 query_delivered = queryset.filter(
@@ -241,6 +242,60 @@ class ManageEventsMixin:
                     booking__services__isnull=True
                 )
                 filters.extend(query_no_payer_no_case_no_interpreter)
+
+            if 'pending' in reqBod:
+                query_pending_no_case = queryset.filter(
+                    ~Q(extra__key='claim_number') &
+                    (
+                        Q(payer_company__isnull=False) &
+                        Q(payer__isnull=False)
+                    ),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        ~Q(payer_company__type='patient')
+                    ),
+                    booking__services__isnull=False,
+                )
+                filters.extend(query_pending_no_case)
+                
+                query_pending_no_payer = queryset.filter(
+                    Q(payer__isnull=True) | Q(payer_company__isnull=True),
+                    Q(extra__key='claim_number'),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        Q(payer__isnull=True)
+                    ),
+                    booking__services__isnull=False
+                )
+                filters.extend(query_pending_no_payer)
+
+                query_pending_no_payer_no_interpreter = queryset.filter(
+                    Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
+                    Q(extra__key='claim_number'),
+                    booking__services__isnull=True
+                )
+                filters.extend(query_pending_no_payer_no_interpreter)
+
+                query_pending_no_payer_no_case = queryset.filter(
+                    Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
+                    ~Q(extra__key='claim_number'),
+                    booking__services__isnull=False
+                )
+                filters.extend(query_pending_no_payer_no_case)
+
+                query_pending_no_case_no_interpreter = queryset.filter(
+                    Q(payer_company__isnull=False) | Q(payer__isnull=False),
+                    ~Q(extra__key='claim_number'),
+                    booking__services__isnull=True
+                )
+                filters.extend(query_pending_no_case_no_interpreter)
+
+                query_pending_no_payer_no_case_no_interpreter = queryset.filter(
+                    Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
+                    ~Q(extra__key='claim_number'),
+                    booking__services__isnull=True
+                )
+                filters.extend(query_pending_no_payer_no_case_no_interpreter)
             
             sorted_filtered = sorted(filters, key=lambda x: x.id, reverse=True)
             
