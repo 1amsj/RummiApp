@@ -143,16 +143,11 @@ WSGI_APPLICATION = 'core_backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        # 'NAME': os.environ.get('DB_NAME', 'core_db'),
-        # 'USER': os.environ.get('DB_USER', 'core_user'),
-        # 'PASSWORD': os.environ.get('DB_PASSWORD', 'core_password'),
-        # 'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        # 'PORT': os.environ.get('DB_PORT', '5432'),
-        'NAME': 'core_db_',
-        'USER': 'postgres',
-        'PASSWORD': 'root',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'core_db'),
+        'USER': os.environ.get('DB_USER', 'core_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'core_password'),
+        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
         'OPTIONS': {
             'options': '-c client_encoding=utf8',
         },
