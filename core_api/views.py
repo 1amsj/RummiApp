@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Type, Union
 
 from django.db import models, transaction
@@ -781,12 +782,24 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             return Response(serialized.data)
 
         include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
+        recipientId = request.GET.get(ApiSpecialKeys.RECIPIENT_ID, False)
+        startDate = request.GET.get(ApiSpecialKeys.START_DATE, False)
+        endDate = request.GET.get(ApiSpecialKeys.END_DATE, False)
+
         query_params = prepare_query_params(request.GET)
 
-        serializer = BookingSerializer if include_events else BookingNoEventsSerializer
-
+        serializer = BookingSerializer if (include_events or recipientId or startDate) else BookingNoEventsSerializer
         queryset = serializer.get_default_queryset()
 
+        if recipientId:
+            queryset = queryset.filter(events__affiliates__recipient__user=recipientId)
+
+        if startDate and endDate:
+            startDate = startDate.split('T')[0]
+            endDate = endDate.split('T')[0]
+            queryset = queryset.filter(events__start_at__date__gte=startDate, 
+                                events__start_at__date__lte=endDate)
+        
         queryset = cls.apply_filters(queryset, query_params)
 
         serialized = serializer(queryset, many=True)
