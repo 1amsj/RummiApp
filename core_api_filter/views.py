@@ -170,6 +170,21 @@ class ManageEventsMixin:
                 
                 filters.extend(queryset_especific_booked)
                 
+            if 'pending' in reqBod:
+                query_pending_no_case = queryset.filter(
+                    ~Q(extra__key='claim_number') |
+                    (
+                        Q(payer_company__isnull=True) |
+                        Q(payer__isnull=True)
+                    ),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        (Q(extra__key='payer_company_type') & ~Q(extra__data='patient'))
+                    ),
+                    booking__services__isnull=True,
+                )
+                filters.extend(query_pending_no_case)
+            
             if 'no_case' in reqBod:
                 query_no_case = queryset.filter(
                     ~Q(extra__key='claim_number')
@@ -195,20 +210,23 @@ class ManageEventsMixin:
                 )
                 filters.extend(query_no_interpreter)
 
-            if 'pending' in reqBod:
-                query_pending_no_case = queryset.filter(
-                    ~Q(extra__key='claim_number') |
-                    (
-                        Q(payer_company__isnull=True) |
-                        Q(payer__isnull=True)
-                    ),
-                    (
-                        ~Q(payer_company__type='clinic') &
-                        (Q(extra__key='payer_company_type') & ~Q(extra__data='patient'))
-                    ),
-                    booking__services__isnull=True,
+            if 'no_followup' in reqBod:
+                query_no_followup = queryset.filter(
+                    Q(booking__isnull=False),
+                    Q(booking__children__gt=0)
                 )
-                filters.extend(query_pending_no_case)
+                
+                filters.extend(query_no_followup)
+                
+            if 'no_report' in reqBod:
+                query_no_report = queryset.annotate(
+                    has_unreported_reports=Count('reports', filter=Q(reports__status ='UNREPORTED')),
+                    reports_count=Count('reports', distinct=True)
+                ).filter(
+                    Q(reports_count=0) | Q(has_unreported_reports__gt=0)
+                )
+                
+                filters.extend(query_no_report)
             
             sorted_filtered = sorted(filters, key=lambda x: x.id, reverse=True)
             
