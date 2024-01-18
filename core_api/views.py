@@ -783,31 +783,23 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
         include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
         recipientId = request.GET.get(ApiSpecialKeys.RECIPIENT_ID, False)
-        date = request.GET.get(ApiSpecialKeys.DATE, False)
-
-        print(f"Recipient ID: {recipientId}")
-        print(f"Date: {date}")
+        startDate = request.GET.get(ApiSpecialKeys.START_DATE, False)
+        endDate = request.GET.get(ApiSpecialKeys.END_DATE, False)
 
         query_params = prepare_query_params(request.GET)
 
-        print(include_events)
-
-        serializer = BookingSerializer if (include_events or recipientId or date) else BookingNoEventsSerializer
+        serializer = BookingSerializer if (include_events or recipientId or startDate) else BookingNoEventsSerializer
         queryset = serializer.get_default_queryset()
-        
-        print("Booking IDs:", queryset.values_list('id', flat=True))
 
         if recipientId:
             queryset = queryset.filter(events__affiliates__recipient__user=recipientId)
-            print("Booking IDs:", queryset.values_list('id', flat=True))
 
-        if date:
-             date_with_time = datetime.fromisoformat(date.replace("Z", "+00:00"))
-             date_only = date_with_time.date()
-
-             queryset = queryset.filter(events__start_at__date=date_only)
-             print("Booking IDs:", queryset.values_list('id', flat=True))
-       
+        if startDate and endDate:
+            startDate = startDate.split('T')[0]
+            endDate = endDate.split('T')[0]
+            queryset = queryset.filter(events__start_at__date__gte=startDate, 
+                                events__start_at__date__lte=endDate)
+        
         queryset = cls.apply_filters(queryset, query_params)
 
         serialized = serializer(queryset, many=True)
