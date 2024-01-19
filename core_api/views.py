@@ -631,7 +631,7 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
         queryset = ProviderSerializer.get_default_queryset()
 
         if 'page' in request.GET or 'page_size' in request.GET:
-            queryset = queryset.order_by('-id')
+            queryset = queryset.order_by('user__first_name')
 
             # Apply pagination
             paginator = cls.pagination_class()
@@ -1090,7 +1090,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         queryset = serializer.get_default_queryset()
 
         if 'page' in request.GET or 'page_size' in request.GET:
-            queryset = queryset.order_by('-id')
+            queryset = queryset.order_by('name')
 
             # Apply pagination
             paginator = cls.pagination_class()
