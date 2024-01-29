@@ -267,7 +267,7 @@ class ManageEventsMixin:
                 
                 filters.extend(query_no_report)
             
-            sorted_filtered = sorted(filters, key=lambda x: x.id, reverse=True)
+            sorted_filtered = sorted(filters, key=lambda x: x.start_at, reverse=True)
             
             unique_ids = set()
             unique_filtered = []
