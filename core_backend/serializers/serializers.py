@@ -442,6 +442,7 @@ class AffiliationNoRecipientSerializer(generic_serializer(Affiliation)):
 
 class RecipientNoAffiliationSerializer(user_subtype_serializer(Recipient)):
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted(), default=[])
+    notes = NoteSerializer(many=True, default=[])
 
     class Meta:
         model = Recipient
