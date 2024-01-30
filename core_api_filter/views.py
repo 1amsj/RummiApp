@@ -5,7 +5,7 @@ from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
 from core_api.views import StandardResultsSetPagination, basic_view_manager
-from core_backend.models import Event, User
+from core_backend.models import Event, ExtraQuerySet, User
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
@@ -40,7 +40,7 @@ class ManageEventsMixin:
                 queryset = queryset.filter(booking__business__name=business_name)
 
             filters = []
-            queryset = queryset.order_by('-id')
+            queryset = queryset.order_by('-start_at')
             #TYPE OF STATUS
             
             if 'delivered' in reqBod:
@@ -74,7 +74,7 @@ class ManageEventsMixin:
                     Q(has_completed_authorizations_pending__gt=0, has_completed_reports__gt=0)
                 )
                 
-                filters.extend(query_delivered)
+                filters.extend(query_delivered.values_list('id', flat=True))
             
             if 'override' in reqBod:
                 query_override = queryset.filter(
@@ -95,7 +95,7 @@ class ManageEventsMixin:
                     Q(has_completed_authorizations__gt=0, has_no_completed_reports=0)
                 )
                 
-                filters.extend(query_override)
+                filters.extend(query_override.values_list('id', flat=True))
                 
             if 'authorized' in reqBod:
                 query_authorized = queryset.filter(
@@ -109,7 +109,7 @@ class ManageEventsMixin:
                     Q(has_completed_authorizations__gt=0, has_no_completed_reports__gt=0,)
                 )
                 
-                filters.extend(query_authorized)
+                filters.extend(query_authorized.values_list('id', flat=True))
                 
             if 'booked' in reqBod:
                 query_booked = queryset.filter(
@@ -149,7 +149,7 @@ class ManageEventsMixin:
                     Q(payer__isnull=True)
                 ).distinct()
                 
-                filters.extend(query_booked)
+                filters.extend(query_booked.values_list('id', flat=True))
 
                 queryset_especific_booked = queryset.filter(
                     Q(extra__key='claim_number') &
@@ -168,7 +168,7 @@ class ManageEventsMixin:
                     Q(reports__status='COMPLETED')
                 )
                 
-                filters.extend(queryset_especific_booked)
+                filters.extend(queryset_especific_booked.values_list('id', flat=True))
                 
             if 'pending' in reqBod:
                 query_pending_no_case = queryset.filter(
@@ -183,7 +183,7 @@ class ManageEventsMixin:
                     ),
                     booking__services__isnull=False,
                 )
-                filters.extend(query_pending_no_case)
+                filters.extend(query_pending_no_case.values_list('id', flat=True))
 
                 query_pending_no_payer = queryset.filter(
                     Q(payer__isnull=True) | Q(payer_company__isnull=True),
@@ -194,41 +194,41 @@ class ManageEventsMixin:
                     ),
                     booking__services__isnull=False
                 )
-                filters.extend(query_pending_no_payer)
+                filters.extend(query_pending_no_payer.values_list('id', flat=True))
 
                 query_pending_no_payer_no_interpreter = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     Q(extra__key='claim_number'),
                     booking__services__isnull=True
                 )
-                filters.extend(query_pending_no_payer_no_interpreter)
+                filters.extend(query_pending_no_payer_no_interpreter.values_list('id', flat=True))
 
                 query_pending_no_payer_no_case = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     ~Q(extra__key='claim_number'),
                     booking__services__isnull=False
                 )
-                filters.extend(query_pending_no_payer_no_case)
+                filters.extend(query_pending_no_payer_no_case.values_list('id', flat=True))
 
                 query_pending_no_case_no_interpreter = queryset.filter(
                     Q(payer_company__isnull=False) | Q(payer__isnull=False),
                     ~Q(extra__key='claim_number'),
                     booking__services__isnull=True
                 )
-                filters.extend(query_pending_no_case_no_interpreter)
+                filters.extend(query_pending_no_case_no_interpreter.values_list('id', flat=True))
 
                 query_pending_no_payer_no_case_no_interpreter = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     ~Q(extra__key='claim_number'),
                     booking__services__isnull=True
                 )
-                filters.extend(query_pending_no_payer_no_case_no_interpreter)
+                filters.extend(query_pending_no_payer_no_case_no_interpreter.values_list('id', flat=True))
             
             if 'no_case' in reqBod:
                 query_no_case = queryset.filter(
                     ~Q(extra__key='claim_number')
                 )
-                filters.extend(query_no_case)
+                filters.extend(query_no_case.values_list('id', flat=True))
 
             if 'no_payer' in reqBod:
                 query_no_payer = queryset.filter(
@@ -241,13 +241,13 @@ class ManageEventsMixin:
                         (Q(extra__key='payer_company_type') & ~Q(extra__data='patient'))
                     ),
                 )
-                filters.extend(query_no_payer)
+                filters.extend(query_no_payer.values_list('id', flat=True))
 
             if 'no_interpreter' in reqBod:
                 query_no_interpreter = queryset.filter(
                     booking__services__isnull=True,
                 )
-                filters.extend(query_no_interpreter)
+                filters.extend(query_no_interpreter.values_list('id', flat=True))
 
             if 'no_followup' in reqBod:
                 query_no_followup = queryset.filter(
@@ -255,7 +255,7 @@ class ManageEventsMixin:
                     Q(booking__children__gt=0)
                 )
                 
-                filters.extend(query_no_followup)
+                filters.extend(query_no_followup.values_list('id', flat=True))
                 
             if 'no_report' in reqBod:
                 query_no_report = queryset.annotate(
@@ -265,25 +265,22 @@ class ManageEventsMixin:
                     Q(reports_count=0) | Q(has_unreported_reports__gt=0)
                 )
                 
-                filters.extend(query_no_report)
-            
-            sorted_filtered = sorted(filters, key=lambda x: x.id, reverse=True)
-            
+                filters.extend(query_no_report.values_list('id', flat=True))
+       
             unique_ids = set()
             unique_filtered = []
 
-            for item in sorted_filtered:
-                id_value = item.id
+            for item in filters:
+                id_value = item
                 if id_value not in unique_ids:
                     unique_ids.add(id_value)
                     unique_filtered.append(item)
 
             sorted_filtered = unique_filtered
-
-            # Aqui hacer filtrado de sorted_filtered con la etiqueta del front (filtrado con Django Rest Framework - e.g; views.py line 795)
+            filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered).order_by('-start_at')
                 
             paginator = cls.pagination_class()
-            paginated_two = paginator.paginate_queryset(sorted_filtered, request)
+            paginated_two = paginator.paginate_queryset(filterQueryset, request)
             serializedfilt = serializer(paginated_two, many=True)
             return paginator.get_paginated_response(serializedfilt.data)
         else:
