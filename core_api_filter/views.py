@@ -279,6 +279,8 @@ class ManageEventsMixin:
                     unique_filtered.append(item)
 
             sorted_filtered = unique_filtered
+
+            # Aqui hacer filtrado de sorted_filtered con la etiqueta del front (filtrado con Django Rest Framework - e.g; views.py line 795)
                 
             paginator = cls.pagination_class()
             paginated_two = paginator.paginate_queryset(sorted_filtered, request)

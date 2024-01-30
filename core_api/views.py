@@ -878,10 +878,14 @@ class ManageEventsMixin:
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
 
-         # Check for pagination parameters
-        if 'page' in request.GET or 'page_size' in request.GET:
-            queryset = queryset.order_by('-id')
+        # # if sorting sortear
+        # if 'sorting' in request.GET:
+        #     # apply sorting logic
+        # else:
+        #     queryset = queryset.order_by('-id')
 
+        # Check for pagination parameters
+        if 'page' in request.GET or 'page_size' in request.GET:
             # Apply pagination
             paginator = cls.pagination_class()
             paginated_queryset = paginator.paginate_queryset(queryset, request)
