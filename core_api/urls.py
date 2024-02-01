@@ -40,6 +40,7 @@ urlpatterns = [
     path('token/', csrf_exempt(views.CustomTokenObtainPairView.as_view()), name='token_obtain_pair'),
     path('token/refresh/', csrf_exempt(TokenRefreshView.as_view()), name='token_refresh'),
     path('register/', views.register_user, name='auth_register'),
+    path('email/', csrf_exempt(views.send_email), name='send_email'),
     path('test/', views.test_end_point, name='test'),
     path('version/', views.get_version, name='test'),
 
