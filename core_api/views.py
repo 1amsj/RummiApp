@@ -52,7 +52,9 @@ from core_backend.serializers.serializers_update import AuthorizationUpdateSeria
 from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
-
+from django.core.mail import BadHeaderError, send_mail
+from django.http import HttpResponse, JsonResponse
+from django.conf import settings
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -1482,3 +1484,21 @@ class ManageOffers(basic_view_manager(Offer, OfferSerializer)):
         serializer.is_valid(raise_exception=True)
         serializer.update(offer, business_name)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['POST'])
+@transaction.atomic
+def send_email(request):
+    subject = request.data['subject']
+    message = request.data['body']
+    from_email = settings.EMAIL_HOST_USER
+    recipient = [request.data['recipient']]
+    if subject and message and from_email:
+        try:
+            send_mail(subject, message, from_email, recipient)
+        except BadHeaderError:
+            return JsonResponse({'error': 'Invalid header found.'}, status=400)
+        return HttpResponse(200)
+    else:
+        # In reality we'd use a form class
+        # to get proper validation errors.
+        return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
