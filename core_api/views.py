@@ -53,8 +53,7 @@ from core_backend.services.concord.concord_interfaces import FaxPushNotification
 from core_backend.services.core_services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
 from django.core.mail import BadHeaderError, send_mail
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 
 class CustomTokenObtainPairView(TokenObtainPairView):
