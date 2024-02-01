@@ -277,7 +277,15 @@ class ManageEventsMixin:
                     unique_filtered.append(item)
 
             sorted_filtered = unique_filtered
-            filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered).order_by('-start_at')
+            filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered).order_by('-id')
+
+            if 'order_to_sort' in request.GET and 'field_to_sort' in request.GET:
+                order_to_sort = request.GET.get('order_to_sort')
+                field_to_sort = request.GET.get('field_to_sort')
+                if order_to_sort == 'asc':
+                    filterQueryset = filterQueryset.order_by(field_to_sort)
+                elif order_to_sort == 'desc':
+                    filterQueryset = filterQueryset.order_by('-' + field_to_sort)
                 
             paginator = cls.pagination_class()
             paginated_two = paginator.paginate_queryset(filterQueryset, request)
