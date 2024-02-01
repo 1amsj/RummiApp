@@ -29,7 +29,6 @@ class ManageEventsMixin:
 
         include_booking = request.GET.get(ApiSpecialKeys.INCLUDE_BOOKING, False)
         query_params = prepare_query_params(request.GET)
-        print(request)
 
         serializer = cls.serializer_class if include_booking else cls.no_booking_serializer_class
         
@@ -278,8 +277,8 @@ class ManageEventsMixin:
                     unique_filtered.append(item)
 
             sorted_filtered = unique_filtered
-            filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered).order_by('-start_at')
-
+            filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered)
+            
             if 'order_to_sort' in request.GET and 'field_to_sort' in request.GET:
                 order_to_sort = request.GET.get('order_to_sort')
                 field_to_sort = request.GET.get('field_to_sort')
