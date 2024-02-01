@@ -277,8 +277,8 @@ class ManageEventsMixin:
                     unique_filtered.append(item)
 
             sorted_filtered = unique_filtered
-            filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered)
-            
+            filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered).order_by('-id')
+
             if 'order_to_sort' in request.GET and 'field_to_sort' in request.GET:
                 order_to_sort = request.GET.get('order_to_sort')
                 field_to_sort = request.GET.get('field_to_sort')
