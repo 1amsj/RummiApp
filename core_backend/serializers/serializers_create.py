@@ -1,5 +1,8 @@
+from queue import Queue
+import hashlib
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
+from django.forms import ValidationError
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, Event, \
@@ -187,6 +190,7 @@ class EventCreateSerializer(extendable_serializer(Event)):
     payer = serializers.PrimaryKeyRelatedField(queryset=Payer.objects.all(), required=False, allow_null=True)
     payer_company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all().not_deleted(), required=False, allow_null=True)
     requester = serializers.PrimaryKeyRelatedField(queryset=Requester.objects.all())
+    events_queue = Queue()
 
     class Meta:
         model = Event
@@ -197,6 +201,28 @@ class EventCreateSerializer(extendable_serializer(Event)):
         affiliates = data.pop('affiliates', [])
         agents = data.pop('agents', [])
         extras = data.pop('extra', {})
+        
+        formatted_date = data['start_at'].strftime("%Y-%m-%d %H:%M")
+        
+        key = f"{formatted_date}-{affiliates}"
+        
+        if self.events_queue.empty():
+            #FIRST ELEMENT
+            self.events_queue.put(key)
+            event = Event.objects.create(**data)
+
+        else:  
+            first_key = self.events_queue.queue[0]
+
+            if first_key == key:
+                #DUPLICATE
+                raise Exception("Err")
+            else:
+                #NOT DUPLICATE
+                self.events_queue.put(key)
+                event = Event.objects.create(**data)
+
+                return event
 
         event = Event.objects.create(**data)
         if affiliates:
