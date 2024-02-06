@@ -1,5 +1,5 @@
+import json
 from queue import Queue
-import hashlib
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from django.forms import ValidationError
@@ -202,9 +202,10 @@ class EventCreateSerializer(extendable_serializer(Event)):
         agents = data.pop('agents', [])
         extras = data.pop('extra', {})
         
-        formatted_date = data['start_at'].strftime("%Y-%m-%d %H:%M")
+        formatted_date_start = data['start_at'].strftime("%Y-%m-%d %H:%M")
+        formatted_date_end = data['end_at'].strftime("%Y-%m-%d %H:%M")
         
-        key = f"{formatted_date}-{affiliates}"
+        key = f"{formatted_date_start}|{formatted_date_end}|{affiliates}"
         
         if self.events_queue.empty():
             #FIRST ELEMENT
@@ -212,19 +213,28 @@ class EventCreateSerializer(extendable_serializer(Event)):
             event = Event.objects.create(**data)
 
         else:  
-            first_key = self.events_queue.queue[0]
+            first_key = self.events_queue.queue[-1]
+            
+            first_key_parts = first_key.split("|")
+    
+            first_start = first_key_parts[0]
+            first_end = first_key_parts[1]
+            first_affiliates = first_key_parts[2]
 
-            if first_key == key:
-                #DUPLICATE
-                raise Exception("Err")
+            if (formatted_date_start < first_end and formatted_date_end > first_start and affiliates == first_affiliates):
+                # Match
+                
+                raise Exception("Both events match")
+                
+            elif first_key == key:
+                # Same Event
+                
+                raise Exception("Duplicate")
             else:
                 #NOT DUPLICATE
                 self.events_queue.put(key)
                 event = Event.objects.create(**data)
 
-                return event
-
-        event = Event.objects.create(**data)
         if affiliates:
             event.affiliates.add(*affiliates)
         if agents:
