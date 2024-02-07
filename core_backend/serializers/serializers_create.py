@@ -212,14 +212,6 @@ class EventCreateSerializer(extendable_serializer(Event)):
             #OVERLAP
             raise Exception("Overlapping event")
 
-        elif Event.objects.filter(
-            start_at__lt=formatted_date_end,
-            end_at__gt=formatted_date_start,
-            affiliates=affiliates[0].id
-        ).exists():
-            #DUPLICATE
-            raise Exception("Duplicate")
-
         else:
             event = Event.objects.create(**data)
 
