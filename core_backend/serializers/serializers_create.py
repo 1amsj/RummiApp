@@ -1,6 +1,5 @@
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
-from django.forms import ValidationError
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, Event, \
