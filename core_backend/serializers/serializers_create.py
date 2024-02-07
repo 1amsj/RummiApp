@@ -211,8 +211,7 @@ class EventCreateSerializer(extendable_serializer(Event)):
             #OVERLAP
             raise Exception("Overlapping event")
 
-        else:
-            event = Event.objects.create(**data)
+        event = Event.objects.create(**data)
 
         if affiliates:
             event.affiliates.add(*affiliates)
