@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Type, Union
 
 from django.db import models, transaction
@@ -19,35 +18,35 @@ from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_event, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_comapany_relationships_wrap, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_events_bulk, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_company_relationships_bulk, handle_events_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, Contact, Event, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRelationship, Contact, Event, \
     Expense, ExtraQuerySet, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
     Service, \
     ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
-    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, \
+    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
-    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, ExpenseCreateSerializer, \
+    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, \
     LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
     OperatorCreateSerializer, \
     PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
-    CategoryUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
+    CategoryUpdateSerializer, CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
     OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceAreaUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
@@ -1123,7 +1122,21 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         serializer = CompanyCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         company_id = serializer.create()
-        return Response(company_id, status=status.HTTP_201_CREATED)
+
+        response = {"company_id": company_id}
+
+        company_relationships_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATALIST, None)
+
+        print(company_relationships_datalist)
+
+        if company_relationships_datalist:
+            company_relationship_ids = create_comapany_relationships_wrap(
+                company_relationships_datalist,
+                company_id=company_id,  
+            )
+            response["company_relationship_ids"] = company_relationship_ids
+
+        return Response(response, status=status.HTTP_201_CREATED)
 
     @staticmethod
     @transaction.atomic
@@ -1134,6 +1147,15 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(company)
+
+        company_relationships_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATALIST, None)
+
+        if company_relationships_datalist:
+            handle_company_relationships_bulk(
+                company_relationships_datalist,
+                company_id=company,
+            )
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @staticmethod
@@ -1496,3 +1518,47 @@ def send_email(request):
         # In reality we'd use a form class
         # to get proper validation errors.
         return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
+
+class ManageCompanyRelationships(basic_view_manager(CompanyRelationship, CompanyRelationshipSerializer)):
+    @classmethod
+    @expect_does_not_exist(CompanyRelationship)
+    def get(cls, request, company_relationship_id=None):
+        if company_relationship_id:
+            company_relationship = CompanyRelationship.objects.all().get(id=company_relationship_id)
+            serialized = CompanyRelationshipSerializer(company_relationship)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = CompanyRelationshipSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = CompanyRelationshipSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    def post(request):
+        data = request.data
+        serializer = CompanyRelationshipCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        company_relationship_id = serializer.create()
+        return Response(company_relationship_id, status=status.HTTP_201_CREATED)
+
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(CompanyRelationship)
+    def put(request, company_relationship_id=None):
+        company_relationship = CompanyRelationship.objects.get(id=company_relationship_id)
+        serializer = CompanyRelationshipUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(company_relationship)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(CompanyRelationship)
+    def delete(request, company_relationship_id=None):
+        CompanyRelationship.objects.get(id=company_relationship_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
