@@ -1,12 +1,11 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, Event, Expense, Language, \
+from core_backend.models import Agent, Authorization, Booking, Category, Company, CompanyRelationship, Event, Expense, Language, \
     Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
-from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyWithParentSerializer, \
+from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyRelationshipSerializer, CompanyWithParentSerializer, \
     ContactSerializer, LocationSerializer, NoteSerializer
-from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, \
-    EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, \
-    RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer,ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
+from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRelationshipCreateSerializer, \
+    EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
@@ -112,6 +111,12 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
         NoteSerializer.sync_notes(
             instance,
             notes_data=data.pop('notes')
+        )
+
+# TODO finish this
+        CompanyRelationshipSerializer.sync_company_relationships(
+            instance,
+            company_relationships_data=data.pop('company_relationships')
         )
 
         for (k, v) in data.items():
@@ -309,3 +314,11 @@ class ReportUpdateSerializer(ReportCreateSerializer):
         instance.save()
 
         manage_extra_attrs(business_name, instance, extras)
+
+class CompanyRelationshipUpdateSerializer(CompanyRelationshipCreateSerializer):
+    def update(self, instance: CompanyRelationship, validated_data=None):
+        data = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+        

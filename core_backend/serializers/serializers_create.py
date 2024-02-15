@@ -2,11 +2,11 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, Event, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRelationship, Event, \
     Expense, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
-    CategorySerializer, \
+    CategorySerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
     ContactSerializer, ExpenseSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, \
@@ -150,6 +150,8 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
         recipients_data = data.pop('recipients', None)
         requesters_data = data.pop('requesters', None)
 
+        company_relationships_data = data.pop('company_relationships', None)
+
         company = Company.objects.create(**data)
 
         if agents_data is not None:
@@ -176,6 +178,11 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
         if notes_data:
             note_instances = NoteSerializer.create_instances(notes_data)
             company.notes.add(*note_instances)
+
+#  TODO finish this
+        if company_relationships_data:
+            company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_data)
+            company.company_relationships.add(*company_relationship_instances)
 
         return company.id
 
@@ -479,3 +486,16 @@ class ReportCreateSerializer(extendable_serializer(Report)):
         manage_extra_attrs(business, report, extras)
 
         return report.id
+
+class CompanyRelationshipCreateSerializer(generic_serializer(CompanyRelationship)):
+    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all())
+
+    class Meta:
+        model = CompanyRelationship
+        fields = '__all__'
+    
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        company_relationship = CompanyRelationship.objects.create(**data)
+        
+        return company_relationship.id
