@@ -3,14 +3,14 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Event, Report, Service, ServiceArea
+from core_backend.models import CompanyRelationship, Event, Report, Service, ServiceArea
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
-    BookingCreateSerializer, \
+    BookingCreateSerializer, CompanyRelationshipCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
     ProviderCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, \
     ServiceCreateSerializer, ServiceAreaCreateSerializer, UserCreateSerializer
-from core_backend.serializers.serializers_update import EventUpdateSerializer, ProviderUpdateSerializer, \
+from core_backend.serializers.serializers_update import CompanyRelationshipUpdateSerializer, EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, ReportUpdateSerializer, \
     ServiceUpdateSerializer, ServiceAreaUpdateSerializer, UserUpdateSerializer
 
@@ -281,6 +281,14 @@ def create_service_area(data, provider_id):
     serializer.is_valid(raise_exception=True)
     return serializer.create()
 
+def create_company_relationship(data, company_id):
+    if not data.get('company'):
+        data['company'] = company_id
+
+    serializer = CompanyRelationshipCreateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    return serializer.create()
+
 
 @transaction.atomic
 def create_services_wrap(datalist, business_name, provider_id):
@@ -327,6 +335,28 @@ def create_service_areas_wrap(datalist, provider_id):
     
     return service_area_ids
 
+
+@transaction.atomic
+def create_comapany_relationships_wrap(datalist, company_id):
+    company_relationship_ids = []
+    company_relationship_errors = []
+    for company_relationship_data in datalist:
+        try:
+            company_relationship_data['company'] = company_id
+            serializer = CompanyRelationshipCreateSerializer(data=company_relationship_data)
+            serializer.is_valid(raise_exception=True)
+            company_relationship_id = serializer.create()
+            company_relationship_ids.append(company_relationship_id)
+        
+        except ValidationError as exc:
+            company_relationship_errors.append(exc.detail)
+    
+    if company_relationship_errors:
+        raise ValidationError({
+            ApiSpecialKeys.COMPANY_RELATIONSHIP_DATALIST: company_relationship_errors
+        })
+    
+    return company_relationship_ids
 
 # Update
 @transaction.atomic
@@ -405,6 +435,19 @@ def update_service_area_wrap(data, provider_id, service_area_instance):
         # Wrap errors
         raise ValidationError({
             ApiSpecialKeys.SERVICE_AREA_DATALIST: exc.detail,
+        })
+
+@transaction.atomic
+def update_company_relationship_wrap(data, company_id, company_relationship_instance):
+    try:
+        data['company'] = company_id
+        serializer = CompanyRelationshipUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(company_relationship_instance)
+
+    except ValidationError as exc:
+        raise ValidationError({
+            ApiSpecialKeys.COMPANY_RELATIONSHIP_DATALIST: exc.detail,
         })
 
 
@@ -656,3 +699,49 @@ def handle_service_areas_bulk(datalist: list, provider_id):
         raise ValidationError(service_area_errors)
     
     return service_area_ids
+
+@transaction.atomic
+def handle_company_relationships_bulk(datalist: list, company_id):
+    """
+    Create, update or delete the company relationships in bulk, depending on whether the payload includes an ID or not
+    """
+    # TODO It is noteworthy that currently this is not a true bulk operation.
+    #  Also, company relationships get created even if an error was found before,
+    #  this might make the transaction rollback expensive.
+
+    company_relationship_ids = []
+    company_relationship_errors = []
+    error_found = False
+
+    for data in datalist:
+        company_relationship_id = data.pop('id', None)
+        deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if not company_relationship_id and deleted_flag:
+            raise BadRequestException('Company Relationship flagged as deleted but no ID provided')
+        try:
+            if not company_relationship_id:
+                company_relationship_id = create_company_relationship(
+                    data,
+                    company_id
+                )
+            elif not deleted_flag:
+                update_company_relationship_wrap(
+                    data,
+                    company_id,
+                    company_relationship_instance=CompanyRelationship.objects.get(id=company_relationship_id)
+                )
+            else:
+                CompanyRelationship.objects.get(id=company_relationship_id).delete()
+            
+            company_relationship_errors.append({})
+            company_relationship_ids.append(company_relationship_id)
+        
+        except ValidationError as exc:
+            error_found = True
+            company_relationship_errors.append(exc.detail)
+    
+    if error_found:
+        raise ValidationError(company_relationship_errors)
+    
+    return company_relationship_ids
