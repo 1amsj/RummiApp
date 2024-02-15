@@ -821,3 +821,14 @@ class ExternalApiToken(models.Model):
         self.expiration_timestamp = 0
         self.scope = None
         self.save()
+
+class CompanyRelationship(SoftDeletableModel, HistoricalModel):
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_relationships')
+    relationship = models.TextField(_('relationship'), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _('company relationship')
+        verbose_name_plural = _('company relationships')
+
+    def __str__(self):
+        return F"{self.company} has a {self.relationship} relationship with {self.id}"
