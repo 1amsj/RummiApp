@@ -52,7 +52,7 @@ from core_backend.serializers.serializers_update import AuthorizationUpdateSeria
 from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
-from django.core.mail import BadHeaderError, send_mail
+from django.core.mail import BadHeaderError, send_mail, EmailMultiAlternatives
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 
@@ -1488,7 +1488,9 @@ def send_email(request):
     recipient = [request.data['recipient']]
     if subject and message and from_email:
         try:
-            send_mail(subject, message, from_email, recipient)
+            msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
+            msg.attach_alternative(message, "text/html")
+            msg.send()
         except BadHeaderError:
             return JsonResponse({'error': 'Invalid header found.'}, status=400)
         return HttpResponse(200)
