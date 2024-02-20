@@ -788,7 +788,7 @@ class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
 
 
 class Report(HistoricalModel, ExtendableModel, SoftDeletableModel):
-    status = models.CharField(max_length=32, default='Unreported')
+    status = models.CharField(max_length=128, default='Unreported')
     arrive_at = models.DateTimeField(_('Arrival Time'), null=True, blank=True)
     start_at = models.DateTimeField(_('Start Time'), null=True, blank=True)
     end_at = models.DateTimeField(_('End Time'), null=True, blank=True)
