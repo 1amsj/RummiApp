@@ -221,7 +221,8 @@ class Company(SoftDeletableModel, HistoricalModel):
     type = models.CharField(_('type'), max_length=128)
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
-    parent_company = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE)
+    parent_company = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE, related_name = 'children_companies')
+    relationships = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE, related_name = 'related_companies')
 
     class Meta:
         ordering = ['name']
@@ -239,7 +240,18 @@ class Company(SoftDeletableModel, HistoricalModel):
         self.notes.all().delete()
         pass
 
+class CompanyRelationship(SoftDeletableModel, HistoricalModel):
+    company_from = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_relationship_from', blank=True, null=True)
+    company_to = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_relationship_to', blank=True, null=True)
+    relationship = models.TextField(_('relationship'), null=True, blank=True)
 
+    class Meta:
+        unique_together = ('company_from', 'company_to', 'relationship')
+        verbose_name = _('company relationship')
+        verbose_name_plural = _('company relationships')
+
+    def __str__(self):
+        return F"{self.company_to} has a {self.relationship} relationship with {self.company_from}"
 class Language(SoftDeletableModel, HistoricalModel):
     alpha2 = models.CharField(_('alpha2'), max_length=2, null=True, blank=True)
     alpha3 = models.CharField(_('alpha3'), max_length=6)
@@ -822,13 +834,3 @@ class ExternalApiToken(models.Model):
         self.scope = None
         self.save()
 
-class CompanyRelationship(SoftDeletableModel, HistoricalModel):
-    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_relationships')
-    relationship = models.TextField(_('relationship'), null=True, blank=True)
-
-    class Meta:
-        verbose_name = _('company relationship')
-        verbose_name_plural = _('company relationships')
-
-    def __str__(self):
-        return F"{self.company} has a {self.relationship} relationship with {self.id}"
