@@ -155,7 +155,7 @@ class CompanySerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
-    company_relationships = CompanyRelationshipSerializer(many=True, default=[])
+    relationships = CompanyRelationshipSerializer(many=True, default=[])
 
     class Meta:
         model = Company
@@ -181,7 +181,7 @@ class CompanySerializer(BaseSerializer):
                     queryset=NoteSerializer.get_default_queryset()
                 ),
                 Prefetch(
-                    'company_relationships',
+                    'relationships',
                     queryset=CompanyRelationshipSerializer.get_default_queryset()
                 ),
             )
