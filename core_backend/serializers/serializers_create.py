@@ -177,7 +177,7 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
             note_instances = NoteSerializer.create_instances(notes_data)
             company.notes.add(*note_instances)
 
-        return company.id
+        return company
 
 class CompanyRateCreateSerializer(CompanyRateSerializer):
     business = BusinessField()
