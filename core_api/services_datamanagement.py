@@ -3,14 +3,14 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import CompanyRelationship, Event, Report, Service, ServiceArea
+from core_backend.models import Agent, CompanyRelationship, Event, Report, Service, ServiceArea
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
-    BookingCreateSerializer, CompanyRelationshipCreateSerializer, \
+    BookingCreateSerializer, CompanyCreateSerializer, CompanyRelationshipCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
     ProviderCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, \
     ServiceCreateSerializer, ServiceAreaCreateSerializer, UserCreateSerializer
-from core_backend.serializers.serializers_update import CompanyRelationshipUpdateSerializer, EventUpdateSerializer, ProviderUpdateSerializer, \
+from core_backend.serializers.serializers_update import AgentUpdateSerializer, CompanyRelationshipUpdateSerializer, EventUpdateSerializer, ProviderUpdateSerializer, \
     RecipientUpdateSerializer, ReportUpdateSerializer, \
     ServiceUpdateSerializer, ServiceAreaUpdateSerializer, UserUpdateSerializer
 
@@ -313,6 +313,7 @@ def create_services_wrap(datalist, business_name, provider_id):
 
     return service_ids
 
+
 @transaction.atomic
 def create_service_areas_wrap(datalist, provider_id):
     service_area_ids = []
@@ -335,6 +336,11 @@ def create_service_areas_wrap(datalist, provider_id):
     
     return service_area_ids
 
+def create_company(data):
+    serializer = CompanyCreateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    company = serializer.create()
+    return company.id
 
 @transaction.atomic
 def create_comapany_relationships_wrap(datalist, company_id):
@@ -364,6 +370,24 @@ def update_user(data, user_instance):
     serializer = UserUpdateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
     serializer.update(user_instance)
+
+
+@transaction.atomic
+def update_agent_wrap(data, business_name, agent_instance):
+    if not business_name:
+        raise BusinessNotProvidedException
+
+    # Handle provider role update
+    try:
+        serializer = AgentUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(agent_instance, business_name)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.PROVIDER_DATA: exc.detail,
+        })
 
 
 @transaction.atomic
@@ -699,6 +723,56 @@ def handle_service_areas_bulk(datalist: list, provider_id):
         raise ValidationError(service_area_errors)
     
     return service_area_ids
+
+@transaction.atomic
+def handle_agents_bulk(datalist: list, business_name):
+    """
+    Create, update or delete the agents in bulk, depending on whether the payload includes an ID or not
+    """
+    # TODO It is noteworthy that currently this is not a true bulk operation.
+    #  Also, agents get created even if an error was found before,
+    #  this might make the transaction rollback expensive.
+
+    agents_ids = []
+    agents_errors = []
+    error_found = False
+
+    for data in datalist:
+        agent_id = data.pop('id', None)
+        deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if not agent_id and deleted_flag:
+            raise BadRequestException('Agent flagged as deleted but no ID provided')
+
+        try:
+            if not agent_id:
+                agent_id = create_agent_wrap(
+                    data,
+                    business_name,
+                    user_id=data['user']
+                )
+            elif not deleted_flag:
+                update_agent_wrap(
+                    data,
+                    agent_id,
+                    agent_instance=Agent.objects.get(id=agent_id)
+                )
+            else:
+                Agent.objects.get(id=agent_id).delete()
+            
+            # Append empty error to object so that the indexes of the errors correspond to the indexes of the data
+            agents_errors.append({})
+            agents_ids.append(agent_id)
+        
+        except ValidationError as exc:
+            error_found = True
+            agents_errors.append(exc.detail)
+    
+    if error_found:
+        raise ValidationError(agents_errors)
+    
+    return agents_ids
+
 
 @transaction.atomic
 def handle_company_relationships_bulk(datalist: list, company_id):

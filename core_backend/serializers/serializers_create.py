@@ -180,11 +180,11 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
             company.notes.add(*note_instances)
 
 #  TODO finish this
-        if company_relationships_data:
-            company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_data)
-            company.company_relationships.add(*company_relationship_instances)
+        # if company_relationships_data:
+        #     company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_data)
+        #     company.company_relationships.add(*company_relationship_instances)
 
-        return company.id
+        return company
 
 
 class EventCreateSerializer(extendable_serializer(Event)):
@@ -204,8 +204,22 @@ class EventCreateSerializer(extendable_serializer(Event)):
         affiliates = data.pop('affiliates', [])
         agents = data.pop('agents', [])
         extras = data.pop('extra', {})
+        
+        formatted_date_start = data['start_at'].strftime("%Y-%m-%d %H:%M")
+        formatted_date_end = data['end_at'].strftime("%Y-%m-%d %H:%M")
+        
+        overlapping_events = Event.objects.filter(
+            start_at__lte=formatted_date_end,
+            end_at__gte=formatted_date_start,
+            affiliates=affiliates[0].id
+        )
+
+        if overlapping_events.exists():
+            #OVERLAP
+            raise Exception("Overlapping event")
 
         event = Event.objects.create(**data)
+
         if affiliates:
             event.affiliates.add(*affiliates)
         if agents:

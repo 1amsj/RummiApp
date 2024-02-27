@@ -26,6 +26,7 @@ class ApiSpecialKeys(str, Enum):
     # Appended data
     AFFILIATION_DATALIST = '_affiliation_datalist'
     AGENT_DATA = '_agent_data'
+    AGENTS_DATA = '_agents_data'
     BUSINESS = '_business'
     EVENT_DATALIST = '_event_datalist'
     OFFER_DATALIST = '_offer_datalist'

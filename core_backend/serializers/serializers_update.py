@@ -159,6 +159,29 @@ class LanguageUpdateSerializer(LanguageCreateSerializer):
         instance.save()
 
 
+class AgentUpdateSerializer(extendable_serializer(Agent)):
+    user = serializers.ReadOnlyField()
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
+    role = serializers.StringRelatedField()
+
+    class Meta:
+        model = Agent
+        fields = '__all__'
+
+    def update(self, instance: Agent, business_name, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        companies = data.pop('companies', [])
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.companies, companies)
+
+        manage_extra_attrs(business_name, instance, extras)
+
+
 class ProviderUpdateSerializer(extendable_serializer(Provider)):
     user = serializers.ReadOnlyField()
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
