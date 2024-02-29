@@ -1121,7 +1121,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     def post(request): 
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
-        company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, None)
+        company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
         company_id = create_company(request.data)
 
@@ -1146,6 +1146,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     def put(request, company_id=None):
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
@@ -1155,14 +1156,8 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         if (agents_data.__len__() > 0):
             handle_agents_bulk(agents_data, company_id, business)
 
-
-        company_relationships_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATALIST, None)
-
-        if company_relationships_datalist:
-            handle_company_relationships_bulk(
-                company_relationships_datalist,
-                company_id=company,
-            )
+        if (company_relationships_data.__len__() > 0):
+            handle_company_relationships_bulk(company_relationships_data)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
