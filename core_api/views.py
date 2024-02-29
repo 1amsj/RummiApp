@@ -1121,6 +1121,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     def post(request): 
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, None)
 
         company_id = create_company(request.data)
 
@@ -1130,17 +1131,11 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             agents_ids = handle_agents_bulk(agents_data, company_id, business)
 
             response["agents_ids"] = agents_ids
+        
+        if (company_relationships_data.__len__() > 0):
+            company_relationships_ids = handle_company_relationships_bulk(company_relationships_data)
 
-        company_relationships_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATALIST, None)
-
-        print(company_relationships_datalist)
-
-        if company_relationships_datalist:
-            company_relationship_ids = create_comapany_relationships_wrap(
-                company_relationships_datalist,
-                company_id=company_id,  
-            )
-            response["company_relationship_ids"] = company_relationship_ids
+            response["company_relationships_ids"] = company_relationships_ids
         # Respond with complex ids object
         return Response(response, status=status.HTTP_201_CREATED)
 
