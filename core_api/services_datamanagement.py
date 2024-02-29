@@ -343,26 +343,18 @@ def create_company(data):
     return company.id
 
 @transaction.atomic
-def create_comapany_relationships_wrap(datalist, company_id):
-    company_relationship_ids = []
-    company_relationship_errors = []
-    for company_relationship_data in datalist:
-        try:
-            company_relationship_data['company'] = company_id
-            serializer = CompanyRelationshipCreateSerializer(data=company_relationship_data)
-            serializer.is_valid(raise_exception=True)
-            company_relationship_id = serializer.create()
-            company_relationship_ids.append(company_relationship_id)
+def create_comapany_relationships_wrap(data):
+    try:
+        serializer = CompanyRelationshipCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        company_relationship = serializer.create()
         
-        except ValidationError as exc:
-            company_relationship_errors.append(exc.detail)
-    
-    if company_relationship_errors:
+    except ValidationError as exc:
         raise ValidationError({
-            ApiSpecialKeys.COMPANY_RELATIONSHIP_DATALIST: company_relationship_errors
-        })
+            ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA: exc.detail,
+    })
     
-    return company_relationship_ids
+    return company_relationship.id
 
 # Update
 @transaction.atomic
@@ -462,16 +454,15 @@ def update_service_area_wrap(data, provider_id, service_area_instance):
         })
 
 @transaction.atomic
-def update_company_relationship_wrap(data, company_id, company_relationship_instance):
+def update_company_relationship_wrap(data, company_relationship_instance):
     try:
-        data['company'] = company_id
         serializer = CompanyRelationshipUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.update(company_relationship_instance)
 
     except ValidationError as exc:
         raise ValidationError({
-            ApiSpecialKeys.COMPANY_RELATIONSHIP_DATALIST: exc.detail,
+            ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA: exc.detail,
         })
 
 
@@ -775,7 +766,7 @@ def handle_agents_bulk(datalist: list, business_name):
 
 
 @transaction.atomic
-def handle_company_relationships_bulk(datalist: list, company_id):
+def handle_company_relationships_bulk(datalist: list):
     """
     Create, update or delete the company relationships in bulk, depending on whether the payload includes an ID or not
     """
@@ -795,14 +786,12 @@ def handle_company_relationships_bulk(datalist: list, company_id):
             raise BadRequestException('Company Relationship flagged as deleted but no ID provided')
         try:
             if not company_relationship_id:
-                company_relationship_id = create_company_relationship(
-                    data,
-                    company_id
+                company_relationship_id = create_comapany_relationships_wrap(
+                    data
                 )
             elif not deleted_flag:
                 update_company_relationship_wrap(
                     data,
-                    company_id,
                     company_relationship_instance=CompanyRelationship.objects.get(id=company_relationship_id)
                 )
             else:
