@@ -180,8 +180,6 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
         return company
 
 class CompanyRateCreateSerializer(CompanyRateSerializer):
-    business = BusinessField()
-    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all())
     root = serializers.PrimaryKeyRelatedField(queryset=ServiceRoot.objects.all(), required=False)
     bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
     bill_rate = serializers.IntegerField()

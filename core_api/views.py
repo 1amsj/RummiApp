@@ -22,7 +22,7 @@ from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_events_bulk, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_rates_bulk, handle_events_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
@@ -1121,6 +1121,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_key_error
     def post(request): 
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
+        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATA, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         company_id = create_company(request.data)
@@ -1132,6 +1133,11 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
             response["agents_ids"] = agents_ids
 
+        if (company_rates_datalist.__len__() > 0):
+            company_rates_ids = handle_company_rates_bulk(company_rates_datalist, business, company_id)
+
+            response["company_rates_ids"] = company_rates_ids
+
         # Respond with complex ids object
         return Response(response, status=status.HTTP_201_CREATED)
 
@@ -1141,6 +1147,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_does_not_exist(Contact)
     def put(request, company_id=None):
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
+        company_rates_data = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATA, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         company = Company.objects.get(id=company_id)
@@ -1150,6 +1157,9 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         if (agents_data.__len__() > 0):
             handle_agents_bulk(agents_data, company_id, business)
+
+        if (company_rates_data.__len__() > 0):
+            handle_company_rates_bulk(company_rates_data, business, company_id)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

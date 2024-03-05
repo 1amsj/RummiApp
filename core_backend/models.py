@@ -563,8 +563,8 @@ class CompanyRate(ExtendableModel, HistoricalModel, SoftDeletableModel):
         PER_MINUTES = 'PER_MINUTES', _('Per Minutes')
         QUANTITY = 'QUANTITY', _('Quantity')
 
-    business = models.ForeignKey(Business, on_delete=models.CASCADE, related_name='company_rates')
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_rates')
+    language = models.CharField(_('language'), max_length=255, null=True, blank=True, default=None, help_text='Defines the language that the provider will charge for this service')
     root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='company_rates')
     bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
     bill_rate_type = models.CharField(_('billing rate type'), max_length=255, choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
