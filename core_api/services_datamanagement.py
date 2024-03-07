@@ -346,7 +346,7 @@ def create_company_rate_wrap(data, company_id):
     except ValidationError as exc:
         # Wrap errors
         raise ValidationError({
-            ApiSpecialKeys.COMPANY_RATES_DATA: exc.detail,
+            ApiSpecialKeys.COMPANY_RATES_DATALIST: exc.detail,
         })
     return company_rate
 
@@ -492,7 +492,7 @@ def update_company_rate_wrap(data, company_id, company_rate_instance):
     except ValidationError as exc:
         # Wrap errors
         raise ValidationError({
-            ApiSpecialKeys.SERVICE_DATALIST: exc.detail,
+            ApiSpecialKeys.COMPANY_RATES_DATALIST: exc.detail,
         })
 
 # Bulk

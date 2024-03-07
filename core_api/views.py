@@ -1121,7 +1121,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_key_error
     def post(request): 
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
-        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATA, [])
+        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         company_id = create_company(request.data)
@@ -1147,7 +1147,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_does_not_exist(Contact)
     def put(request, company_id=None):
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
-        company_rates_data = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATA, [])
+        company_rates_data = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         company = Company.objects.get(id=company_id)

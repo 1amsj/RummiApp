@@ -155,7 +155,7 @@ class CompanyRateSerializer(BaseSerializer):
 
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
-    company_rates = CompanyRateSerializer(many=True)
+    company_rates = CompanyRateSerializer(many=True, required=False)
 
     @staticmethod
     def get_default_queryset():

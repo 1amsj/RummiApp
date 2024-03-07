@@ -28,7 +28,7 @@ class ApiSpecialKeys(str, Enum):
     AGENT_DATA = '_agent_data'
     AGENTS_DATA = '_agents_data'
     BUSINESS = '_business'
-    COMPANY_RATES_DATA = '_company_rates_datalist'
+    COMPANY_RATES_DATALIST = '_company_rates_datalist'
     EVENT_DATALIST = '_event_datalist'
     OFFER_DATALIST = '_offer_datalist'
     OPERATOR_DATA = '_operator_data'
