@@ -190,7 +190,6 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "auth_by": auth_byUnzip,
                 "operators_first_name": obj['booking']['operators'][-1]['first_name'],
                 "operators_last_name": obj['booking']['operators'][-1]['last_name'],
-                "operators_date_of_birth": obj['booking']['operators'][-1]['date_of_birth']
             }
             
             report_values.append(values)
