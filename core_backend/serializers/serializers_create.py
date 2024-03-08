@@ -2,11 +2,11 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, Event, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, Event, \
     Expense, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
-    CategorySerializer, \
+    CategorySerializer, CompanyRateSerializer, \
     CompanyWithParentSerializer, \
     ContactSerializer, ExpenseSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, \
@@ -178,6 +178,21 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
             company.notes.add(*note_instances)
 
         return company
+
+class CompanyRateCreateSerializer(CompanyRateSerializer):
+    root = serializers.PrimaryKeyRelatedField(queryset=ServiceRoot.objects.all(), required=False)
+    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
+    bill_rate = serializers.IntegerField()
+
+    class Meta:
+        model = CompanyRate
+        fields = '__all__'
+
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        company_rate = CompanyRate.objects.create(**data)
+
+        return company_rate.id
 
 
 class EventCreateSerializer(extendable_serializer(Event)):
