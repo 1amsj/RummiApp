@@ -589,10 +589,21 @@ class ReportSerializer(BaseSerializer):
             Report.objects.all().not_deleted()
         )
 
+class ChildrenBooking(extendable_serializer(Booking)):
+    
+    class Meta:
+        model = Booking
+        fields = ('id', 'public_id')
+        
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Booking.objects.all().not_deleted('business')
+        )
 
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     public_id = serializers.ReadOnlyField()
-    children = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Booking.objects.all().not_deleted('business'))
+    children = ChildrenBooking(many=True, default=[])
     companies = CompanyWithParentSerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
     expenses = ExpenseSerializer(many=True)
@@ -614,6 +625,10 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
             .all()
             .not_deleted('business')
             .prefetch_related(
+                Prefetch(
+                    'children',
+                    queryset=ChildrenBooking.get_default_queryset(),
+                ),
                 Prefetch(
                     'companies',
                     queryset=CompanyWithParentSerializer.get_default_queryset(),
