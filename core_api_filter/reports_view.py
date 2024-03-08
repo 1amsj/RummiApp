@@ -151,7 +151,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "email_contact": emailUnzip if obj['affiliates'][0]['recipient']['contacts'] != [] else "",
                 "fax_contact": faxUnzip if obj['affiliates'][0]['recipient']['contacts'] != [] else "",
                 "address": obj['affiliates'][0]['recipient']['location']['address'],
-                "unit_number": obj['affiliates'][0]['recipient']['location']['unit_number'],
+                "unit_number": obj['affiliates'][0]['recipient']['location']['unit_number'] if obj['affiliates'][0]['recipient']['location']['unit_number'] != None else "",
                 "city": obj['affiliates'][0]['recipient']['location']['city'],
                 "state": obj['affiliates'][0]['recipient']['location']['state'],
                 "country": obj['affiliates'][0]['recipient']['location']['country'],
