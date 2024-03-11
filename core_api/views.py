@@ -18,7 +18,7 @@ from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_comapany_relationships_wrap, create_event, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_company_relationships_wrap, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
     create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_relationships_bulk, handle_events_bulk, \
@@ -1119,9 +1119,14 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request): 
+
+        # print(request.data)
+
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
+
+        print(company_relationships_data)
 
         company_id = create_company(request.data)
 
@@ -1133,7 +1138,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             response["agents_ids"] = agents_ids
         
         if (company_relationships_data.__len__() > 0):
-            company_relationships_ids = handle_company_relationships_bulk(company_relationships_data)
+            company_relationships_ids = handle_company_relationships_bulk(company_relationships_data, company_id)
 
             response["company_relationships_ids"] = company_relationships_ids
         # Respond with complex ids object

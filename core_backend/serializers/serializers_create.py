@@ -135,6 +135,7 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
     recipients = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Recipient.objects.all())
     requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
     notes = NoteSerializer(many=True, default=[])
+    company_relationships = CompanyRelationshipSerializer(many=True, default=[])
 
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
@@ -150,7 +151,7 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
         recipients_data = data.pop('recipients', None)
         requesters_data = data.pop('requesters', None)
 
-        company_relationships_data = data.pop('company_relationships', None)
+        company_relationships_data = data.pop('company_relationships', [])
 
         company = Company.objects.create(**data)
 
@@ -179,11 +180,10 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
             note_instances = NoteSerializer.create_instances(notes_data)
             company.notes.add(*note_instances)
 
-#  TODO finish this
-        # if company_relationships_data:
-        #     company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_data)
-        #     company.company_relationships.add(*company_relationship_instances)
-
+        if company_relationships_data:
+            company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_data)
+            company.company_relationships.add(*company_relationship_instances)
+    
         return company
 
 
@@ -500,16 +500,11 @@ class ReportCreateSerializer(extendable_serializer(Report)):
         manage_extra_attrs(business, report, extras)
 
         return report.id
-
-class CompanyRelationshipCreateSerializer(generic_serializer(CompanyRelationship)):
-    company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all())
-
-    class Meta:
-        model = CompanyRelationship
-        fields = '__all__'
     
+class CompanyRelationshipCreateSerializer(CompanyRelationshipSerializer):
     def create(self, validated_data=None) -> int:
-        data = validated_data or self.validated_data
+        data: dict = validated_data or self.validated_data
+
         company_relationship = CompanyRelationship.objects.create(**data)
-        
-        return company_relationship.id
+
+        return company_relationship
