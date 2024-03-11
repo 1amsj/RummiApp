@@ -343,8 +343,9 @@ def create_company(data):
     return company.id
 
 @transaction.atomic
-def create_comapany_relationships_wrap(data):
+def create_company_relationships_wrap(data, company_id):
     try:
+        data["company_from"] = company_id
         serializer = CompanyRelationshipCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         company_relationship = serializer.create()
@@ -766,7 +767,7 @@ def handle_agents_bulk(datalist: list, business_name):
 
 
 @transaction.atomic
-def handle_company_relationships_bulk(datalist: list):
+def handle_company_relationships_bulk(datalist: list, company_id):
     """
     Create, update or delete the company relationships in bulk, depending on whether the payload includes an ID or not
     """
@@ -778,7 +779,10 @@ def handle_company_relationships_bulk(datalist: list):
     company_relationship_errors = []
     error_found = False
 
+    print(datalist)
+
     for data in datalist:
+        print(data)
         company_relationship_id = data.pop('id', None)
         deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
 
@@ -786,8 +790,9 @@ def handle_company_relationships_bulk(datalist: list):
             raise BadRequestException('Company Relationship flagged as deleted but no ID provided')
         try:
             if not company_relationship_id:
-                company_relationship_id = create_comapany_relationships_wrap(
-                    data
+                company_relationship_id = create_company_relationships_wrap(
+                    data,
+                    company_id
                 )
             elif not deleted_flag:
                 update_company_relationship_wrap(

@@ -222,7 +222,7 @@ class Company(SoftDeletableModel, HistoricalModel):
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
     parent_company = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE, related_name = 'children_companies')
-    relationships = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE, related_name = 'related_companies')
+    company_relationships = models.ManyToManyField("CompanyRelationship", blank=True, null=True, related_name = 'related_companies')
 
     class Meta:
         ordering = ['name']
