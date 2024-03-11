@@ -7,7 +7,7 @@ from core_backend.models import Affiliation, Agent, Authorization, Booking, Comp
     Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
-from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
+from core_backend.serializers.serializers_plain import CategorySerializer, CompanyRelationshipSerializer, ContactSerializer, ExpenseSerializer, \
     ExtraAttrSerializer, \
     LocationSerializer, \
     NoteSerializer
@@ -99,63 +99,11 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
 
 
 # Serializers
-class CompanyRelationshipSerializer(BaseSerializer):
-    class Meta:
-        model = CompanyRelationship
-        fields = '__all__'
-    
-    @staticmethod
-    def get_default_queryset():
-        return (
-            CompanyRelationship.objects
-            .all()
-            .not_deleted()
-            .prefetch_related(
-                # Prefetch(
-                #     'company',
-                #     queryset=CompanySerializer.get_default_queryset(),
-                # ),
-            )
-        )
-    @staticmethod
-    def build_model_instance(data: dict):
-        return CompanyRelationship(
-            company = data['company'],
-            relationship = data['relationship'],
-        )
-
-    @staticmethod
-    def create_instances(company_relationship_dicts: List[dict]):
-        company_relationship_instances = [CompanyRelationshipSerializer.build_model_instance(company_relationship_data) for company_relationship_data in company_relationship_dicts]
-        return CompanyRelationship.objects.bulk_create(company_relationship_instances)
-   
-    @staticmethod
-    def sync_company_relationships(instance, company_relationships_data: List[dict]):
-        created_company_relationships, updated_company_relationships, deleted_company_relationships = fetch_updated_from_validated_data(
-            CompanyRelationship,
-            company_relationships_data,
-            set(instance.company_relationships.all().values_list('id'))
-        )
-
-        # Create
-        if created_company_relationships:
-            created_company_relationships = CompanyRelationship.objects.bulk_create(created_company_relationships)
-            instance.company_relationships.add(*created_company_relationships)
-
-        # Update
-        if updated_company_relationships:
-            CompanyRelationship.objects.bulk_update(updated_company_relationships, ['relationship'])
-
-        # Delete
-        CompanyRelationship.objects.filter(id__in=deleted_company_relationships).delete()
-
-
-
 class CompanySerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
-    relationships = CompanyRelationshipSerializer(many=True, default=[])
+    company_relationships = CompanyRelationshipSerializer(many=True, default=[])
 
     class Meta:
         model = Company
@@ -181,7 +129,7 @@ class CompanySerializer(BaseSerializer):
                     queryset=NoteSerializer.get_default_queryset()
                 ),
                 Prefetch(
-                    'relationships',
+                    'company_relationships',
                     queryset=CompanyRelationshipSerializer.get_default_queryset()
                 ),
             )
