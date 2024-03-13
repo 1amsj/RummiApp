@@ -1167,7 +1167,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             handle_company_rates_bulk(company_rates_data, business, company_id)
 
         if (company_relationships_data.__len__() > 0):
-            handle_company_relationships_bulk(company_relationships_data)
+            handle_company_relationships_bulk(company_relationships_data,  company_id)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

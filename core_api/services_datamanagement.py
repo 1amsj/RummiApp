@@ -477,8 +477,9 @@ def update_service_area_wrap(data, provider_id, service_area_instance):
         })
 
 @transaction.atomic
-def update_company_relationship_wrap(data, company_relationship_instance):
+def update_company_relationship_wrap(data, company_id, company_relationship_instance):
     try:
+        data["company_from"] = company_id
         serializer = CompanyRelationshipUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.update(company_relationship_instance)
@@ -886,6 +887,7 @@ def handle_company_relationships_bulk(datalist: list, company_id):
                 #might need to add company_id
                 update_company_relationship_wrap(
                     data,
+                    company_id,
                     company_relationship_instance=CompanyRelationship.objects.get(id=company_relationship_id)
                 )
             else:
