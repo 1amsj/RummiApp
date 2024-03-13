@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from requests import Response
+from rest_framework.response import Response
 from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params

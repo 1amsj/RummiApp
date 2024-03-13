@@ -21,32 +21,32 @@ from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_company_relationships_wrap, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_relationships_bulk, handle_events_bulk, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_rates_bulk, handle_company_relationships_bulk, handle_events_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRelationship, Contact, Event, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRate, CompanyRelationship, Contact, Event, \
     Expense, ExtraQuerySet, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
     Service, \
     ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
-    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRelationshipSerializer, \
+    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
-    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, \
+    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, \
     LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
     OperatorCreateSerializer, \
     PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
-    CategoryUpdateSerializer, CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
+    CategoryUpdateSerializer, CompanyRateUpdateSerializer, CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
     OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceAreaUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
@@ -1119,14 +1119,10 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request): 
-
-        # print(request.data)
-
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
+        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
-
-        print(company_relationships_data)
 
         company_id = create_company(request.data)
 
@@ -1136,7 +1132,12 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             agents_ids = handle_agents_bulk(agents_data, company_id, business)
 
             response["agents_ids"] = agents_ids
-        
+
+        if (company_rates_datalist.__len__() > 0):
+            company_rates_ids = handle_company_rates_bulk(company_rates_datalist, business, company_id)
+
+            response["company_rates_ids"] = company_rates_ids
+
         if (company_relationships_data.__len__() > 0):
             company_relationships_ids = handle_company_relationships_bulk(company_relationships_data, company_id)
 
@@ -1150,6 +1151,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_does_not_exist(Contact)
     def put(request, company_id=None):
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
+        company_rates_data = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
@@ -1160,6 +1162,9 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         if (agents_data.__len__() > 0):
             handle_agents_bulk(agents_data, company_id, business)
+
+        if (company_rates_data.__len__() > 0):
+            handle_company_rates_bulk(company_rates_data, business, company_id)
 
         if (company_relationships_data.__len__() > 0):
             handle_company_relationships_bulk(company_relationships_data)
@@ -1173,6 +1178,47 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company = Company.objects.get(id=company_id)
         company.is_deleted = True
         company.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ManageCompanyRate(basic_view_manager(CompanyRate, CompanyRateSerializer)):
+    @classmethod
+    @expect_does_not_exist(CompanyRate)
+    def get(cls, request, company_rate_id=None):
+        if company_rate_id:
+            company_rate = CompanyRate.objects.all().get(id=company_rate_id)
+            serialized = CompanyRateSerializer(company_rate)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = CompanyRateSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = CompanyRateSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_key_error
+    @expect_does_not_exist(CompanyRate)
+    def post(request, business_name=None):
+        data = request.data
+        data['business'] = business_name
+        serializer = CompanyRateCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        company_rate_id = serializer.create()
+        return Response(company_rate_id, status=status.HTTP_201_CREATED)
+    
+    
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(ServiceArea)
+    def put(request, company_rate_id=None):
+        company_rate = Company.objects.get(id=company_rate_id)
+        serializer = CompanyRateUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(company_rate)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

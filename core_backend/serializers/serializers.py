@@ -3,7 +3,7 @@ from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, CompanyRelationship, Contact, Event, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, CompanyRate, CompanyRelationship, Contact, Event, \
     Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
@@ -134,10 +134,33 @@ class CompanySerializer(BaseSerializer):
                 ),
             )
         )
+    
+    
+class CompanyRateSerializer(BaseSerializer):
+    root = ServiceRootBaseSerializer(required=False)
+
+    class Meta:
+        model = CompanyRate
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            CompanyRate.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'root',
+                    queryset=ServiceRootBaseSerializer.get_default_queryset(),
+                )
+            )
+        )
 
 
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
+    company_rates = CompanyRateSerializer(many=True, required=False)
 
     @staticmethod
     def get_default_queryset():
@@ -149,6 +172,10 @@ class CompanyWithParentSerializer(CompanySerializer):
                     'parent_company',
                     queryset=CompanySerializer.get_default_queryset()
                 ),
+                Prefetch(
+                    'company_rates',
+                    queryset=CompanyRateSerializer.get_default_queryset()
+                )
             )
         )
 
@@ -307,7 +334,6 @@ class ServiceAreaSerializer(BaseSerializer):
                 ),
             )
         )
-
 
 class ProviderNoServiceSerializer(user_subtype_serializer(Provider)):
     companies = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Company.objects.all().not_deleted())
@@ -596,10 +622,21 @@ class ReportSerializer(BaseSerializer):
             Report.objects.all().not_deleted()
         )
 
+class ChildrenBooking(extendable_serializer(Booking)):
+    
+    class Meta:
+        model = Booking
+        fields = ('id', 'public_id')
+        
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Booking.objects.all().not_deleted('business')
+        )
 
 class BookingNoEventsSerializer(extendable_serializer(Booking)):
     public_id = serializers.ReadOnlyField()
-    children = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Booking.objects.all().not_deleted('business'))
+    children = ChildrenBooking(many=True, default=[])
     companies = CompanyWithParentSerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
     expenses = ExpenseSerializer(many=True)
@@ -621,6 +658,10 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
             .all()
             .not_deleted('business')
             .prefetch_related(
+                Prefetch(
+                    'children',
+                    queryset=ChildrenBooking.get_default_queryset(),
+                ),
                 Prefetch(
                     'companies',
                     queryset=CompanyWithParentSerializer.get_default_queryset(),
@@ -902,8 +943,8 @@ class CompanyWithRolesSerializer(CompanyWithParentSerializer):
                     'requesters',
                     queryset=RequesterSerializer.get_default_queryset(),
                 ),
+                )
             )
-        )
 
 
 class AuthorizationSerializer(BaseSerializer):

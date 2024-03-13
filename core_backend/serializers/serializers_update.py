@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, CompanyRelationship, Event, Expense, Language, \
+from core_backend.models import Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, Expense, Language, \
     Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyRelationshipSerializer, CompanyWithParentSerializer, \
     ContactSerializer, LocationSerializer, NoteSerializer
-from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRelationshipCreateSerializer, \
+from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, \
     EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
@@ -124,6 +124,12 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
 
         instance.save()
 
+class CompanyRateUpdateSerializer(CompanyRateCreateSerializer):
+    def update(self, instance: CompanyRate, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
 
 class EventUpdateSerializer(EventCreateSerializer):
     def update(self, instance: Event, business, validated_data=None):
