@@ -377,7 +377,6 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
             response["payer_id"] = payer_id
 
         if provider_data:
-            print(provider_data)
             service_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_DATALIST, None)
             service_area_datalist = provider_data.pop(ApiSpecialKeys.SERVICE_AREA_DATALIST, None)
 
@@ -1119,22 +1118,21 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_key_error
-    def post(request): 
+    def post(request, business_name=None): 
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
         company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
-        business = request.data.pop(ApiSpecialKeys.BUSINESS)
 
-        company_id = create_company(request.data)
+        company_id = create_company(request.data, business_name)
 
         response = {"company_id": company_id}
 
         if (agents_data.__len__() > 0):
-            agents_ids = handle_agents_bulk(agents_data, company_id, business)
+            agents_ids = handle_agents_bulk(agents_data, company_id, business_name)
 
             response["agents_ids"] = agents_ids
 
         if (company_rates_datalist.__len__() > 0):
-            company_rates_ids = handle_company_rates_bulk(company_rates_datalist, business, company_id)
+            company_rates_ids = handle_company_rates_bulk(company_rates_datalist, business_name, company_id)
 
             response["company_rates_ids"] = company_rates_ids
 

@@ -136,12 +136,13 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
     requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
     notes = NoteSerializer(many=True, default=[])
 
-    def create(self, validated_data=None) -> int:
+    def create(self, business, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
 
         contacts_data = data.pop('contacts', None)
         locations_data = data.pop('locations', None)
         notes_data = data.pop('notes', [])
+        extras = data.pop('extra', {})
 
         agents_data = data.pop('agents', None)
         operators_data = data.pop('operators', None)
@@ -176,6 +177,8 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
         if notes_data:
             note_instances = NoteSerializer.create_instances(notes_data)
             company.notes.add(*note_instances)
+
+        manage_extra_attrs(business, company, extras)
 
         return company
 
