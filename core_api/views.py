@@ -1146,18 +1146,18 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     def put(request, company_id=None):
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
         company_rates_data = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
-        business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.update(company)
+        serializer.update(company, business_name)
 
         if (agents_data.__len__() > 0):
-            handle_agents_bulk(agents_data, company_id, business)
+            handle_agents_bulk(agents_data, company_id, business_name)
 
         if (company_rates_data.__len__() > 0):
-            handle_company_rates_bulk(company_rates_data, business, company_id)
+            handle_company_rates_bulk(company_rates_data, business_name, company_id)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
