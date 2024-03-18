@@ -97,7 +97,7 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
 
 
 # Serializers
-class CompanySerializer(BaseSerializer):
+class CompanySerializer(extendable_serializer(Company)):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
@@ -170,6 +170,10 @@ class CompanyWithParentSerializer(CompanySerializer):
                 Prefetch(
                     'company_rates',
                     queryset=CompanyRateSerializer.get_default_queryset()
+                ),
+                Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset()
                 )
             )
         )
