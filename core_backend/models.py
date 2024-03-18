@@ -222,7 +222,6 @@ class Company(ExtendableModel, SoftDeletableModel, HistoricalModel):
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
     parent_company = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE, related_name = 'children_companies')
-    company_relationships = models.ManyToManyField("CompanyRelationship", blank=True, null=True, related_name = 'related_companies')
 
     class Meta:
         ordering = ['name']
@@ -241,8 +240,8 @@ class Company(ExtendableModel, SoftDeletableModel, HistoricalModel):
         pass
 
 class CompanyRelationship(SoftDeletableModel, HistoricalModel):
-    company_from = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_relationship_from', blank=True, null=True)
-    company_to = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_relationship_to', blank=True, null=True)
+    company_from = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_relationships_from', blank=True, null=True)
+    company_to = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_relationships_to', blank=True, null=True)
     relationship = models.TextField(_('relationship'), null=True, blank=True)
 
     class Meta:

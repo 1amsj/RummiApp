@@ -2,7 +2,6 @@ from typing import List
 
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
-
 from core_backend.models import Business, Category, Company, CompanyRelationship, Contact, Expense, Extra, Location, Note, User
 from core_backend.serializers.serializers_utils import BaseSerializer, generic_serializer
 from core_backend.services.core_services import fetch_updated_from_validated_data
@@ -215,11 +214,11 @@ class CompanyRelationshipSerializer(BaseSerializer):
         return CompanyRelationship.objects.bulk_create(company_relationship_instances)
    
     @staticmethod
-    def sync_company_relationships(instance, company_relationships_data: List[dict]):
+    def sync_company_relationships(instance, company_relationships_data: List[dict]): 
         created_company_relationships, updated_company_relationships, deleted_company_relationships = fetch_updated_from_validated_data(
             CompanyRelationship,
             company_relationships_data,
-            set(instance.company_relationships.all().values_list('id'))
+            set(instance.company_relationships_from.all().values_list('id'))
         )
 
         # Create

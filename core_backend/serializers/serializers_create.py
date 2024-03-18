@@ -135,7 +135,7 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
     recipients = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Recipient.objects.all())
     requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
     notes = NoteSerializer(many=True, default=[])
-    company_relationships = CompanyRelationshipSerializer(many=True, default=[])
+    company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
     def create(self, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
@@ -151,7 +151,7 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
         recipients_data = data.pop('recipients', None)
         requesters_data = data.pop('requesters', None)
 
-        company_relationships_data = data.pop('company_relationships', [])
+        company_relationships_from_data = data.pop('company_relationships_from', [])
 
         company = Company.objects.create(**data)
 
@@ -180,8 +180,8 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
             note_instances = NoteSerializer.create_instances(notes_data)
             company.notes.add(*note_instances)
 
-        if company_relationships_data:
-            company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_data)
+        if company_relationships_from_data:
+            company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_from_data)
             company.company_relationships.add(*company_relationship_instances)
     
         return company
