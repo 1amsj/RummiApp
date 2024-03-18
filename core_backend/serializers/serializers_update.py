@@ -78,6 +78,8 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
     def update(self, instance: Company, validated_data=None):
         data: dict = validated_data or self.validated_data
 
+        print(data)
+
         agents_data = data.pop('agents', None)
         operators_data = data.pop('operators', None)
         payers_data = data.pop('payers', None)
@@ -111,12 +113,6 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
         NoteSerializer.sync_notes(
             instance,
             notes_data=data.pop('notes')
-        )
-
-# TODO finish this
-        CompanyRelationshipSerializer.sync_company_relationships(
-            instance,
-            company_relationships_data=data.pop('company_relationships')
         )
 
         for (k, v) in data.items():

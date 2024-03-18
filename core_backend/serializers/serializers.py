@@ -103,7 +103,6 @@ class CompanySerializer(BaseSerializer):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
     notes = NoteSerializer(many=True, default=[])
-    company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
     class Meta:
         model = Company
@@ -127,11 +126,7 @@ class CompanySerializer(BaseSerializer):
                 Prefetch(
                     'notes',
                     queryset=NoteSerializer.get_default_queryset()
-                ),
-                Prefetch(
-                    'company_relationships_from',
-                    queryset=CompanyRelationshipSerializer.get_default_queryset()
-                ),
+                )
             )
         )
     
@@ -161,6 +156,7 @@ class CompanyRateSerializer(BaseSerializer):
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
     company_rates = CompanyRateSerializer(many=True, required=False)
+    company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
     @staticmethod
     def get_default_queryset():
@@ -175,7 +171,11 @@ class CompanyWithParentSerializer(CompanySerializer):
                 Prefetch(
                     'company_rates',
                     queryset=CompanyRateSerializer.get_default_queryset()
-                )
+                ),
+                 Prefetch(
+                    'company_relationships_from',
+                    queryset=CompanyRelationshipSerializer.get_default_queryset()
+                ),
             )
         )
 
