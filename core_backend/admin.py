@@ -207,6 +207,7 @@ def basic_register(admin_model: Type[models.Model], readonly=(), extendable=Fals
 
 basic_register(Contact)
 basic_register(Company)
+basic_register(CompanyRate, extendable=True)
 basic_register(Language)
 basic_register(Location)
 
