@@ -271,7 +271,17 @@ class Location(SoftDeletableModel, HistoricalModel):
 
     def __str__(self):
         return F"{self.country}, {self.state}, {self.city}, {self.address}{F' {self.unit_number}' if self.unit_number else ''}, {self.zip}"
+    
+class GlobalSetting(ExtendableModel, HistoricalModel):
+    client = models.CharField(_('client'), max_length=128, blank=True)
+    business = models.ForeignKey("Business", on_delete=models.CASCADE, related_name='global setting')
 
+    class Meta:
+        verbose_name = _('global setting')
+        verbose_name_plural = _('global settings')
+
+    def __str__(self):
+        return F"{self.client} - {self.business}"
 
 # User models
 class User(SoftDeletableModel, AbstractUser, HistoricalModel):
