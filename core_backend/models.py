@@ -588,7 +588,7 @@ class CompanyRate(ExtendableModel, HistoricalModel, SoftDeletableModel):
         verbose_name_plural = _('company rates')
 
     def __str__(self):
-        return F"{self.business} by {self.company}"
+        return F"{self.root} by {self.company}"
 
     def delete_related(self):
         # TODO review since this is a m2m
