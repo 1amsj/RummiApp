@@ -274,7 +274,7 @@ class Location(SoftDeletableModel, HistoricalModel):
     
 class GlobalSetting(ExtendableModel, HistoricalModel):
     client = models.CharField(_('client'), max_length=128, blank=True)
-    business = models.ForeignKey("Business", on_delete=models.CASCADE, related_name='global setting')
+    business = models.ForeignKey("Business", on_delete=models.CASCADE, related_name='setting')
 
     class Meta:
         verbose_name = _('global setting')
