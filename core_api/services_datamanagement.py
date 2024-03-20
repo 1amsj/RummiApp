@@ -868,8 +868,6 @@ def handle_company_relationships_bulk(datalist: list, company_id):
     company_relationship_errors = []
     error_found = False
 
-    print(datalist)
-
     for data in datalist:
         print(data)
         company_relationship_id = data.pop('id', None)
@@ -884,11 +882,10 @@ def handle_company_relationships_bulk(datalist: list, company_id):
                     company_id
                 )
             elif not deleted_flag:
-                #might need to add company_id
                 update_company_relationship_wrap(
                     data,
                     company_id,
-                    company_relationship_instance=CompanyRelationship.objects.get(id=company_relationship_id)
+                    company_relationship_instance=CompanyRelationship.objects.get(id=company_relationship_id)           
                 )
             else:
                 CompanyRelationship.objects.get(id=company_relationship_id).delete()
