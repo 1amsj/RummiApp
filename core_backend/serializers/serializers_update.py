@@ -75,7 +75,8 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
     recipients = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Recipient.objects.all())
     requesters = serializers.PrimaryKeyRelatedField(many=True, required=False, queryset=Requester.objects.all())
 
-    def update(self, instance: Company, validated_data=None):
+
+    def update(self, instance: Company, business, validated_data=None):
         data: dict = validated_data or self.validated_data
 
         data.pop('company_relationships_from')
@@ -86,6 +87,7 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
         providers_data = data.pop('providers', None)
         recipients_data = data.pop('recipients', None)
         requesters_data = data.pop('requesters', None)
+        extras = data.pop('extra', [])
 
         if agents_data is not None:
             instance.agents.set(agents_data)
@@ -114,6 +116,8 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
             instance,
             notes_data=data.pop('notes')
         )
+
+        manage_extra_attrs(business, instance, extras)
 
         for (k, v) in data.items():
             setattr(instance, k, v)

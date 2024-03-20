@@ -137,12 +137,13 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
     notes = NoteSerializer(many=True, default=[])
     company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
-    def create(self, validated_data=None) -> int:
+    def create(self, business, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
 
         contacts_data = data.pop('contacts', None)
         locations_data = data.pop('locations', None)
         notes_data = data.pop('notes', [])
+        extras = data.pop('extra', {})
 
         agents_data = data.pop('agents', None)
         operators_data = data.pop('operators', None)

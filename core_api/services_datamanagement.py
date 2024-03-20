@@ -338,10 +338,10 @@ def create_service_areas_wrap(datalist, provider_id):
 
 
 @transaction.atomic
-def create_company(data):
+def create_company(data, business_name):
     serializer = CompanyCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
-    company = serializer.create()
+    company = serializer.create(business_name)
     return company.id
 
 @transaction.atomic
