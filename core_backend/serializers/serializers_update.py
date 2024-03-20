@@ -78,7 +78,7 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
     def update(self, instance: Company, validated_data=None):
         data: dict = validated_data or self.validated_data
 
-        print(data)
+        data.pop('company_relationships_from')
 
         agents_data = data.pop('agents', None)
         operators_data = data.pop('operators', None)
@@ -342,8 +342,8 @@ class ReportUpdateSerializer(ReportCreateSerializer):
 
 class CompanyRelationshipUpdateSerializer(CompanyRelationshipCreateSerializer):
     company_from = serializers.ReadOnlyField()
-    company_to = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
-    relationship = serializers.StringRelatedField()
+    company_to = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all().not_deleted())
+    relationship = serializers.CharField()
 
     class Meta:
         model = CompanyRelationship
@@ -351,12 +351,9 @@ class CompanyRelationshipUpdateSerializer(CompanyRelationshipCreateSerializer):
 
     def update(self, instance: CompanyRelationship, validated_data=None):
         data = validated_data or self.validated_data
-        extras = data.pop('extra', {})
+        
         for (k, v) in data.items():
             setattr(instance, k, v)
-        instance.save()
         
-        sync_m2m(instance)
-
-        manage_extra_attrs(instance, extras)
+        instance.save()
         
