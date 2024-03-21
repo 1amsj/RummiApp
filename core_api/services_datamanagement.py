@@ -869,7 +869,6 @@ def handle_company_relationships_bulk(datalist: list, company_id):
     error_found = False
 
     for data in datalist:
-        print(data)
         company_relationship_id = data.pop('id', None)
         deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
 
