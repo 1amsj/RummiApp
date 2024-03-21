@@ -1,12 +1,11 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, CompanyRate, Event, Expense, Language, \
+from core_backend.models import Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, Expense, Language, \
     Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
-from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyWithParentSerializer, \
+from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyRelationshipSerializer, CompanyWithParentSerializer, \
     ContactSerializer, LocationSerializer, NoteSerializer
-from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRateCreateSerializer, \
-    EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, \
-    RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer,ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
+from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, \
+    EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
@@ -79,6 +78,8 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
 
     def update(self, instance: Company, business, validated_data=None):
         data: dict = validated_data or self.validated_data
+
+        data.pop('company_relationships_from')
 
         agents_data = data.pop('agents', None)
         operators_data = data.pop('operators', None)
@@ -342,3 +343,21 @@ class ReportUpdateSerializer(ReportCreateSerializer):
         instance.save()
 
         manage_extra_attrs(business_name, instance, extras)
+
+class CompanyRelationshipUpdateSerializer(CompanyRelationshipCreateSerializer):
+    company_from = serializers.ReadOnlyField()
+    company_to = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all().not_deleted())
+    relationship = serializers.CharField()
+
+    class Meta:
+        model = CompanyRelationship
+        fields = '__all__'
+
+    def update(self, instance: CompanyRelationship, validated_data=None):
+        data = validated_data or self.validated_data
+        
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        
+        instance.save()
+        

@@ -1,17 +1,19 @@
+from typing import List
 from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, CompanyRate, Contact, Event, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, CompanyRate, CompanyRelationship, Contact, Event, \
     Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
-from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
+from core_backend.serializers.serializers_plain import CategorySerializer, CompanyRelationshipSerializer, ContactSerializer, ExpenseSerializer, \
     ExtraAttrSerializer, \
     LocationSerializer, \
     NoteSerializer
 from core_backend.serializers.serializers_utils import BaseSerializer, extendable_serializer, \
     generic_serializer
+from core_backend.services.core_services import fetch_updated_from_validated_data
 
 
 # Base serializers
@@ -124,7 +126,7 @@ class CompanySerializer(extendable_serializer(Company)):
                 Prefetch(
                     'notes',
                     queryset=NoteSerializer.get_default_queryset()
-                ),
+                )
             )
         )
     
@@ -149,13 +151,12 @@ class CompanyRateSerializer(BaseSerializer):
                 )
             )
         )
-        
-
 
 
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
     company_rates = CompanyRateSerializer(many=True, required=False)
+    company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
     @staticmethod
     def get_default_queryset():
@@ -174,7 +175,11 @@ class CompanyWithParentSerializer(CompanySerializer):
                 Prefetch(
                     'extra',
                     queryset=ExtraAttrSerializer.get_default_queryset()
-                )
+                ),
+                 Prefetch(
+                    'company_relationships_from',
+                    queryset=CompanyRelationshipSerializer.get_default_queryset()
+                ),
             )
         )
 
