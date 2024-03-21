@@ -235,6 +235,7 @@ basic_register(Authorization, readonly=('last_updated_at',))
 basic_register(Extra)
 basic_register(Note)
 basic_register(Notification)
+basic_register(CompanyRelationship)
 admin.site.register(ExternalApiToken, ExternalApiTokenAdmin)
 admin.site.register(UniqueCondition, UniqueConditionAdmin)
 

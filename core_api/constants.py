@@ -29,6 +29,7 @@ class ApiSpecialKeys(str, Enum):
     AGENTS_DATA = '_agents_data'
     BUSINESS = '_business'
     COMPANY_RATES_DATALIST = '_company_rates_datalist'
+    COMPANY_RELATIONSHIPS_DATA = '_preferred_agency_data'
     EVENT_DATALIST = '_event_datalist'
     OFFER_DATALIST = '_offer_datalist'
     OPERATOR_DATA = '_operator_data'
@@ -39,6 +40,8 @@ class ApiSpecialKeys(str, Enum):
     REQUESTER_DATA = '_requester_data'
     SERVICE_DATALIST = '_service_datalist'
     SERVICE_AREA_DATALIST = '_service_area_datalist'
+    
+
 
 
 FIELDS_BLACKLIST = [key for key in ApiSpecialKeys]

@@ -2,11 +2,11 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, Event, \
+from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, \
     Expense, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
-    CategorySerializer, CompanyRateSerializer, \
+    CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
     ContactSerializer, ExpenseSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, \
@@ -135,8 +135,9 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
     recipients = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Recipient.objects.all())
     requesters = serializers.PrimaryKeyRelatedField(many=True, default=[], queryset=Requester.objects.all())
     notes = NoteSerializer(many=True, default=[])
+    company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
-    def create(self, business, validated_data=None) -> int:
+    def create(self, business_name, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
 
         contacts_data = data.pop('contacts', None)
@@ -150,6 +151,8 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
         providers_data = data.pop('providers', None)
         recipients_data = data.pop('recipients', None)
         requesters_data = data.pop('requesters', None)
+
+        company_relationships_from_data = data.pop('company_relationships_from', [])
 
         company = Company.objects.create(**data)
 
@@ -178,8 +181,10 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
             note_instances = NoteSerializer.create_instances(notes_data)
             company.notes.add(*note_instances)
 
-        manage_extra_attrs(business, company, extras)
-
+        if company_relationships_from_data:
+            company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_from_data)
+            company.company_relationships.add(*company_relationship_instances)
+    
         return company
 
 class CompanyRateCreateSerializer(CompanyRateSerializer):
@@ -510,4 +515,11 @@ class ReportCreateSerializer(extendable_serializer(Report)):
         report = Report.objects.create(**data)
         manage_extra_attrs(business, report, extras)
 
-        return report.id
+    
+class CompanyRelationshipCreateSerializer(CompanyRelationshipSerializer):
+    def create(self, validated_data=None) -> int:
+        data: dict = validated_data or self.validated_data
+
+        company_relationship = CompanyRelationship.objects.create(**data)
+
+        return company_relationship
