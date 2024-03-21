@@ -1120,7 +1120,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     def post(request, business_name=None): 
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
         company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
-        business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
         company_id = create_company(request.data, business_name)
@@ -1164,9 +1164,6 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         if (company_rates_data.__len__() > 0):
             handle_company_rates_bulk(company_rates_data, business_name, company_id)
-
-        if (company_relationships_data.__len__() > 0):
-            handle_company_relationships_bulk(company_relationships_data,  company_id)
 
         if (company_relationships_data.__len__() > 0):
             handle_company_relationships_bulk(company_relationships_data,  company_id)
