@@ -149,10 +149,10 @@ EMAIL_HOST_PASSWORD = os.environ.get('EmailHostPassword')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.environ.get('DB_NAME', 'core_db'),
-        'USER': os.environ.get('DB_USER', 'core_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'core_password'),
-        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+        'NAME': 'core_db_',#os.environ.get('DB_NAME', 'core_db'),
+        'USER': 'postgres',#os.environ.get('DB_USER', 'core_user'),
+        'PASSWORD': 'root',#os.environ.get('DB_PASSWORD', 'core_password'),
+        'HOST': 'localhost',#os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
         'OPTIONS': {
             'options': '-c client_encoding=utf8',
