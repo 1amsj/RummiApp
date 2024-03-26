@@ -8,7 +8,7 @@ from core_backend.models import Affiliation, Agent, Authorization, Booking, Cate
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
-    ContactSerializer, ExpenseSerializer, GlobalSettingsSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
+    ContactSerializer, ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, \
     UserSerializer
 from core_backend.serializers.serializers_fields import BusinessField
@@ -28,7 +28,7 @@ def get_or_create_operators_group():
         
     return group
 
-class GlobalSettingCreateSerializer(GlobalSettingsSerializer):
+class GlobalSettingCreateSerializer(GlobalSettingSerializer):
     def create(self, business_name, validated_data=None) -> int:
         data = validated_data or self.validated_data
         extras = data.pop('extra', {})
