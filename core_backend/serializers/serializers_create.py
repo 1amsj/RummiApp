@@ -3,12 +3,12 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, \
-    Expense, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
+    Expense, GlobalSetting, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
-    ContactSerializer, ExpenseSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
+    ContactSerializer, ExpenseSerializer, GlobalSettingsSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, \
     UserSerializer
 from core_backend.serializers.serializers_fields import BusinessField
@@ -28,7 +28,15 @@ def get_or_create_operators_group():
         
     return group
 
+class GlobalSettingCreateSerializer(GlobalSettingsSerializer):
+    def create(self, business_name, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        global_setting = GlobalSetting.objects.create(**data)
 
+        manage_extra_attrs(business_name, global_setting, extras)
+
+        return global_setting.id
 
 class AffiliationCreateSerializer(AffiliationSerializer):
     company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
