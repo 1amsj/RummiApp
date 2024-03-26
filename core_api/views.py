@@ -325,7 +325,9 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(GlobalSetting)
-    def put(request, business_name, setting_id=None):
+    def put(request, setting_id=None):
+        
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         setting = GlobalSetting.objects.get(id=setting_id)
         serializer = GlobalSettingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
