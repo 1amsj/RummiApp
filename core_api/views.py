@@ -1603,7 +1603,6 @@ def send_email(request):
         try:
             msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
             msg.attach_alternative(message, "text/html")
-            msg.attach_file('templates/notifications/core_logo.png')
             msg.send()
         except BadHeaderError:
             return JsonResponse({'error': 'Invalid header found.'}, status=400)
