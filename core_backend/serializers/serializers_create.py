@@ -456,7 +456,6 @@ class UserCreateSerializer(UserSerializer):
 
     def create(self, validated_data=None):
         data: dict = validated_data or self.validated_data
-        print(data)
         password = data.pop('password', None)
         data.pop('confirmation', None)
         contacts_data = data.pop('contacts', None)
