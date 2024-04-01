@@ -5,13 +5,13 @@ from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
 from core_api.views import basic_view_manager
-from core_backend.models import Event, Payer, User
+from core_backend.models import Event, Payer, Report, User
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
 from core_api.exceptions import BadRequestException
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Subquery, OuterRef
 
 from core_backend.serializers.serializers import EventNoBookingSerializer, EventSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
@@ -33,6 +33,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
             queryset = queryset.filter(booking__business__name=business_name)
 
         queryset = queryset.filter(
+                Q(reports__status='COMPLETED') &
                 Q(extra__key='claim_number') &  
                 ~Q(payer_company__isnull=True) &  
                 (~Q(payer__isnull=True) |
@@ -61,6 +62,13 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 Q(has_completed_authorizations_accepted__gt=0, has_completed_reports__gt=0)  |
                 Q(has_completed_authorizations_pending__gt=0, has_completed_reports__gt=0)
             )
+            
+        queryset = queryset.filter(
+            reports__status='COMPLETED',
+            reports__id=Subquery(
+                Report.objects.filter(event=OuterRef('pk')).order_by('-id').values('id')[:1]
+            )
+        )
                 
         
         queryset = cls.apply_filters(queryset.order_by('-start_at'), query_params)
