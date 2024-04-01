@@ -27,7 +27,7 @@ from core_api.services_datamanagement import create_affiliations_wrap, create_ag
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRate, CompanyRelationship, Contact, Event, \
-    Expense, ExtraQuerySet, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
+    Expense, ExtraQuerySet, GlobalSetting, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
     Service, \
     ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
@@ -35,18 +35,18 @@ from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
+    ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
-    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, \
+    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, \
     LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
     OperatorCreateSerializer, \
     PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
 from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
-    CategoryUpdateSerializer, CompanyRateUpdateSerializer, CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, LanguageUpdateSerializer, \
+    CategoryUpdateSerializer, CompanyRateUpdateSerializer, CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, GlobalSettingUpdateSerializer, LanguageUpdateSerializer, \
     OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceAreaUpdateSerializer, ServiceRootUpdateSerializer
 from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
@@ -295,6 +295,45 @@ def user_subtype_view_manager(model: Type[models.Model], serializer: Type[serial
 
     return ManageUserSubtypeModel
 
+class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerializer)):
+    @classmethod
+    @expect_does_not_exist(GlobalSetting)
+    def get(cls, request, global_setting_id=None):
+        if global_setting_id:
+            setting = GlobalSetting.objects.all().get(id=global_setting_id)
+            serialized = GlobalSettingSerializer(setting)
+            return Response(serialized.data)
+
+        query_params = prepare_query_params(request.GET)
+
+        queryset = GlobalSettingSerializer.get_default_queryset()
+
+        queryset = cls.apply_filters(queryset, query_params)
+
+        serialized = GlobalSettingSerializer(queryset, many=True)
+        return Response(serialized.data)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(GlobalSetting)
+    def post(request, business_name = None):
+        serializer = GlobalSettingCreateSerializer(data=request.data)
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
+        serializer.is_valid(raise_exception=True)
+        setting_id = serializer.create(business_name)
+        return Response(setting_id, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    @transaction.atomic
+    @expect_does_not_exist(GlobalSetting)
+    def put(request, global_setting_id=None):
+        
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
+        setting = GlobalSetting.objects.get(id=global_setting_id)
+        serializer = GlobalSettingUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(setting, business_name)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ManageUsers(basic_view_manager(User, UserSerializer)):
     @classmethod

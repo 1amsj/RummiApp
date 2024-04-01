@@ -54,6 +54,7 @@ urlpatterns = [
     path('requesters/', views.ManageRequesters.as_view(), name='manage_requesters'),
     path('notes/', views.ManageNote.as_view(), name='manage_notes'),
     *path_optionals_xor('offers/', ['<id:offer_id>', '<str:business_name>'], views.ManageOffers.as_view(), name='manage_offers'),
+    *path_optionals_xor('global_settings/', ['<id:global_setting_id>', '<str:business_name>'], views.ManageGlobalSettings.as_view(), name='manage_global_settings'),
     
     *path_optional('notifications/', '<id:notification_id>', views.ManageNotifications.as_view(), name='manage_notifications'),
 
