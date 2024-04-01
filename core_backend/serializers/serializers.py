@@ -212,10 +212,35 @@ class GlobalSettingSerializer(extendable_serializer(GlobalSetting)):
         )    
 
 # Roles serializers
-
 class AgentSerializer(user_subtype_serializer(Agent)):
-    companies = CompanyWithParentSerializer(many=True)
+    companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
     role = serializers.CharField()
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Agent.objects
+            .all()
+            .not_deleted('user')
+            .prefetch_related(
+                Prefetch(
+                    'companies',
+                    queryset=Company.objects.all().not_deleted()
+                ),
+                Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'user',
+                    queryset=UserSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
+
+class AgentWithCompaniesSerializer(AgentSerializer):
+    companies = CompanyWithParentSerializer(many=True)
 
     @staticmethod
     def get_default_queryset():
@@ -231,13 +256,10 @@ class AgentSerializer(user_subtype_serializer(Agent)):
                 Prefetch(
                     'extra',
                     queryset=ExtraAttrSerializer.get_default_queryset(),
-                ),
-                Prefetch(
-                    'user',
-                    queryset=UserSerializer.get_default_queryset(),
-                ),
+                )
             )
         )
+
 
 class OperatorNoCompaniesSerializer(user_subtype_serializer(Operator)):
 
@@ -793,7 +815,7 @@ class BookingNoEventsHistorySerializer(BookingNoEventsSerializer):
 
 class EventNoBookingSerializer(extendable_serializer(Event)):
     affiliates = AffiliationSerializer(many=True)
-    agents = AgentSerializer(many=True)
+    agents = AgentWithCompaniesSerializer(many=True)
     authorizations = AuthorizationBaseSerializer(many=True)
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'))
     payer = PayerSerializer(required=False)
@@ -826,7 +848,7 @@ class EventNoBookingSerializer(extendable_serializer(Event)):
                 ),
                 Prefetch(
                     'agents',
-                    queryset=AgentSerializer.get_default_queryset(),
+                    queryset=AgentWithCompaniesSerializer.get_default_queryset(),
                 ),
                 Prefetch(
                     'payer',

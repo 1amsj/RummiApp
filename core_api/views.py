@@ -32,7 +32,7 @@ from core_backend.models import Affiliation, Agent, Authorization, Booking, Busi
     ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers_light import EventLightSerializer
-from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
+from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
@@ -541,7 +541,7 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
+class ManageAgents(user_subtype_view_manager(Agent, AgentWithCompaniesSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -556,16 +556,16 @@ class ManageAgents(user_subtype_view_manager(Agent, AgentSerializer)):
     def get(cls, request, buisiness_name=None, agent_id=None):
         if agent_id:
             agent = Agent.objects.all().not_deleted('user').get(id=agent_id)
-            serialized = AgentSerializer(agent)
+            serialized = AgentWithCompaniesSerializer(agent)
             return Response(serialized.data)
 
         query_params = prepare_query_params(request.GET)
 
-        queryset = AgentSerializer.get_default_queryset()
+        queryset = AgentWithCompaniesSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
 
-        serialized = AgentSerializer(queryset, many=True)
+        serialized = AgentWithCompaniesSerializer(queryset, many=True)
         return Response(serialized.data)
 
 class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
