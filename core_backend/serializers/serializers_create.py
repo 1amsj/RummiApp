@@ -5,7 +5,7 @@ from rest_framework import serializers
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, \
     Expense, GlobalSetting, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
-from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
+from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
     ContactSerializer, ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
@@ -52,7 +52,7 @@ class AffiliationCreateSerializer(AffiliationSerializer):
         return affiliation
 
 
-class AgentCreateSerializer(AgentSerializer):
+class AgentCreateSerializer(AgentWithCompaniesSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all())
     role = serializers.CharField()
@@ -434,8 +434,7 @@ class ServiceRootCreateSerializer(generic_serializer(ServiceRoot)):
 
 
 class UserCreateSerializer(UserSerializer):
-    password = serializers.CharField(
-        write_only=True, required=False, allow_blank=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, validators=[validate_password])
     confirmation = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
