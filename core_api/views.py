@@ -318,6 +318,7 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
     @expect_does_not_exist(GlobalSetting)
     def post(request, business_name = None):
         serializer = GlobalSettingCreateSerializer(data=request.data)
+        business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         serializer.is_valid(raise_exception=True)
         setting_id = serializer.create(business_name)
         return Response(setting_id, status=status.HTTP_201_CREATED)
@@ -325,10 +326,10 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(GlobalSetting)
-    def put(request, setting_id=None):
+    def put(request, global_setting_id=None):
         
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
-        setting = GlobalSetting.objects.get(id=setting_id)
+        setting = GlobalSetting.objects.get(id=global_setting_id)
         serializer = GlobalSettingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(setting, business_name)
