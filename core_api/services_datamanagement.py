@@ -3,7 +3,7 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Agent, CompanyRate, CompanyRelationship, Event, Report, Service, ServiceArea
+from core_backend.models import Agent, Booking, CompanyRate, CompanyRelationship, Event, Report, Service, ServiceArea
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, CompanyCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, \
@@ -172,6 +172,16 @@ def create_booking(data, business_name, user):
     serializer = BookingCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
     booking_id = serializer.create()
+
+    try:
+        booking = Booking.objects.get(id=booking_id)
+        booking.created_by = User.objects.get(id=data['created_by'])
+        booking.save()
+    except User.DoesNotExist:
+        raise ValidationError({
+            'created_by': 'User not found'
+        })
+
     return booking_id
 
 
