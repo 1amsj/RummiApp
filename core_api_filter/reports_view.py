@@ -148,10 +148,15 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 dt_end = ''
             
             contacts = obj['booking']['companies'][0]['contacts']
-            contactsUnzip = ", ".join(contacts)
+            if len(contacts) == 1:
+                contactsUnzip = contacts[0]
+            elif len(contacts) > 1:
+                contactsUnzip = ", ".join(contacts)
+            else:
+                contactsUnzip = "" 
             
             language = Language.objects.filter(alpha3=obj['booking']['target_language_alpha3']).values()
-            
+            print(obj.__contains__('date_of_injury'), obj['booking']['public_id'])
             values = {
                 #Patient
                 "first_name": obj['affiliates'][0]['recipient']['first_name'],
@@ -172,7 +177,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "arrive_time": dt_arrive,
                 "start_time": dt_start,
                 "end_time": dt_end,
-                "date_of_injury": obj['date_of_injury'],
+                "date_of_injury": obj['date_of_injury'] if obj.__contains__('date_of_injury') else "",
                 "payer_company_type": obj['payer']['companies'][-1]['type'] if obj['payer'] != None else "",
                 "payer_company_name": obj['payer']['companies'][-1]['name'] if obj['payer'] != None else "",
                 "payer_company_address": obj['payer']['companies'][-1]['locations'][-1]['address'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
@@ -180,7 +185,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "payer_company_state": obj['payer']['companies'][-1]['locations'][-1]['state'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
                 "payer_company_send_method": obj['payer']['companies'][-1]['send_method'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
                 "provider": f"{obj['agents'][-1]['first_name']} {obj['agents'][-1]['last_name']}" if obj['agents'] != [] else "",
-                "claim_number": obj['claim_number'],
+                "claim_number": obj['claim_number'] if obj.__contains__('claim_number') else "",
                 "clinic": obj['booking']['companies'][0]['name'],
                 "clinic_address": obj['booking']['companies'][0]['locations'][0]['address'],
                 "clinic_unit_number": obj['booking']['companies'][0]['locations'][0]['unit_number'],
@@ -198,8 +203,8 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "status_report": obj['reports'][-1]['status'] if obj['reports'] != [] else "",
                 "authorized": "ACCEPTED" if latest_authorization != "" else "",
                 "auth_by": auth_byUnzip,
-                "operators_first_name": obj['booking']['operators'][-1]['first_name'],
-                "operators_last_name": obj['booking']['operators'][-1]['last_name'],
+                "operators_first_name": obj['booking']['operators'][-1]['first_name'] if obj['booking']['operators'] != [] else "",
+                "operators_last_name": obj['booking']['operators'][-1]['last_name'] if obj['booking']['operators'] != [] else "",
             }
             
             report_values.append(values)
