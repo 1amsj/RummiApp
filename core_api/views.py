@@ -1077,6 +1077,9 @@ class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
 
 
 class ManageCategories(basic_view_manager(Category, CategorySerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @classmethod
     def get(cls, request, business_name=None, category_id=None):
         if category_id:
@@ -1090,8 +1093,20 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
 
         queryset = cls.apply_filters(queryset, query_params)
 
-        serialized = CategorySerializer(queryset, many=True)
-        return Response(serialized.data)
+        serializer = CategorySerializer(queryset, many=True)
+    
+        # Check for pagination parameters
+        if 'page' in request.GET or 'page_size' in request.GET:
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = serializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = serializer(queryset, many=True)
+            return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
