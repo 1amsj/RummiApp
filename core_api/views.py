@@ -1092,20 +1092,18 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
         queryset = CategorySerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
-
-        serializer = CategorySerializer(queryset, many=True)
-    
+        
         # Check for pagination parameters
         if 'page' in request.GET or 'page_size' in request.GET:
             # Apply pagination
             paginator = cls.pagination_class()
             paginated_queryset = paginator.paginate_queryset(queryset, request)
-            serialized = serializer(paginated_queryset, many=True)
+            serialized = CategorySerializer(paginated_queryset, many=True)
             return paginator.get_paginated_response(serialized.data)
         else:
             # No pagination parameters, return all results
             queryset = cls.apply_filters(queryset, query_params)
-            serialized = serializer(queryset, many=True)
+            serialized = CategorySerializer(queryset, many=True)
             return Response(serialized.data)
 
     @staticmethod
@@ -1350,6 +1348,9 @@ class ManageServiceArea(basic_view_manager(ServiceArea, ServiceAreaSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootBookingSerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @classmethod
     def get(cls, request, business_name=None, service_root_id=None):
         if service_root_id:
@@ -1361,9 +1362,19 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootBookingSerial
         queryset = ServiceRootBookingSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
-
-        serialized = ServiceRootBookingSerializer(queryset, many=True)
-        return Response(serialized.data)
+    
+        # Check for pagination parameters
+        if 'page' in request.GET or 'page_size' in request.GET:
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = ServiceRootBookingSerializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = ServiceRootBookingSerializer(queryset, many=True)
+            return Response(serialized.data)
     
     @staticmethod
     def post(request):
