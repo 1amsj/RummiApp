@@ -5,13 +5,13 @@ from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
 from core_api.views import basic_view_manager
-from core_backend.models import Event, Payer, User
+from core_backend.models import Event, Language, Payer, Report, User
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
 from core_api.exceptions import BadRequestException
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Subquery, OuterRef
 
 from core_backend.serializers.serializers import EventNoBookingSerializer, EventSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
@@ -33,6 +33,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
             queryset = queryset.filter(booking__business__name=business_name)
 
         queryset = queryset.filter(
+                Q(reports__status='COMPLETED') &
                 Q(extra__key='claim_number') &  
                 ~Q(payer_company__isnull=True) &  
                 (~Q(payer__isnull=True) |
@@ -61,6 +62,13 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 Q(has_completed_authorizations_accepted__gt=0, has_completed_reports__gt=0)  |
                 Q(has_completed_authorizations_pending__gt=0, has_completed_reports__gt=0)
             )
+            
+        queryset = queryset.filter(
+            reports__status='COMPLETED',
+            reports__id=Subquery(
+                Report.objects.filter(event=OuterRef('pk')).order_by('-id').values('id')[:1]
+            )
+        )
                 
         
         queryset = cls.apply_filters(queryset.order_by('-start_at'), query_params)
@@ -133,15 +141,22 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 dt_start = dt.time()
             else:
                 dt_start = ''
-            if obj_start.__len__() != 0:
+            if obj_end.__len__() != 0:
                 dt = datetime.fromisoformat(obj_end.split('Z')[0])
                 dt_end = dt.time()
             else:
                 dt_end = ''
             
             contacts = obj['booking']['companies'][0]['contacts']
-            contactsUnzip = ", ".join(contacts)
+            if len(contacts) == 1:
+                contactsUnzip = contacts[0]
+            elif len(contacts) > 1:
+                contactsUnzip = ", ".join(contacts)
+            else:
+                contactsUnzip = "" 
             
+            language = Language.objects.filter(alpha3=obj['booking']['target_language_alpha3']).values()
+
             values = {
                 #Patient
                 "first_name": obj['affiliates'][0]['recipient']['first_name'],
@@ -150,27 +165,27 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "phone_contact": phoneUnzip if obj['affiliates'][0]['recipient']['contacts'] != [] else "",
                 "email_contact": emailUnzip if obj['affiliates'][0]['recipient']['contacts'] != [] else "",
                 "fax_contact": faxUnzip if obj['affiliates'][0]['recipient']['contacts'] != [] else "",
-                "address": obj['affiliates'][0]['recipient']['location']['address'],
-                "unit_number": obj['affiliates'][0]['recipient']['location']['unit_number'] if obj['affiliates'][0]['recipient']['location']['unit_number'] != None else "",
-                "city": obj['affiliates'][0]['recipient']['location']['city'],
-                "state": obj['affiliates'][0]['recipient']['location']['state'],
-                "country": obj['affiliates'][0]['recipient']['location']['country'],
-                "zip": obj['affiliates'][0]['recipient']['location']['zip'],
+                "address": obj['affiliates'][0]['recipient']['location']['address'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
+                "unit_number": obj['affiliates'][0]['recipient']['location']['unit_number'] if obj['affiliates'][0]['recipient']['location'] is not None else "",
+                "city": obj['affiliates'][0]['recipient']['location']['city'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
+                "state": obj['affiliates'][0]['recipient']['location']['state'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
+                "country": obj['affiliates'][0]['recipient']['location']['country'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
+                "zip": obj['affiliates'][0]['recipient']['location']['zip'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
                 #Event
                 "public_id": obj['booking']['public_id'],
                 "date": dt_date,
                 "arrive_time": dt_arrive,
                 "start_time": dt_start,
                 "end_time": dt_end,
-                "date_of_injury": obj['date_of_injury'],
+                "date_of_injury": obj['date_of_injury'] if obj.__contains__('date_of_injury') else "",
                 "payer_company_type": obj['payer']['companies'][-1]['type'] if obj['payer'] != None else "",
                 "payer_company_name": obj['payer']['companies'][-1]['name'] if obj['payer'] != None else "",
-                "payer_company_address": obj['payer']['companies'][-1]['locations'][-1]['address'] if obj['payer'] != None else "",
-                "payer_company_city": obj['payer']['companies'][-1]['locations'][-1]['city'] if obj['payer'] != None else "",
-                "payer_company_state": obj['payer']['companies'][-1]['locations'][-1]['state'] if obj['payer'] != None else "",
-                "payer_company_send_method": obj['payer']['companies'][-1]['send_method'] if obj['payer'] != None else "",
+                "payer_company_address": obj['payer']['companies'][-1]['locations'][-1]['address'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
+                "payer_company_city": obj['payer']['companies'][-1]['locations'][-1]['city'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
+                "payer_company_state": obj['payer']['companies'][-1]['locations'][-1]['state'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
+                "payer_company_send_method": obj['payer']['companies'][-1]['send_method'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
                 "provider": f"{obj['agents'][-1]['first_name']} {obj['agents'][-1]['last_name']}" if obj['agents'] != [] else "",
-                "claim_number": obj['claim_number'],
+                "claim_number": obj['claim_number'] if obj.__contains__('claim_number') else "",
                 "clinic": obj['booking']['companies'][0]['name'],
                 "clinic_address": obj['booking']['companies'][0]['locations'][0]['address'],
                 "clinic_unit_number": obj['booking']['companies'][0]['locations'][0]['unit_number'],
@@ -181,15 +196,15 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "send_method": obj['booking']['companies'][0]['send_method'],
                 "notes": notesUnzip,
                 "contacts": contactsUnzip,
-                "languague": obj['booking']['target_language_alpha3'],
+                "languague": language[0]['name'],
                 "type_of_appointment": obj['description'],
                 "interpreter": f"{obj['booking']['services'][-1]['provider']['first_name']} {obj['booking']['services'][-1]['provider']['last_name']}" if obj['booking']['services'] != [] else "",
                 "modality": obj['booking']['service_root']['description'] if obj['booking']['services'] != [] else "",
                 "status_report": obj['reports'][-1]['status'] if obj['reports'] != [] else "",
                 "authorized": "ACCEPTED" if latest_authorization != "" else "",
                 "auth_by": auth_byUnzip,
-                "operators_first_name": obj['booking']['operators'][-1]['first_name'],
-                "operators_last_name": obj['booking']['operators'][-1]['last_name'],
+                "operators_first_name": obj['booking']['operators'][-1]['first_name'] if obj['booking']['operators'] != [] else "",
+                "operators_last_name": obj['booking']['operators'][-1]['last_name'] if obj['booking']['operators'] != [] else "",
             }
             
             report_values.append(values)
