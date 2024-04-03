@@ -141,14 +141,14 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 dt_start = dt.time()
             else:
                 dt_start = ''
-            if obj_start.__len__() != 0:
+            if obj_end.__len__() != 0:
                 dt = datetime.fromisoformat(obj_end.split('Z')[0])
                 dt_end = dt.time()
             else:
                 dt_end = ''
             
             contacts = obj['booking']['companies'][0]['contacts']
-            contactsUnzip = ", ".join(contacts)
+            # contactsUnzip = ", ".join(contacts)
             
             values = {
                 #Patient
@@ -158,46 +158,46 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "phone_contact": phoneUnzip if obj['affiliates'][0]['recipient']['contacts'] != [] else "",
                 "email_contact": emailUnzip if obj['affiliates'][0]['recipient']['contacts'] != [] else "",
                 "fax_contact": faxUnzip if obj['affiliates'][0]['recipient']['contacts'] != [] else "",
-                "address": obj['affiliates'][0]['recipient']['location']['address'],
-                "unit_number": obj['affiliates'][0]['recipient']['location']['unit_number'] if obj['affiliates'][0]['recipient']['location']['unit_number'] != None else "",
-                "city": obj['affiliates'][0]['recipient']['location']['city'],
-                "state": obj['affiliates'][0]['recipient']['location']['state'],
-                "country": obj['affiliates'][0]['recipient']['location']['country'],
-                "zip": obj['affiliates'][0]['recipient']['location']['zip'],
+                "address": obj['affiliates'][0]['recipient']['location']['address'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
+                "unit_number": obj['affiliates'][0]['recipient']['location']['unit_number'] if obj['affiliates'][0]['recipient']['location'] is not None else "",
+                "city": obj['affiliates'][0]['recipient']['location']['city'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
+                "state": obj['affiliates'][0]['recipient']['location']['state'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
+                "country": obj['affiliates'][0]['recipient']['location']['country'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
+                "zip": obj['affiliates'][0]['recipient']['location']['zip'] if obj['affiliates'][0]['recipient']['location'] is not None else '',
                 #Event
                 "public_id": obj['booking']['public_id'],
                 "date": dt_date,
                 "arrive_time": dt_arrive,
                 "start_time": dt_start,
                 "end_time": dt_end,
-                "date_of_injury": obj['date_of_injury'],
+                # "date_of_injury": obj['date_of_injury'],
                 "payer_company_type": obj['payer']['companies'][-1]['type'] if obj['payer'] != None else "",
                 "payer_company_name": obj['payer']['companies'][-1]['name'] if obj['payer'] != None else "",
-                "payer_company_address": obj['payer']['companies'][-1]['locations'][-1]['address'] if obj['payer'] != None else "",
-                "payer_company_city": obj['payer']['companies'][-1]['locations'][-1]['city'] if obj['payer'] != None else "",
-                "payer_company_state": obj['payer']['companies'][-1]['locations'][-1]['state'] if obj['payer'] != None else "",
-                "payer_company_send_method": obj['payer']['companies'][-1]['send_method'] if obj['payer'] != None else "",
-                "provider": f"{obj['agents'][-1]['first_name']} {obj['agents'][-1]['last_name']}" if obj['agents'] != [] else "",
-                "claim_number": obj['claim_number'],
-                "clinic": obj['booking']['companies'][0]['name'],
-                "clinic_address": obj['booking']['companies'][0]['locations'][0]['address'],
-                "clinic_unit_number": obj['booking']['companies'][0]['locations'][0]['unit_number'],
-                "clinic_city": obj['booking']['companies'][0]['locations'][0]['city'],
-                "clinic_state": obj['booking']['companies'][0]['locations'][0]['state'],
-                "clinic_country": obj['booking']['companies'][0]['locations'][0]['country'],
-                "clinic_zip": obj['booking']['companies'][0]['locations'][0]['zip'],
-                "send_method": obj['booking']['companies'][0]['send_method'],
-                "notes": notesUnzip,
-                "contacts": contactsUnzip,
-                "languague": obj['booking']['target_language_alpha3'],
-                "type_of_appointment": obj['description'],
-                "interpreter": f"{obj['booking']['services'][-1]['provider']['first_name']} {obj['booking']['services'][-1]['provider']['last_name']}" if obj['booking']['services'] != [] else "",
-                "modality": obj['booking']['service_root']['description'] if obj['booking']['services'] != [] else "",
-                "status_report": obj['reports'][-1]['status'] if obj['reports'] != [] else "",
-                "authorized": "ACCEPTED" if latest_authorization != "" else "",
-                "auth_by": auth_byUnzip,
-                "operators_first_name": obj['booking']['operators'][-1]['first_name'],
-                "operators_last_name": obj['booking']['operators'][-1]['last_name'],
+                "payer_company_address": obj['payer']['companies'][-1]['locations'][-1]['address'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
+                "payer_company_city": obj['payer']['companies'][-1]['locations'][-1]['city'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
+                "payer_company_state": obj['payer']['companies'][-1]['locations'][-1]['state'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
+                "payer_company_send_method": obj['payer']['companies'][-1]['send_method'] if obj['payer'] != None and obj['payer']['companies'] != [] and obj['payer']['companies'][-1]['locations'] != [] else "",
+                # "provider": f"{obj['agents'][-1]['first_name']} {obj['agents'][-1]['last_name']}" if obj['agents'] != [] else "",
+                # "claim_number": obj['claim_number'],
+                # "clinic": obj['booking']['companies'][0]['name'],
+                # "clinic_address": obj['booking']['companies'][0]['locations'][0]['address'],
+                # "clinic_unit_number": obj['booking']['companies'][0]['locations'][0]['unit_number'],
+                # "clinic_city": obj['booking']['companies'][0]['locations'][0]['city'],
+                # "clinic_state": obj['booking']['companies'][0]['locations'][0]['state'],
+                # "clinic_country": obj['booking']['companies'][0]['locations'][0]['country'],
+                # "clinic_zip": obj['booking']['companies'][0]['locations'][0]['zip'],
+                # "send_method": obj['booking']['companies'][0]['send_method'],
+                # "notes": notesUnzip,
+                # "contacts": contactsUnzip,
+                # "languague": obj['booking']['target_language_alpha3'],
+                # "type_of_appointment": obj['description'],
+                # "interpreter": f"{obj['booking']['services'][-1]['provider']['first_name']} {obj['booking']['services'][-1]['provider']['last_name']}" if obj['booking']['services'] != [] else "",
+                # "modality": obj['booking']['service_root']['description'] if obj['booking']['services'] != [] else "",
+                # "status_report": obj['reports'][-1]['status'] if obj['reports'] != [] else "",
+                # "authorized": "ACCEPTED" if latest_authorization != "" else "",
+                # "auth_by": auth_byUnzip,
+                # "operators_first_name": obj['booking']['operators'][-1]['first_name'],
+                # "operators_last_name": obj['booking']['operators'][-1]['last_name'],
             }
             
             report_values.append(values)
