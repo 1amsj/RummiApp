@@ -5,7 +5,7 @@ from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
 from core_api.views import basic_view_manager
-from core_backend.models import Event, Payer, Report, User
+from core_backend.models import Event, Language, Payer, Report, User
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
@@ -150,6 +150,8 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
             contacts = obj['booking']['companies'][0]['contacts']
             contactsUnzip = ", ".join(contacts)
             
+            language = Language.objects.filter(alpha3=obj['booking']['target_language_alpha3']).values()
+            
             values = {
                 #Patient
                 "first_name": obj['affiliates'][0]['recipient']['first_name'],
@@ -189,7 +191,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "send_method": obj['booking']['companies'][0]['send_method'],
                 "notes": notesUnzip,
                 "contacts": contactsUnzip,
-                "languague": obj['booking']['target_language_alpha3'],
+                "languague": language[0]['name'],
                 "type_of_appointment": obj['description'],
                 "interpreter": f"{obj['booking']['services'][-1]['provider']['first_name']} {obj['booking']['services'][-1]['provider']['last_name']}" if obj['booking']['services'] != [] else "",
                 "modality": obj['booking']['service_root']['description'] if obj['booking']['services'] != [] else "",
