@@ -156,7 +156,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 contactsUnzip = "" 
             
             language = Language.objects.filter(alpha3=obj['booking']['target_language_alpha3']).values()
-            print(obj.__contains__('date_of_injury'), obj['booking']['public_id'])
+
             values = {
                 #Patient
                 "first_name": obj['affiliates'][0]['recipient']['first_name'],
