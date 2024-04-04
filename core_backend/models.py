@@ -348,6 +348,10 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     @property
     def is_provider(self):
         return getattr(self, 'as_provider', None) is not None
+    
+    @property
+    def is_admin(self):
+        return getattr(self, 'as_admin', None) is not None
 
     def delete_related(self):
         if self.is_agent:
