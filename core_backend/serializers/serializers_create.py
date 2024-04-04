@@ -92,6 +92,7 @@ class BookingCreateSerializer(extendable_serializer(Booking)):
     created_at = serializers.DateTimeField(required=False)
     public_id = serializers.ReadOnlyField()
     notes = NoteUnsafeSerializer(many=True, default=[])
+    created_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Booking
