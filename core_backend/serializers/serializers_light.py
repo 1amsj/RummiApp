@@ -2,7 +2,7 @@ from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from core_backend.models import Booking, Agent, Company, Event, Requester, Recipient, Affiliation, \
+from core_backend.models import Admin, Booking, Agent, Company, Event, Requester, Recipient, Affiliation, \
     SoftDeletionQuerySet, User, Provider, Service
 from core_backend.serializers.serializer_user import user_subtype_serializer
 from core_backend.serializers.serializers_utils import extendable_serializer, generic_serializer
@@ -216,6 +216,28 @@ class AgentLightSerializer(user_subtype_serializer(Agent)):
                     'companies',
                     queryset=CompanyLightSerializer.get_default_queryset()
                 ),
+                Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'user',
+                    queryset=UserLightSerializer.get_default_queryset(),
+                ),
+            )
+        )
+        
+class AdminLightSerializer(user_subtype_serializer(Admin)):
+    role = serializers.CharField()
+    user = UserLightSerializer()
+    
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Admin.objects
+            .all()
+            .not_deleted('user')
+            .prefetch_related(
                 Prefetch(
                     'extra',
                     queryset=ExtraAttrSerializer.get_default_queryset(),

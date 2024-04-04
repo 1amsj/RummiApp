@@ -213,6 +213,7 @@ basic_register(Location)
 
 admin.site.register(User, UserAdmin)
 basic_register(Agent, extendable=True)
+basic_register(Admin, extendable=True)
 basic_register(Operator)
 basic_register(Payer)
 basic_register(Provider, extendable=True, admin_inlines=[stacked_inline(Service, extendable=True)])
