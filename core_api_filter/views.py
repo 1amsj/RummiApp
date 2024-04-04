@@ -117,6 +117,17 @@ class ManageEventsMixin:
                     Q(has_completed_authorizations__gt=0, has_no_completed_reports__gt=0,)
                 )
                 
+                query_authorized_exclude = query_authorized.filter(
+                    Q(reports__status='COMPLETED'),
+                    reports__id=Subquery(
+                        Report.objects.filter(event=OuterRef('pk')).order_by('-id').values('id')[:1]
+                    )
+                )
+                
+                query_authorized = query_authorized.exclude(
+                    Q(id__in=query_authorized_exclude.values_list('id', flat=True))
+                )
+                
                 filters.extend(query_authorized.values_list('id', flat=True))
                 
             if 'booked' in reqBod:
@@ -207,6 +218,10 @@ class ManageEventsMixin:
                 query_pending_no_payer_no_interpreter = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     Q(extra__key='claim_number'),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        Q(payer__isnull=True)
+                    ),
                     booking__services__isnull=True
                 )
                 filters.extend(query_pending_no_payer_no_interpreter.values_list('id', flat=True))
@@ -214,6 +229,10 @@ class ManageEventsMixin:
                 query_pending_no_payer_no_case = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     ~Q(extra__key='claim_number'),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        Q(payer__isnull=True)
+                    ),
                     booking__services__isnull=False
                 )
                 filters.extend(query_pending_no_payer_no_case.values_list('id', flat=True))
@@ -228,6 +247,10 @@ class ManageEventsMixin:
                 query_pending_no_payer_no_case_no_interpreter = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     ~Q(extra__key='claim_number'),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        Q(payer__isnull=True)
+                    ),
                     booking__services__isnull=True
                 )
                 filters.extend(query_pending_no_payer_no_case_no_interpreter.values_list('id', flat=True))
