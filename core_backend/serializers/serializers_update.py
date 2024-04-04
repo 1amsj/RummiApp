@@ -1,11 +1,11 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, Expense, Language, \
+from core_backend.models import Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, Expense, GlobalSetting, Language, \
     Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyRelationshipSerializer, CompanyWithParentSerializer, \
     ContactSerializer, LocationSerializer, NoteSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, \
-    EventCreateSerializer, ExpenseCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
+    EventCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
 from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, LocationUnsafeSerializer, \
@@ -26,6 +26,17 @@ class AuthorizationUpdateSerializer(AuthorizationBaseSerializer):
 
         if events_data is not None:
             instance.events.set(events_data)
+
+class GlobalSettingUpdateSerializer(GlobalSettingCreateSerializer):
+    def update(self, instance: GlobalSetting, business, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        
+        manage_extra_attrs(business, instance, extras)
+        
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
 
 
 class BookingUpdateSerializer(BookingCreateSerializer):

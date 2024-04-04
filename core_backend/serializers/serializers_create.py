@@ -3,12 +3,12 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, \
-    Expense, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
+    Expense, GlobalSetting, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
-from core_backend.serializers.serializers import AffiliationSerializer, AgentSerializer, AuthorizationBaseSerializer, \
+from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
-    ContactSerializer, ExpenseSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
+    ContactSerializer, ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, ServiceNoProviderSerializer, \
     UserSerializer
 from core_backend.serializers.serializers_fields import BusinessField
@@ -28,7 +28,15 @@ def get_or_create_operators_group():
         
     return group
 
+class GlobalSettingCreateSerializer(GlobalSettingSerializer):
+    def create(self, business_name, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        global_setting = GlobalSetting.objects.create(**data)
 
+        manage_extra_attrs(business_name, global_setting, extras)
+
+        return global_setting.id
 
 class AffiliationCreateSerializer(AffiliationSerializer):
     company = serializers.PrimaryKeyRelatedField(queryset=Company.objects.all(), allow_null=True)
@@ -44,7 +52,7 @@ class AffiliationCreateSerializer(AffiliationSerializer):
         return affiliation
 
 
-class AgentCreateSerializer(AgentSerializer):
+class AgentCreateSerializer(AgentWithCompaniesSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all())
     role = serializers.CharField()
@@ -427,8 +435,7 @@ class ServiceRootCreateSerializer(generic_serializer(ServiceRoot)):
 
 
 class UserCreateSerializer(UserSerializer):
-    password = serializers.CharField(
-        write_only=True, required=False, allow_blank=True, validators=[validate_password])
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, validators=[validate_password])
     confirmation = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:

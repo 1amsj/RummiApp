@@ -411,7 +411,7 @@ def update_agent_wrap(data, business_name, agent_instance):
     except ValidationError as exc:
         # Wrap errors
         raise ValidationError({
-            ApiSpecialKeys.PROVIDER_DATA: exc.detail,
+            ApiSpecialKeys.AGENT_DATA: exc.detail,
         })
 
 
@@ -767,7 +767,7 @@ def handle_service_areas_bulk(datalist: list, provider_id):
 
 
 @transaction.atomic
-def handle_agents_bulk(datalist: list, business_name):
+def handle_agents_bulk(datalist: list, company_id, business_name):
     """
     Create, update or delete the agents in bulk, depending on whether the payload includes an ID or not
     """
@@ -780,23 +780,30 @@ def handle_agents_bulk(datalist: list, business_name):
     error_found = False
 
     for data in datalist:
-        agent_id = data.pop('id', None)
+        agent_id = data.pop('agent_id', None)
         deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+        agent = data.pop('agent', None)
+        data['companies'] = agent.get('companies', []) if agent else []
+        data['companies'].append(company_id)
 
         if not agent_id and deleted_flag:
             raise BadRequestException('Agent flagged as deleted but no ID provided')
 
         try:
             if not agent_id:
+                data['username'] = data.get('firstName', '') + '_' + data.get('lastName', '')
+                
+                user_id = create_user(data)
+
                 agent_id = create_agent_wrap(
                     data,
                     business_name,
-                    user_id=data['user']
+                    user_id=user_id
                 )
             elif not deleted_flag:
                 update_agent_wrap(
                     data,
-                    agent_id,
+                    business_name,
                     agent_instance=Agent.objects.get(id=agent_id)
                 )
             else:

@@ -5,13 +5,13 @@ from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
 from core_api.views import StandardResultsSetPagination, basic_view_manager
-from core_backend.models import Event, ExtraQuerySet, User
+from core_backend.models import Event, ExtraQuerySet, Report, User
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
 from core_api.exceptions import BadRequestException
 from django.db import transaction
-from django.db.models import Count, Q, F
+from django.db.models import Count, Q, Subquery, OuterRef
 
 from core_backend.serializers.serializers import EventNoBookingSerializer, EventSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
@@ -45,6 +45,7 @@ class ManageEventsMixin:
             
             if 'delivered' in reqBod:
                 query_delivered = queryset.filter(
+                    Q(reports__status='COMPLETED') &
                     Q(extra__key='claim_number') &  
                     ~Q(payer_company__isnull=True) &  
                     (~Q(payer__isnull=True) |
@@ -72,6 +73,13 @@ class ManageEventsMixin:
                     Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_pending__gt=0) | 
                     Q(has_completed_authorizations_accepted__gt=0, has_completed_reports__gt=0)  |
                     Q(has_completed_authorizations_pending__gt=0, has_completed_reports__gt=0)
+                )
+                
+                query_delivered = query_delivered.filter(
+                    reports__status='COMPLETED',
+                    reports__id=Subquery(
+                        Report.objects.filter(event=OuterRef('pk')).order_by('-id').values('id')[:1]
+                    )
                 )
                 
                 filters.extend(query_delivered.values_list('id', flat=True))
@@ -107,6 +115,17 @@ class ManageEventsMixin:
                     has_no_completed_reports=Count('reports', filter=~Q(reports__status ='COMPLETED')),
                 ).filter(
                     Q(has_completed_authorizations__gt=0, has_no_completed_reports__gt=0,)
+                )
+                
+                query_authorized_exclude = query_authorized.filter(
+                    Q(reports__status='COMPLETED'),
+                    reports__id=Subquery(
+                        Report.objects.filter(event=OuterRef('pk')).order_by('-id').values('id')[:1]
+                    )
+                )
+                
+                query_authorized = query_authorized.exclude(
+                    Q(id__in=query_authorized_exclude.values_list('id', flat=True))
                 )
                 
                 filters.extend(query_authorized.values_list('id', flat=True))
@@ -199,6 +218,10 @@ class ManageEventsMixin:
                 query_pending_no_payer_no_interpreter = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     Q(extra__key='claim_number'),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        Q(payer__isnull=True)
+                    ),
                     booking__services__isnull=True
                 )
                 filters.extend(query_pending_no_payer_no_interpreter.values_list('id', flat=True))
@@ -206,6 +229,10 @@ class ManageEventsMixin:
                 query_pending_no_payer_no_case = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     ~Q(extra__key='claim_number'),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        Q(payer__isnull=True)
+                    ),
                     booking__services__isnull=False
                 )
                 filters.extend(query_pending_no_payer_no_case.values_list('id', flat=True))
@@ -220,6 +247,10 @@ class ManageEventsMixin:
                 query_pending_no_payer_no_case_no_interpreter = queryset.filter(
                     Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
                     ~Q(extra__key='claim_number'),
+                    (
+                        ~Q(payer_company__type='clinic') &
+                        Q(payer__isnull=True)
+                    ),
                     booking__services__isnull=True
                 )
                 filters.extend(query_pending_no_payer_no_case_no_interpreter.values_list('id', flat=True))
