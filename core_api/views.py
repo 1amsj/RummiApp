@@ -336,6 +336,9 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ManageUsers(basic_view_manager(User, UserSerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @classmethod
     @expect_does_not_exist(User)
     def get(cls, request, user_id=None):
@@ -349,9 +352,19 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         queryset = UserSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
-
-        serialized = UserSerializer(queryset, many=True)
-        return Response(serialized.data)
+    
+        # Check for pagination parameters
+        if 'page' in request.GET or 'page_size' in request.GET:
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = UserSerializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = UserSerializer(queryset, many=True)
+            return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
@@ -1104,6 +1117,9 @@ class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
 
 
 class ManageCategories(basic_view_manager(Category, CategorySerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @classmethod
     def get(cls, request, business_name=None, category_id=None):
         if category_id:
@@ -1116,9 +1132,19 @@ class ManageCategories(basic_view_manager(Category, CategorySerializer)):
         queryset = CategorySerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
-
-        serialized = CategorySerializer(queryset, many=True)
-        return Response(serialized.data)
+        
+        # Check for pagination parameters
+        if 'page' in request.GET or 'page_size' in request.GET:
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = CategorySerializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = CategorySerializer(queryset, many=True)
+            return Response(serialized.data)
 
     @staticmethod
     @transaction.atomic
@@ -1362,6 +1388,9 @@ class ManageServiceArea(basic_view_manager(ServiceArea, ServiceAreaSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootBookingSerializer)):
+
+    pagination_class = StandardResultsSetPagination
+
     @classmethod
     def get(cls, request, business_name=None, service_root_id=None):
         if service_root_id:
@@ -1373,9 +1402,19 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootBookingSerial
         queryset = ServiceRootBookingSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
-
-        serialized = ServiceRootBookingSerializer(queryset, many=True)
-        return Response(serialized.data)
+    
+        # Check for pagination parameters
+        if 'page' in request.GET or 'page_size' in request.GET:
+            # Apply pagination
+            paginator = cls.pagination_class()
+            paginated_queryset = paginator.paginate_queryset(queryset, request)
+            serialized = ServiceRootBookingSerializer(paginated_queryset, many=True)
+            return paginator.get_paginated_response(serialized.data)
+        else:
+            # No pagination parameters, return all results
+            queryset = cls.apply_filters(queryset, query_params)
+            serialized = ServiceRootBookingSerializer(queryset, many=True)
+            return Response(serialized.data)
     
     @staticmethod
     def post(request):
