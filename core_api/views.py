@@ -581,7 +581,7 @@ class ManageAgents(user_subtype_view_manager(Agent, AgentWithCompaniesSerializer
         serialized = AgentWithCompaniesSerializer(queryset, many=True)
         return Response(serialized.data)
 
-class ManageAdmin(Admin):
+class ManageAdmin(basic_view_manager(Admin, AdminCreateSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_key_error
@@ -595,7 +595,7 @@ class ManageAdmin(Admin):
     @classmethod
     def get(cls, request, buisiness_name=None, admin_id=None):
         if admin_id:
-            admin = Agent.objects.all().not_deleted('user').get(id=admin_id)
+            admin = Admin.objects.all().not_deleted('user').get(id=admin_id)
             return Response(admin.data)
 
         query_params = prepare_query_params(request.GET)
