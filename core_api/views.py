@@ -26,7 +26,7 @@ from core_api.services_datamanagement import create_affiliations_wrap, create_ag
     update_provider_wrap, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRate, CompanyRelationship, Contact, Event, \
+from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRate, CompanyRelationship, Contact, Event, \
     Expense, ExtraQuerySet, GlobalSetting, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
     Service, \
     ServiceArea, ServiceRoot, User
@@ -38,7 +38,7 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentWit
     ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
-from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
+from core_backend.serializers.serializers_create import AdminCreateSerializer, AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, \
     LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
     OperatorCreateSerializer, \
@@ -580,6 +580,32 @@ class ManageAgents(user_subtype_view_manager(Agent, AgentWithCompaniesSerializer
 
         serialized = AgentWithCompaniesSerializer(queryset, many=True)
         return Response(serialized.data)
+
+# class ManageAdmin(Admin):
+#     @staticmethod
+#     @transaction.atomic
+#     @expect_key_error
+#     @expect_does_not_exist(Admin)
+#     def post(request, business_name=None):
+#         serializer = AdminCreateSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
+#         admin = serializer.create(business_name)
+#         return Response(admin.id, status=status.HTTP_201_CREATED)
+
+#     @classmethod
+#     def get(cls, request, buisiness_name=None, admin_id=None):
+#         if admin_id:
+#             admin = Agent.objects.all().not_deleted('user').get(id=admin_id)
+#             return Response(admin.data)
+
+#         query_params = prepare_query_params(request.GET)
+
+#         queryset = Admin.objects.all()
+
+#         queryset = cls.apply_filters(queryset, query_params)
+
+#         serialized = Admin(queryset, many=True)
+#         return Response(serialized.data)
 
 class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
     permission_classes = [CanManageOperators]

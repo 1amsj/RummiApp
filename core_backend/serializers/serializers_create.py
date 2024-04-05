@@ -2,7 +2,7 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, \
+from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, \
     Expense, GlobalSetting, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
@@ -67,6 +67,16 @@ class AgentCreateSerializer(AgentWithCompaniesSerializer):
         manage_extra_attrs(business_name, agent, extras)
         return agent
 
+class AdminCreateSerializer():
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    role = serializers.CharField()
+
+    def create(self, business_name, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+        admin = Admin.objects.create(**data)
+        manage_extra_attrs(business_name, admin, extras)
+        return admin
 
 class AuthorizationCreateSerializer(AuthorizationBaseSerializer):
     def create(self, validated_data=None) -> int:

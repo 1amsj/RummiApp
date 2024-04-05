@@ -3,7 +3,7 @@ from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from core_backend.models import Affiliation, Agent, Authorization, Booking, Company, CompanyRate, CompanyRelationship, Contact, Event, GlobalSetting, \
+from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Company, CompanyRate, CompanyRelationship, Contact, Event, GlobalSetting, \
     Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
@@ -212,6 +212,27 @@ class GlobalSettingSerializer(extendable_serializer(GlobalSetting)):
         )    
 
 # Roles serializers
+class AdminSerializer(user_subtype_serializer(Admin)):
+    role = serializers.CharField()
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Admin.objects
+            .all()
+            .not_deleted('user')
+            .prefetch_related(
+                Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset(),
+                ),
+                Prefetch(
+                    'user',
+                    queryset=UserSerializer.get_default_queryset(),
+                ),
+            )
+        )
+
 class AgentSerializer(user_subtype_serializer(Agent)):
     companies = serializers.PrimaryKeyRelatedField(many=True, queryset=Company.objects.all().not_deleted())
     role = serializers.CharField()

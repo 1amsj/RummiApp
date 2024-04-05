@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core_backend.models import Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, Expense, GlobalSetting, Language, \
+from core_backend.models import Admin, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, Expense, GlobalSetting, Language, \
     Location, Offer, Operator, Payer, Provider, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyRelationshipSerializer, CompanyWithParentSerializer, \
     ContactSerializer, LocationSerializer, NoteSerializer
@@ -175,6 +175,26 @@ class LanguageUpdateSerializer(LanguageCreateSerializer):
             setattr(instance, k, v)
         instance.save()
 
+
+class AdminUpdateSerializer(extendable_serializer(Admin)):
+    user = serializers.ReadOnlyField()
+    role = serializers.StringRelatedField()
+
+    class Meta:
+        model = Admin
+        fields = '__all__'
+
+    def update(self, instance: Admin, business_name, validated_data=None):
+        data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
+
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()
+
+        sync_m2m(instance.companies)
+
+        manage_extra_attrs(business_name, instance, extras)
 
 class AgentUpdateSerializer(extendable_serializer(Agent)):
     user = serializers.ReadOnlyField()

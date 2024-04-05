@@ -345,6 +345,14 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     def is_payer(self):
         return getattr(self, 'as_payer', None) is not None
 
+    @property
+    def is_provider(self):
+        return getattr(self, 'as_provider', None) is not None
+    
+    @property
+    def is_admin(self):
+        return getattr(self, 'as_admin', None) is not None
+
     def delete_related(self):
         if self.is_agent:
             self.as_agents.all().delete()
@@ -363,9 +371,24 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
 
         if self.is_payer:
             self.as_payer.delete()
+            
+        if self.is_admin:
+            self.as_admin.delete()
 
         self.location.delete()
 
+class Admin(ExtendableModel, HistoricalModel, SoftDeletableModel):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_admin')
+    
+    class Meta:
+        ordering = ['user__first_name', 'user__last_name']
+        verbose_name = _('admin')
+    
+    def __str__(self):
+        return F"[Admin] {self.user}"
+
+    def delete_related(self):
+        pass
 
 class Agent(ExtendableModel, HistoricalModel, SoftDeletableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_agents')
