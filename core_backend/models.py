@@ -379,14 +379,13 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
 
 class Admin(ExtendableModel, HistoricalModel, SoftDeletableModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_admin')
-    role = models.CharField(_('role'), max_length=64)
     
     class Meta:
         ordering = ['user__first_name', 'user__last_name']
         verbose_name = _('admin')
     
     def __str__(self):
-        return F"[{self.role} (admin)] {self.user}"
+        return F"[Admin] {self.user}"
 
     def delete_related(self):
         pass
