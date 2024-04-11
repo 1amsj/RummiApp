@@ -101,7 +101,11 @@ class Command(BaseCommand):
         duration = end - start
 
         print(f"Pending: {pending_count}")
+        print(f"Booked: {booked_count}")
+        print(f"Delivered: {delivered_count}")
+        print(f"Override: {override_count}")
+        print(f"Authorized: {authorized_count}")
 
-        print(f"Errores: {error_count}. IDs: {error_ids}")
+        print(f"Errors: {error_count}. IDs: {error_ids}")
 
-        print(f"Tiempo: {duration}")
+        print(f"Time: {duration}")
