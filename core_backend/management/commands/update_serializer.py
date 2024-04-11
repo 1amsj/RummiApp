@@ -44,42 +44,32 @@ class Command(BaseCommand):
                     and validator_type(event_datalist) \
                     and event_get_extra.__contains__('claim_number') is not None:
                         booking.status = "delivered"
-                        print('Delivered', event_datalist.booking.public_id)
                     elif aut_list.count() > 0:
                         aut_list_status = aut_list._hints['instance'].status
                         if aut_list_status == 'ACCEPTED' and validator_short_type(event_datalist):
                             booking.status = "authorized"
-                            print('Authorized', event_datalist.booking.public_id)
                         elif aut_list_status == 'OVERRIDE' and validator_short_type(event_datalist):
                             booking.status = "override"
-                            print('Override', event_datalist.booking.public_id)
                         elif event_get_extra.__contains__('claim_number') is not None and validator_type(event_datalist):
                             booking.status = "booked"
-                            print('Booked', event_datalist.booking.public_id)
                         else:
                             booking.status = "pending"
-                            print('Pending', event_datalist.booking.public_id)
                     elif event_get_extra.__contains__('claim_number') is not None and validator_type(event_datalist):
                         booking.status = "booked"
-                        print('Booked', event_datalist.booking.public_id)
                     else:
                         booking.status = "pending"
-                        print('Pending', event_datalist.booking.public_id)
                 else:
                     if list_report_status != [] and list_report_status[-1] == 'COMPLETED' \
                     and validator_clinic_type(event_datalist) \
                     and event_get_extra.__contains__('claim_number') is not None:
                         booking.status = "delivered"
-                        print('Delivered not payer_company', event_datalist.booking.public_id)
                     elif event_get_extra.__contains__('claim_number') is not None and validator_clinic_type(event_datalist):
                         booking.status = "booked"
-                        print('Booked not payer_company', event_datalist.booking.public_id)
                     else:
                         booking.status = "pending"
-                        print('Pending not payer_company', event_datalist.booking.public_id)
                         
                 booking.save()
         except:
-            print(f"Error no existe evento para booking id: {booking.public_id}")
+            print(f"Error creating booking_status: {booking.public_id}")
     
             continue
