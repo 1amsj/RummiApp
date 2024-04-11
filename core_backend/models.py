@@ -654,6 +654,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     created_at = models.DateTimeField(auto_now_add=True)
     public_id = models.CharField(max_length=30, null=True)
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, null=True, related_name='created_bookings')
+    status = models.CharField(max_length=30, null=True)
 
     class Meta:
         verbose_name = _('booking')
@@ -691,7 +692,7 @@ class Event(ExtendableModel, HistoricalModel, SoftDeletableModel, UniquifiableMo
         verbose_name_plural = _('events')
 
     def __str__(self):
-        return F"Event #{self.id} - Booking ID: {self.booking.id} - {self.booking.public_id}"
+        return F"Event #{self.id} - Booking ID: {self.booking.id} - {self.booking.public_id} - Status: {self.booking.status}"
 
     @property
     def is_onsite(self):
