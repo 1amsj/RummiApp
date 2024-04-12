@@ -44,217 +44,30 @@ class ManageEventsMixin:
             #TYPE OF STATUS
             
             if 'delivered' in reqBod:
-                query_delivered = queryset.filter(
-                    Q(reports__status='COMPLETED') &
-                    Q(extra__key='claim_number') &  
-                    ~Q(payer_company__isnull=True) &  
-                    (~Q(payer__isnull=True) |
-                    (Q(payer_company__type='clinic') | 
-                        (
-                        Q(extra__key='payer_company_type') & Q(extra__data='patient')
-                        )
-                    ) & Q(reports__status='COMPLETED'))
-                ).annotate(
-                    has_completed_authorizations_accepted=Count('authorizations', filter=Q(authorizations__status='ACCEPTED' )),
-                    has_completed_authorizations_pending=Count('authorizations', filter=Q(authorizations__status='PENDING' )),
-                    has_payer_company_clinic=Count('authorizations', filter=Q(payer_company__type='clinic')),
-                    has_payer_company_patient=Count('authorizations', filter=(Q(extra__key='payer_company_type') & Q(extra__data='patient'))),
-                    has_completed_reports=Count('reports', filter=Q(reports__status='COMPLETED')),
-                    has_authorizations=Count('authorizations'),
-                    has_reports=Count('reports')
-                ).annotate(
-                    authorizations_count=Count('authorizations', distinct=True),
-                    reports_count=Count('reports', distinct=True)
-                ).filter(
-                    Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0, has_payer_company_clinic=0) |  
-                    Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0, has_payer_company_patient=0) |  
-                    Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0) |  
-                    Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_accepted__gt=0) | 
-                    Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_pending__gt=0) | 
-                    Q(has_completed_authorizations_accepted__gt=0, has_completed_reports__gt=0)  |
-                    Q(has_completed_authorizations_pending__gt=0, has_completed_reports__gt=0)
-                )
-                
-                query_delivered = query_delivered.filter(
-                    reports__status='COMPLETED',
-                    reports__id=Subquery(
-                        Report.objects.filter(event=OuterRef('pk')).order_by('-id').values('id')[:1]
-                    )
-                )
+                query_delivered = queryset.filter(booking__status='delivered')
                 
                 filters.extend(query_delivered.values_list('id', flat=True))
             
             if 'override' in reqBod:
-                query_override = queryset.filter(
-                    Q(extra__key='claim_number') &  
-                    ~Q(payer_company__isnull=True) &  
-                    ~Q(payer__isnull=True) 
-                ).annotate(
-                    has_completed_authorizations=Count('authorizations', filter=Q(authorizations__status='OVERRIDE' )),
-                    has_no_completed_reports=Count('reports', filter=~Q(reports__status ='COMPLETED')),
-                    has_authorizations=Count('authorizations'),
-                    has_reports=Count('reports')
-                ).annotate(
-                    authorizations_count=Count('authorizations', distinct=True),
-                    reports_count=Count('reports', distinct=True)
-                ).filter(
-                    Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations__gt=0) |
-                    Q(has_completed_authorizations__gt=0, has_no_completed_reports__gt=0)  |
-                    Q(has_completed_authorizations__gt=0, has_no_completed_reports=0)
-                )
+                query_override = queryset.filter(booking__status='authorized')
                 
                 filters.extend(query_override.values_list('id', flat=True))
                 
             if 'authorized' in reqBod:
-                query_authorized = queryset.filter(
-                    Q(extra__key='claim_number') &  
-                    ~Q(payer_company__isnull=True) &  
-                    ~Q(payer__isnull=True) 
-                ).annotate(
-                    has_completed_authorizations=Count('authorizations', filter=Q(authorizations__status='ACCEPTED' )),
-                    has_no_completed_reports=Count('reports', filter=~Q(reports__status ='COMPLETED')),
-                ).filter(
-                    Q(has_completed_authorizations__gt=0, has_no_completed_reports__gt=0,)
-                )
-                
-                query_authorized_exclude = query_authorized.filter(
-                    Q(reports__status='COMPLETED'),
-                    reports__id=Subquery(
-                        Report.objects.filter(event=OuterRef('pk')).order_by('-id').values('id')[:1]
-                    )
-                )
-                
-                query_authorized = query_authorized.exclude(
-                    Q(id__in=query_authorized_exclude.values_list('id', flat=True))
-                )
+                query_authorized = queryset.filter(booking__status='authorized')
                 
                 filters.extend(query_authorized.values_list('id', flat=True))
                 
             if 'booked' in reqBod:
-                query_booked = queryset.filter(
-                    Q(extra__key='claim_number') &
-                    (
-                        Q(payer_company__isnull=False) |
-                        Q(payer__isnull=False)
-                    )
-                ).annotate(
-                    authorization_count=Count('authorizations'),
-                    report_count=Count('reports'),
-                ).filter(
-                    Q(authorization_count=0, report_count=0) |
-                    (
-                        Q(authorization_count=0) &
-                        (
-                            (Q(report_count__gt=0) & Q(payer__isnull=False)) |
-                            (
-                                Q(report_count=0) |
-                                (Q(payer_company__type='clinic') | Q(payer_company__type='patient'))
-                            )
-                        )
-                    ) |
-                    (
-                        Q(report_count=0) &
-                        Q(authorization_count__gt=0)
-                    ) |
-                    (
-                        Q(authorization_count__gt=0) &
-                        Q(report_count__gt=0)
-                    )
-                ).exclude(
-                    Q(authorizations__status='ACCEPTED') |
-                    Q(authorizations__status='OVERRIDE') |
-                    Q(reports__status='COMPLETED')
-                ).exclude (
-                    Q(payer__isnull=True)
-                ).distinct()
+                query_booked = queryset.filter(booking__status='booked')
                 
                 filters.extend(query_booked.values_list('id', flat=True))
-
-                queryset_especific_booked = queryset.filter(
-                    Q(extra__key='claim_number') &
-                    Q(authorizations__isnull=True) &
-                    Q(reports__isnull=False) &
-                    Q(payer__isnull=True) &
-                    Q(payer_company__isnull=False) &
-                    Q(payer_company__type__in=['clinic', 'patient'])
-                ).annotate(
-                    authorization_count=Count('authorizations'),
-                    report_count=Count('reports'),
-                ).filter(
-                    authorization_count=0,
-                    report_count__gt=0
-                ).exclude(
-                    Q(reports__status='COMPLETED')
-                )
-                
-                filters.extend(queryset_especific_booked.values_list('id', flat=True))
                 
             if 'pending' in reqBod:
-                query_pending_no_case = queryset.filter(
-                    ~Q(extra__key='claim_number') &
-                    (
-                        Q(payer_company__isnull=False) |
-                        Q(payer__isnull=False)
-                    ),
-                    (
-                        Q(payer_company__type='clinic') |
-                        (Q(extra__key='payer_company_type') & Q(extra__data='patient'))
-                    ),
-                    booking__services__isnull=False,
-                )
-                filters.extend(query_pending_no_case.values_list('id', flat=True))
-
-                query_pending_no_payer = queryset.filter(
-                    Q(payer__isnull=True) | Q(payer_company__isnull=True),
-                    Q(extra__key='claim_number'),
-                    (
-                        ~Q(payer_company__type='clinic') &
-                        Q(payer__isnull=True)
-                    ),
-                    booking__services__isnull=False
-                )
-                filters.extend(query_pending_no_payer.values_list('id', flat=True))
-
-                query_pending_no_payer_no_interpreter = queryset.filter(
-                    Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
-                    Q(extra__key='claim_number'),
-                    (
-                        ~Q(payer_company__type='clinic') &
-                        Q(payer__isnull=True)
-                    ),
-                    booking__services__isnull=True
-                )
-                filters.extend(query_pending_no_payer_no_interpreter.values_list('id', flat=True))
-
-                query_pending_no_payer_no_case = queryset.filter(
-                    Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
-                    ~Q(extra__key='claim_number'),
-                    (
-                        ~Q(payer_company__type='clinic') &
-                        Q(payer__isnull=True)
-                    ),
-                    booking__services__isnull=False
-                )
-                filters.extend(query_pending_no_payer_no_case.values_list('id', flat=True))
-
-                query_pending_no_case_no_interpreter = queryset.filter(
-                    Q(payer_company__isnull=False) | Q(payer__isnull=False),
-                    ~Q(extra__key='claim_number'),
-                    booking__services__isnull=True
-                )
-                filters.extend(query_pending_no_case_no_interpreter.values_list('id', flat=True))
-
-                query_pending_no_payer_no_case_no_interpreter = queryset.filter(
-                    Q(payer__isnull=True) | (Q(payer_company__isnull=True) & ~Q(extra__key='payer_company_type') & ~Q(extra__data='patient')),
-                    ~Q(extra__key='claim_number'),
-                    (
-                        ~Q(payer_company__type='clinic') &
-                        Q(payer__isnull=True)
-                    ),
-                    booking__services__isnull=True
-                )
-                filters.extend(query_pending_no_payer_no_case_no_interpreter.values_list('id', flat=True))
-            
+                query_pending = queryset.filter(booking__status='pending')
+                
+                filters.extend(query_pending.values_list('id', flat=True))
+                
             if 'no_case' in reqBod:
                 query_no_case = queryset.filter(
                     ~Q(extra__key='claim_number')

@@ -866,6 +866,17 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
         affiliation = serializer.create(business_name)
         return Response(affiliation.id, status=status.HTTP_201_CREATED)
 
+def validator_type(value):
+    return (value[-1]['payer_company_type'] == 'insurance' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
+            (value[-1]['payer_company_type'] == 'agency' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
+            (value[-1]['payer_company_type'] == 'lawfirm' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
+            (value[-1]['payer_company_type'] == 'clinic' and value[-1]['payer_company'] is not None) or \
+            (value[-1]['payer_company_type'] == 'patient' and value[-1]['payer'] is not None)
+
+def validator_short_type(value):
+    return (value[-1]['payer_company_type'] == 'insurance' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
+            (value[-1]['payer_company_type'] == 'agency' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
+            (value[-1]['payer_company_type'] == 'lawfirm' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None)
 
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
@@ -905,8 +916,36 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     def post(request, business_name):
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
         offer_datalist = request.data.pop(ApiSpecialKeys.OFFER_DATALIST, [])
+        company_type_validation = validator_type(event_datalist)
+        company_type_short_validation = validator_short_type(event_datalist)
 
         booking_id = create_booking(request.data, business_name, request.user)
+        
+        booking = Booking.objects.get(id=booking_id)
+
+        if event_datalist[-1].__contains__('authorizations'):
+            def representation_services(repr):
+                    authorization = Authorization.objects.get(id=repr)
+                    return authorization.status
+            auth = map(representation_services, event_datalist[-1]['authorizations'])
+            list_auth = list(auth)
+
+            if list_auth.__contains__('ACCEPTED') and company_type_short_validation:
+                booking.status = "authorized"
+            elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
+                booking.status = "override"
+            elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+                booking.status = "booked"
+            else:
+                booking.status = "pending"
+
+        elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+            booking.status = "booked"
+
+        else:
+            booking.status = "pending"
+            
+        booking.save()
 
         event_ids = create_events_wrap(
             datalist=event_datalist,
@@ -935,6 +974,36 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
         requester = request.data.pop('requester', None)
+        company_type_validation = validator_type(event_datalist)
+        company_type_short_validation = validator_short_type(event_datalist)
+
+        if event_datalist[-1]['_report_datalist'][-1]['status'] == 'COMPLETED' \
+        and company_type_validation and event_datalist[-1]['claim_number'] is not None:
+            booking.status = "delivered"
+
+        elif event_datalist[-1].__contains__('authorizations'):
+            def representation_services(repr):
+                    authorization = Authorization.objects.get(id=repr)
+                    return authorization.status
+            auth = map(representation_services, event_datalist[-1]['authorizations'])
+            list_auth = list(auth)
+
+            if list_auth.__contains__('ACCEPTED') and company_type_short_validation:
+                booking.status = "authorized"
+            elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
+                booking.status = "override"
+            elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+                booking.status = "booked"
+            else:
+                booking.status = "pending"
+
+        elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+            booking.status = "booked"
+
+        else:
+            booking.status = "pending"
+            
+        booking.save()
 
         handle_events_bulk(event_datalist, business, requester, booking_id)
 
