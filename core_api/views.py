@@ -27,7 +27,7 @@ from core_api.services_datamanagement import create_affiliations_wrap, create_ag
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRate, CompanyRelationship, Contact, Event, \
-    Expense, ExtraQuerySet, GlobalSetting, Language, Note, Notification, Offer, Operator, Payer, Provider, Recipient, Requester, \
+    Expense, ExtraQuerySet, GlobalSetting, Language, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Requester, \
     Service, \
     ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
@@ -36,7 +36,7 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentWit
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
-    PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
+    PayerSerializer, ProviderSerializer, RateSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AdminCreateSerializer, AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, \
