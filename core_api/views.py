@@ -18,12 +18,12 @@ from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
-from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_company_relationships_wrap, create_event, \
-    create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, create_rate_wrap, \
+from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
+    create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
     create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_rates_bulk, handle_company_relationships_bulk, handle_events_bulk, handle_rates_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
-    update_provider_wrap, update_rate, \
+    update_provider_wrap, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRate, CompanyRelationship, Contact, Event, \
