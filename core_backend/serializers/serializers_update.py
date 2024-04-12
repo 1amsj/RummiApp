@@ -31,6 +31,7 @@ class GlobalSettingUpdateSerializer(GlobalSettingCreateSerializer):
     def update(self, instance: GlobalSetting, business, validated_data=None):
         data: dict = validated_data or self.validated_data
         extras = data.pop('extra', {})
+        print(extras)
         
         manage_extra_attrs(business, instance, extras)
         

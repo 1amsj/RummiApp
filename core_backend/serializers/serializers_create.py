@@ -203,6 +203,8 @@ class CompanyCreateSerializer(CompanyWithParentSerializer):
         if company_relationships_from_data:
             company_relationship_instances = CompanyRelationshipSerializer.create_instances(company_relationships_from_data)
             company.company_relationships.add(*company_relationship_instances)
+
+        manage_extra_attrs(business_name, company, extras)
     
         return company
 

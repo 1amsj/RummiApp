@@ -607,7 +607,8 @@ class Rate(ExtendableModel, HistoricalModel, SoftDeletableModel):
         PER_MINUTES = 'PER_MINUTES', _('Per Minutes')
         QUANTITY = 'QUANTITY', _('Quantity')
 
-    language = models.CharField(_('language'), max_length=255, null=True, blank=True, default=None, help_text='Defines the language that the provider will charge for this service')
+    global_setting = models.ForeignKey(GlobalSetting, on_delete=models.CASCADE, related_name='rates', null=True, blank=True)
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='rates', null=True, blank=True)
     root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='rates')
     bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
     bill_rate_type = models.CharField(_('billing rate type'), max_length=255, choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
@@ -621,7 +622,7 @@ class Rate(ExtendableModel, HistoricalModel, SoftDeletableModel):
         verbose_name_plural = _('rates')
 
     def __str__(self):
-        return F"{self.id} - {self.root} - {self.language}"
+        return F"{self.id} - {self.root}"
 
     def delete_related(self):
         # TODO review since this is a m2m

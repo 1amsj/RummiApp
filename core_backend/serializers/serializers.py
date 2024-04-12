@@ -215,6 +215,7 @@ class LanguageSerializer(BaseSerializer):
         )
 
 class GlobalSettingSerializer(extendable_serializer(GlobalSetting)):
+    rates = RateSerializer(many=True, required=False)
 
     class Meta:
         model = GlobalSetting
@@ -226,7 +227,17 @@ class GlobalSettingSerializer(extendable_serializer(GlobalSetting)):
             GlobalSetting.objects
             .all()
             .not_deleted()
-        )    
+            .prefetch_related(
+                Prefetch(
+                    'rates',
+                    queryset=RateSerializer.get_default_queryset()
+                ),
+                Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset()
+                )
+            )
+        )
 
 # Roles serializers
 class AdminSerializer(user_subtype_serializer(Admin)):

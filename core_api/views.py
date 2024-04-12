@@ -296,11 +296,12 @@ def user_subtype_view_manager(model: Type[models.Model], serializer: Type[serial
     return ManageUserSubtypeModel
 
 class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerializer)):
+
     @classmethod
     @expect_does_not_exist(GlobalSetting)
     def get(cls, request, global_setting_id=None):
         if global_setting_id:
-            setting = GlobalSetting.objects.all().get(id=global_setting_id)
+            setting = GlobalSetting.objects.all().get(client=global_setting_id)
             serialized = GlobalSettingSerializer(setting)
             return Response(serialized.data)
 
@@ -309,8 +310,8 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
         queryset = GlobalSettingSerializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
-
         serialized = GlobalSettingSerializer(queryset, many=True)
+        
         return Response(serialized.data)
 
     @staticmethod
@@ -340,7 +341,7 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
         rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
 
-        setting = GlobalSetting.objects.get(id=global_setting_id)
+        setting = GlobalSetting.objects.get(client=global_setting_id)
         serializer = GlobalSettingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(setting, business_name)
