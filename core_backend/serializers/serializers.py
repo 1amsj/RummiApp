@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Company, CompanyRate, CompanyRelationship, Contact, Event, GlobalSetting, \
-    Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Recipient, Report, Requester, \
+    Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, CompanyRelationshipSerializer, ContactSerializer, ExpenseSerializer, \
@@ -99,6 +99,46 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
 
 
 # Serializers
+class RateSerializer(BaseSerializer):
+    root = ServiceRootBaseSerializer(required=False)
+    class Meta:
+        model = Rate
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Rate.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'root',
+                    queryset=ServiceRootBaseSerializer.get_default_queryset(),
+                )
+            )
+        )
+class CompanyRateSerializer(BaseSerializer):
+    root = ServiceRootBaseSerializer(required=False)
+
+    class Meta:
+        model = CompanyRate
+        fields = '__all__'
+
+    @staticmethod
+    def get_default_queryset():
+        return (
+            CompanyRate.objects
+            .all()
+            .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'root',
+                    queryset=ServiceRootBaseSerializer.get_default_queryset(),
+                )
+            )
+        )
+
 class CompanySerializer(extendable_serializer(Company)):
     contacts = ContactSerializer(many=True)
     locations = LocationSerializer(many=True)
@@ -129,29 +169,6 @@ class CompanySerializer(extendable_serializer(Company)):
                 )
             )
         )
-    
-    
-class CompanyRateSerializer(BaseSerializer):
-    root = ServiceRootBaseSerializer(required=False)
-
-    class Meta:
-        model = CompanyRate
-        fields = '__all__'
-
-    @staticmethod
-    def get_default_queryset():
-        return (
-            CompanyRate.objects
-            .all()
-            .not_deleted()
-            .prefetch_related(
-                Prefetch(
-                    'root',
-                    queryset=ServiceRootBaseSerializer.get_default_queryset(),
-                )
-            )
-        )
-
 
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
@@ -198,6 +215,7 @@ class LanguageSerializer(BaseSerializer):
         )
 
 class GlobalSettingSerializer(extendable_serializer(GlobalSetting)):
+    rates = RateSerializer(many=True, required=False)
 
     class Meta:
         model = GlobalSetting
@@ -209,7 +227,17 @@ class GlobalSettingSerializer(extendable_serializer(GlobalSetting)):
             GlobalSetting.objects
             .all()
             .not_deleted()
-        )    
+            .prefetch_related(
+                Prefetch(
+                    'rates',
+                    queryset=RateSerializer.get_default_queryset()
+                ),
+                Prefetch(
+                    'extra',
+                    queryset=ExtraAttrSerializer.get_default_queryset()
+                )
+            )
+        )
 
 # Roles serializers
 class AdminSerializer(user_subtype_serializer(Admin)):
