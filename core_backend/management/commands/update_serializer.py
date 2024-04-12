@@ -1,10 +1,13 @@
 from datetime import datetime, timedelta
 import django
+# from django.db.models import Subquery, OuterRef
+
+from core_backend.serializers.serializers import EventSerializer
 
 django.setup()
 
 from django.core.management.base import BaseCommand
-from core_backend.models import Authorization, Booking, Event, Report
+from core_backend.models import Authorization, Booking, Event
 
 pending_count = 0
 booked_count = 0 
@@ -29,67 +32,73 @@ class Command(BaseCommand):
                 (value.payer_company.type == 'agency' and value.payer is not None and value.payer_company is not None) or \
                 (value.payer_company.type == 'lawfirm' and value.payer is not None and value.payer_company is not None)
          
-    def validator_clinic_type(value):
+    def validator_patient_type(value):
         return (value.payer is not None and value.payer_company is None)
     
     def self_list_return(value):
         return value
     
+    def list_authorizations(value):
+        return value.status
+        
     bookings = Booking.objects.all()
+    
+    
+    eventlist = Event.objects.all()
+    serializer_class = EventSerializer
+    query = serializer_class(eventlist)
+    query_added = query.get_default_queryset()
     
     for booking in bookings:
         try:
-            auth = Authorization.objects.all()
-            event_datalist = Event.objects.get(id=booking.id)
-            event_get_extra = event_datalist.get_extra_attrs()
-            report = Report.objects.filter(event__id=event_datalist.id)
-            payer_company_not_none = event_datalist.payer_company is not None
+            event_datalist = Event.objects.get(booking__id=booking.id)
+            general_query = query_added.filter(booking__public_id = booking.public_id)
+            reports_query = general_query.filter(reports__status='COMPLETED')
             
-            for aut in auth:
-                report_status = map(self_list_return, report.values_list('status', flat=True))
-                list_report_status = list(report_status)    
-                aut_list = aut.events.all().filter(id=event_datalist.id)
+            event_get_extra = event_datalist.get_extra_attrs()
+            payer_company_not_none = event_datalist.payer_company is not None
                 
-                if payer_company_not_none:
-                    if list_report_status != [] and list_report_status[-1] == 'COMPLETED' \
-                    and validator_type(event_datalist) \
-                    and event_get_extra.__contains__('claim_number') is not None:
-                        booking.status = "delivered"
-                        delivered_count += 1
-                    elif aut_list.count() > 0:
-                        aut_list_status = aut_list._hints['instance'].status
-                        if aut_list_status == 'ACCEPTED' and validator_short_type(event_datalist):
-                            booking.status = "authorized"
-                            authorized_count += 1
-                        elif aut_list_status == 'OVERRIDE' and validator_short_type(event_datalist):
-                            booking.status = "override"
-                            override_count += 1
-                        elif event_get_extra.__contains__('claim_number') is not None and validator_type(event_datalist):
-                            booking.status = "booked"
-                            booked_count += 1
-                        else:
-                            booking.status = "pending"
-                            pending_count += 1
-                    elif event_get_extra.__contains__('claim_number') is not None and validator_type(event_datalist):
+            if payer_company_not_none:
+                if reports_query.count() > 0 and reports_query[0].__dict__['_prefetched_objects_cache']['reports'][:10][-1].status == 'COMPLETED' \
+                and validator_type(event_datalist) \
+                and event_get_extra.__contains__('claim_number') == True:
+                    booking.status = "delivered"
+                    delivered_count += 1
+                elif general_query[0].__dict__['_prefetched_objects_cache'].__contains__('authorizations'):
+                    authorizations_status = map(list_authorizations, general_query[0].__dict__['_prefetched_objects_cache']['authorizations'])
+                    list_authorizations_status = list(authorizations_status)
+                    if list_authorizations_status.__contains__('ACCEPTED') and validator_short_type(event_datalist):
+                        booking.status = "authorized"
+                        authorized_count += 1
+                    elif list_authorizations_status.__contains__('OVERRIDE') and validator_short_type(event_datalist):
+                        booking.status = "override"
+                        override_count += 1
+                    elif event_get_extra.__contains__('claim_number') == True and validator_type(event_datalist):
                         booking.status = "booked"
                         booked_count += 1
                     else:
                         booking.status = "pending"
                         pending_count += 1
+                elif event_get_extra.__contains__('claim_number') == True and validator_type(event_datalist):
+                    booking.status = "booked"
+                    booked_count += 1
                 else:
-                    if list_report_status != [] and list_report_status[-1] == 'COMPLETED' \
-                    and validator_clinic_type(event_datalist) \
-                    and event_get_extra.__contains__('claim_number') is not None:
-                        booking.status = "delivered"
-                        delivered_count += 1
-                    elif event_get_extra.__contains__('claim_number') is not None and validator_clinic_type(event_datalist):
-                        booking.status = "booked"
-                        booked_count += 1
-                    else:
-                        booking.status = "pending"
-                        pending_count += 1
-                        
-                booking.save()
+                    booking.status = "pending"
+                    pending_count += 1
+            else:
+                if reports_query.count() > 0 and reports_query[0].__dict__['_prefetched_objects_cache']['reports'][:10][-1].status == 'COMPLETED' \
+                and validator_patient_type(event_datalist) \
+                and event_get_extra.__contains__('claim_number') == True:
+                    booking.status = "delivered"
+                    delivered_count += 1
+                elif event_get_extra.__contains__('claim_number') == True and validator_patient_type(event_datalist):
+                    booking.status = "booked"
+                    booked_count += 1
+                else:
+                    booking.status = "pending"
+                    pending_count += 1
+                    
+            booking.save()
         except:
             error_count += 1
             error_ids.append(booking.public_id)
