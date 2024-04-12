@@ -35,6 +35,7 @@ class ApiSpecialKeys(str, Enum):
     OPERATOR_DATA = '_operator_data'
     PAYER_DATA = '_payer_data'
     PROVIDER_DATA = '_provider_data'
+    RATES_DATALIST = '_rates_datalist'
     RECIPIENT_DATA = '_recipient_data'
     REPORT_DATALIST = '_report_datalist'
     REQUESTER_DATA = '_requester_data'

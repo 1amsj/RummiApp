@@ -3,14 +3,14 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Agent, Booking, CompanyRate, CompanyRelationship, Event, Report, Service, ServiceArea
+from core_backend.models import Agent, Booking, CompanyRate, CompanyRelationship, Event, Rate, Report, Service, ServiceArea
 from core_backend.models import User
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, CompanyCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
-    ProviderCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, \
+    ProviderCreateSerializer, RateCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, \
     ServiceCreateSerializer, ServiceAreaCreateSerializer, UserCreateSerializer
-from core_backend.serializers.serializers_update import AgentUpdateSerializer, CompanyRateUpdateSerializer, CompanyRelationshipUpdateSerializer, EventUpdateSerializer, ProviderUpdateSerializer, \
+from core_backend.serializers.serializers_update import AgentUpdateSerializer, CompanyRateUpdateSerializer, CompanyRelationshipUpdateSerializer, EventUpdateSerializer, ProviderUpdateSerializer, RateUpdateSerializer, \
     RecipientUpdateSerializer, ReportUpdateSerializer, \
     ServiceUpdateSerializer, ServiceAreaUpdateSerializer, UserUpdateSerializer
 
@@ -22,6 +22,19 @@ def create_user(data):
     serializer.is_valid(raise_exception=True)
     user = serializer.create()
     return user.id
+
+@transaction.atomic
+def create_rate_wrap(data):
+    try:
+        serializer = RateCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        rate = serializer.create()
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.RATES_DATALIST: exc.detail,
+        })
+    return rate
 
 
 @transaction.atomic
@@ -368,12 +381,6 @@ def create_company_rate_wrap(data, company_id):
         })
     return company_rate
 
-def create_company(data, business_name):
-    serializer = CompanyCreateSerializer(data=data)
-    serializer.is_valid(raise_exception=True)
-    company = serializer.create(business_name)
-    return company.id
-
 @transaction.atomic
 def create_company_relationships_wrap(data, company_id):
     try:
@@ -390,6 +397,20 @@ def create_company_relationships_wrap(data, company_id):
     return company_relationship.id
 
 # Update
+@transaction.atomic
+def update_rate_wrap(data, rate_instance):
+        # Handle service update
+    try:
+        serializer = RateUpdateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update(rate_instance)
+
+    except ValidationError as exc:
+        # Wrap errors
+        raise ValidationError({
+            ApiSpecialKeys.RATES_DATALIST: exc.detail,
+        })
+
 @transaction.atomic
 def update_user(data, user_instance):
     serializer = UserUpdateSerializer(data=data)
@@ -533,7 +554,7 @@ def update_report_wrap(data, report_instance, business):
 @transaction.atomic
 def update_company_rate_wrap(data, company_id, company_rate_instance):
 
-    # Handle service update
+    # Handle company rate update
     try:
         data['company'] = company_id
         serializer = CompanyRateUpdateSerializer(data=data)
@@ -823,7 +844,7 @@ def handle_agents_bulk(datalist: list, company_id, business_name):
     return agents_ids
 
 @transaction.atomic
-def handle_company_rates_bulk(datalist: list, business_name, company_id):
+def handle_company_rates_bulk(datalist: list, company_id):
     """
     Create, update or delete the company rates in bulk, depending on whether the payload includes an ID or not
     """
@@ -917,3 +938,50 @@ def handle_company_relationships_bulk(datalist: list, company_id):
         raise ValidationError(company_relationship_errors)
     
     return company_relationship_ids
+
+@transaction.atomic
+def handle_rates_bulk(datalist: list):
+    """
+    Create, update or delete rates in bulk, depending on whether the payload includes an ID or not
+    """
+    # TODO It is noteworthy that currently this is not a true bulk operation.
+    #  Also, company rates get created even if an error was found before,
+    #  this might make the transaction rollback expensive.
+
+    rates_ids = []
+    rates_errors = []
+    error_found = False
+
+    for data in datalist:
+        rate_id = data.pop('id', None)
+        deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+     
+
+        if not rate_id and deleted_flag:
+            raise BadRequestException('Company rate flagged as deleted but no ID provided')
+
+        try:
+            if not rate_id:
+                rate_id = create_rate_wrap(
+                    data,
+                )
+            elif not deleted_flag:
+                update_rate_wrap(
+                    data,
+                    rate_instance=CompanyRate.objects.get(id=rate_id)
+                )
+            else:
+                Rate.objects.get(id=rate_id).delete()
+
+            # Append empty error to object so that the indexes of the errors correspond to the indexes of the data
+            rates_errors.append({})
+            rates_ids.append(rate_id)
+
+        except ValidationError as exc:
+            error_found = True
+            rates_errors.append(exc.detail)
+
+    if error_found:
+        raise ValidationError(rates_errors)
+
+    return rates_ids

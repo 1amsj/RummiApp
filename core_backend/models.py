@@ -599,6 +599,34 @@ class Service(ExtendableModel, HistoricalModel, SoftDeletableModel):
         # TODO review since this is a m2m
         self.bookings.all().delete()
 
+class Rate(ExtendableModel, HistoricalModel, SoftDeletableModel):
+    class RateType(models.TextChoices):
+        FLAT = 'FLAT', _('Flat')
+        PER_ASSIGNATION = 'PER_ASSIGNATION', _('Per Assignation')
+        PER_HOURS = 'PER_HOURS', _('Per Hours')
+        PER_MINUTES = 'PER_MINUTES', _('Per Minutes')
+        QUANTITY = 'QUANTITY', _('Quantity')
+
+    language = models.CharField(_('language'), max_length=255, null=True, blank=True, default=None, help_text='Defines the language that the provider will charge for this service')
+    root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='rates')
+    bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
+    bill_rate_type = models.CharField(_('billing rate type'), max_length=255, choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
+    bill_min_payment = models.DecimalField(_('billing minimum payment'), max_digits=32, decimal_places=2, default=0, help_text='Defines the minimum that the provider will charge for this service')
+    bill_no_show_fee = models.DecimalField(_('billing no show fee'), max_digits=32, decimal_places=2, default=0, help_text='Defines the fee thatr will be charge if the rate is not completed')
+    bill_rate = models.DecimalField(_('billing rate'), max_digits=32, decimal_places=2, default=0, help_text='Is how much it is charged per `bill_rate_type`')
+    bill_rate_minutes_threshold = models.DecimalField(_('billing minutes rate threshold'), max_digits=32, decimal_places=2, default=None, null=True, blank=True, help_text='Defines the minimum amount of minutes that will count as a full hour if `bill_rate_type` is hourly')
+
+    class Meta:
+        verbose_name = _('rate')
+        verbose_name_plural = _('rates')
+
+    def __str__(self):
+        return F"{self.id} - {self.root} - {self.language}"
+
+    def delete_related(self):
+        # TODO review since this is a m2m
+        self.bookings.all().delete()
+
 class CompanyRate(ExtendableModel, HistoricalModel, SoftDeletableModel):
     class RateType(models.TextChoices):
         FLAT = 'FLAT', _('Flat')
@@ -608,13 +636,13 @@ class CompanyRate(ExtendableModel, HistoricalModel, SoftDeletableModel):
         QUANTITY = 'QUANTITY', _('Quantity')
 
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='company_rates')
-    language = models.CharField(_('language'), max_length=255, null=True, blank=True, default=None, help_text='Defines the language that the provider will charge for this service')
+    language = models.CharField(_('language'), max_length=255, null=True, blank=True, default=None, help_text='Defines the language that the company will charge for this rate')
     root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='company_rates')
     bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
     bill_rate_type = models.CharField(_('billing rate type'), max_length=255, choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
-    bill_min_payment = models.DecimalField(_('billing minimum payment'), max_digits=32, decimal_places=2, default=0, help_text='Defines the minimum that the provider will charge for this service')
-    bill_no_show_fee = models.DecimalField(_('billing no show fee'), max_digits=32, decimal_places=2, default=0, help_text='Defines the fee that the provider will charge if the service is not completed')
-    bill_rate = models.DecimalField(_('billing rate'), max_digits=32, decimal_places=2, default=0, help_text='Is how much the provider charges per `bill_rate_type`')
+    bill_min_payment = models.DecimalField(_('billing minimum payment'), max_digits=32, decimal_places=2, default=0, help_text='Defines the minimum that the company will charge for this service')
+    bill_no_show_fee = models.DecimalField(_('billing no show fee'), max_digits=32, decimal_places=2, default=0, help_text='Defines the fee that the company will charge if the service is not completed')
+    bill_rate = models.DecimalField(_('billing rate'), max_digits=32, decimal_places=2, default=0, help_text='Is how much the company charges per `bill_rate_type`')
     bill_rate_minutes_threshold = models.DecimalField(_('billing minutes rate threshold'), max_digits=32, decimal_places=2, default=None, null=True, blank=True, help_text='Defines the minimum amount of minutes that will count as a full hour if `bill_rate_type` is hourly')
 
     class Meta:

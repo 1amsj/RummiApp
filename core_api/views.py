@@ -19,11 +19,11 @@ from core_api.permissions import CanManageOperators, CanPushFaxNotifications, ca
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_company_relationships_wrap, create_event, \
-    create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
+    create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, create_rate_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_rates_bulk, handle_company_relationships_bulk, handle_events_bulk, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_rates_bulk, handle_company_relationships_bulk, handle_events_bulk, handle_rates_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
-    update_provider_wrap, \
+    update_provider_wrap, update_rate, \
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRate, CompanyRelationship, Contact, Event, \
@@ -317,22 +317,37 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
     @transaction.atomic
     @expect_does_not_exist(GlobalSetting)
     def post(request, business_name = None):
-        serializer = GlobalSettingCreateSerializer(data=request.data)
+        rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
+
+        serializer = GlobalSettingCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
         setting_id = serializer.create(business_name)
-        return Response(setting_id, status=status.HTTP_201_CREATED)
+
+        response = {"global_setting_id": setting_id}
+
+        if (rates_datalist.__len__() > 0):
+            rates_ids = handle_rates_bulk(rates_datalist)
+            response["rates_ids"] = rates_ids
+
+        return Response(response, status=status.HTTP_201_CREATED)
 
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(GlobalSetting)
     def put(request, global_setting_id=None):
-        
+        rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
+
         setting = GlobalSetting.objects.get(id=global_setting_id)
         serializer = GlobalSettingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(setting, business_name)
+
+        if (rates_datalist.__len__() > 0):
+            handle_rates_bulk(rates_datalist)
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ManageUsers(basic_view_manager(User, UserSerializer)):
@@ -1224,7 +1239,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             response["agents_ids"] = agents_ids
 
         if (company_rates_datalist.__len__() > 0):
-            company_rates_ids = handle_company_rates_bulk(company_rates_datalist, business_name, company_id)
+            company_rates_ids = handle_company_rates_bulk(company_rates_datalist, company_id)
 
             response["company_rates_ids"] = company_rates_ids
 
@@ -1241,7 +1256,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_does_not_exist(Contact)
     def put(request, company_id=None):
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
-        company_rates_data = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
+        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
@@ -1253,8 +1268,8 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         if (agents_data.__len__() > 0):
             handle_agents_bulk(agents_data, company_id, business_name)
 
-        if (company_rates_data.__len__() > 0):
-            handle_company_rates_bulk(company_rates_data, business_name, company_id)
+        if (company_rates_datalist.__len__() > 0):
+            handle_company_rates_bulk(company_rates_datalist, company_id)
 
         if (company_relationships_data.__len__() > 0):
             handle_company_relationships_bulk(company_relationships_data,  company_id)
