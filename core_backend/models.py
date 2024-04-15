@@ -820,6 +820,9 @@ class Report(HistoricalModel, ExtendableModel, SoftDeletableModel):
         verbose_name = _('report')
         verbose_name_plural = _('reports')
 
+    def __str__(self):
+        return F'{self.id} - Status: {self.status} - Event: {self.event.id}'
+
 
 class Note(SoftDeletableModel):
     created_at = models.DateTimeField(auto_now_add=True)
