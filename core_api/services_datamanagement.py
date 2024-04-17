@@ -940,7 +940,7 @@ def handle_company_relationships_bulk(datalist: list, company_id):
     return company_relationship_ids
 
 @transaction.atomic
-def handle_rates_bulk(datalist: list):
+def handle_rates_bulk(datalist: list, company_id):
     """
     Create, update or delete rates in bulk, depending on whether the payload includes an ID or not
     """
@@ -955,6 +955,9 @@ def handle_rates_bulk(datalist: list):
     for data in datalist:
         rate_id = data.pop('id', None)
         deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if company_id:
+            data['company'] = company_id
      
 
         if not rate_id and deleted_flag:
