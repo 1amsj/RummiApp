@@ -940,7 +940,7 @@ def handle_company_relationships_bulk(datalist: list, company_id):
     return company_relationship_ids
 
 @transaction.atomic
-def handle_rates_bulk(datalist: list, company_id):
+def handle_rates_bulk(datalist: list, company_id = None):
     """
     Create, update or delete rates in bulk, depending on whether the payload includes an ID or not
     """
