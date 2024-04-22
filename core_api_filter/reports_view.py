@@ -5,7 +5,7 @@ from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
 from core_api.views import basic_view_manager
-from core_backend.models import Event, Language, Payer, Report, User
+from core_backend.models import Event, Language, Payer, Rate, User
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
@@ -120,101 +120,26 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 contactsUnzip = "" 
             
             language = Language.objects.filter(alpha3=obj['booking']['target_language_alpha3']).values()
-            rateCardExtend = []
-            FinalRateCardExtend = []
-            #No Certification
-            if language[0]['common'] == True and \
-            obj['booking']['service_root']['description'] == 'Onsite Interpretation no certification':
-                rateCard = "127.50"
-                rateCardExtend.append(rateCard)
-            elif language[0]['common'] == False and \
-            obj['booking']['service_root']['description'] == 'Onsite Interpretation no certification':
-                rateCard = "147.50"
-                rateCardExtend.append(rateCard)
-            elif language[0]['common'] == False and \
-            obj['booking']['service_root']['description'] == 'Videochat Interpretation no certification' or \
-            obj['booking']['service_root']['description'] == 'Telephonic Interpretation no certification':
-                rateCard = "117.50"
-                rateCardExtend.append(rateCard)
-            elif language[0]['common'] == True and \
-            obj['booking']['service_root']['description'] == 'Videochat Interpretation no certification' or \
-            obj['booking']['service_root']['description'] == 'Telephonic Interpretation no certification':
-                rateCard = "90.00"
-                rateCardExtend.append(rateCard)
-            
-            #Certification
-            elif language[0]['common'] == True and \
-            obj['booking']['service_root']['description'].__contains__('no certification') == False and \
-            obj['booking']['service_root']['description'].__contains__('no certified') == False and \
-            (obj['booking']['service_root']['description'].__contains__('Videochat') == True or \
-            obj['booking']['service_root']['description'].__contains__('Telephonic') == True):
-                rateCard = "105.00"
-                rateCardExtend.append(rateCard)
-            elif language[0]['common'] == False and \
-            obj['booking']['service_root']['description'].__contains__('no certification') == False and \
-            obj['booking']['service_root']['description'].__contains__('no certified') == False and \
-            (obj['booking']['service_root']['description'].__contains__('Videochat') == True or \
-            obj['booking']['service_root']['description'].__contains__('Telephonic') == True):
-                rateCard = "137.50"
-                rateCardExtend.append(rateCard)
-            elif language[0]['common'] == True and \
-            obj['booking']['service_root']['description'].__contains__('no certification') == False and \
-            obj['booking']['service_root']['description'].__contains__('no certified') == False and \
-            obj['booking']['service_root']['description'].__contains__('Onsite') == True:
-                rateCard = "167.50"
-                rateCardExtend.append(rateCard)
-            elif language[0]['common'] == False and \
-            obj['booking']['service_root']['description'].__contains__('no certification') == False and \
-            obj['booking']['service_root']['description'].__contains__('no certified') == False and \
-            obj['booking']['service_root']['description'].__contains__('Onsite') == True:
-                rateCard = "182.50"
-                rateCardExtend.append(rateCard)
 
-            if obj['payer'] is not None and obj['payer']['companies'][-1]['company_rates'] != [] and obj['payer']['companies'] != []:
-                def representation_base_lang(repr):
-                    if repr['language'] == 'Common Languages':
-                        rateLang = True
-                        ratePricing = repr['bill_min_payment']
-                        rateModality = repr['root']['description']
-                    elif repr['language'] == 'Uncommon Languages':
-                        rateLang = False
-                        ratePricing = repr['bill_min_payment']
-                        rateModality = repr['root']['description']
-                    elif repr['language'] == 'All Languages':
-                        rateLang = "All"
-                        ratePricing = repr['bill_min_payment']
-                        rateModality = repr['root']['description']
-                    return {
-                        "languague": rateLang,
-                        "price": ratePricing,
-                        "modality": rateModality,
-                    }
-                BaseRateCard = map(representation_base_lang, obj['payer']['companies'][-1]['company_rates'])        
-                
-                BaseRateCardList = list(BaseRateCard)
-                if BaseRateCardList != []:
-                    def representation_lang(repr):
-                        #Common
-                        if language[0]['common'] == repr['languague'] and obj['booking']['service_root']['description'] == repr['modality']:
-                            valueRate = repr['price']
-                        #Rare
-                        elif language[0]['common'] != repr['languague'] and obj['booking']['service_root']['description'] == repr['modality'] and obj['booking']['target_language_alpha3'] != "spa":
-                            valueRate = repr['price']
+            def rates_values(values):
+                if (len(values.filter(extra__data__contains='"Common Languages"')) > 0 and language[0]['common'] == True) or \
+                (len(values.filter(extra__data__contains='"Rare Languages"')) > 0 and language[0]['common'] == False) or \
+                len(values.filter(extra__data__contains='"All Languages"')) > 0:
+                    return values.values_list('bill_amount')
+                else:
+                    return ""
+            rates = Rate.objects.all().filter(root__description=obj['booking']['service_root']['description']).order_by('-pk')
+
+            if len(rates) > 0:
+                if len(rates.values_list('company')[0]) > 0:
+                    if rates.values_list('company')[0][0] != None:
+                        if obj['payer'] is not None and obj['payer']['companies'] != []:
+                            rates = rates.filter(company=obj['payer']['companies'][-1]['id'])
+                            price = rates_values(rates)
                         else:
-                            valueRate = "Void"
-                        return valueRate
-                            
-                    FinalRateCard = map(representation_lang, BaseRateCardList)
-                    
-                ListRateCard =list(FinalRateCard)
-                FinalRateCard = [element for element in ListRateCard if element != 'Void'] 
-                FinalRateCardExtend.extend(FinalRateCard)
-                
-            if len(rateCardExtend):
-                rateCardExtend = rateCardExtend[0]
-                
-            if len(FinalRateCardExtend):
-                FinalRateCardExtend = FinalRateCardExtend[0]
+                            price = rates_values(rates)
+                    else:
+                        price = rates_values(rates)
             
             values = {
                 #Patient
@@ -264,7 +189,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "auth_by": auth_byUnzip,
                 "operators_first_name": obj['booking']['operators'][-1]['first_name'] if obj['booking']['operators'] != [] else "",
                 "operators_last_name": obj['booking']['operators'][-1]['last_name'] if obj['booking']['operators'] != [] else "",
-                "price": FinalRateCardExtend if obj['payer'] is not None and obj['payer']['companies'][-1]['company_rates'] != [] and FinalRateCard != [] else rateCardExtend,
+                "price": price[0][0] if len(price) > 0 else price
             }
             
             report_values.append(values)
