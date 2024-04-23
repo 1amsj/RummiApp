@@ -1345,7 +1345,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             handle_agents_bulk(agents_data, company_id, business_name)
 
         if (company_rates_datalist.__len__() > 0):
-            handle_rates_bulk(company_rates_datalist, company_id)
+            handle_rates_bulk(company_rates_datalist, business_name, company_id)
 
         if (company_relationships_data.__len__() > 0):
             handle_company_relationships_bulk(company_relationships_data,  company_id)

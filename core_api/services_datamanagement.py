@@ -398,12 +398,12 @@ def create_company_relationships_wrap(data, company_id):
 
 # Update
 @transaction.atomic
-def update_rate_wrap(data, rate_instance):
+def update_rate_wrap(data, business_name, rate_instance):
         # Handle service update
     try:
         serializer = RateUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.update(rate_instance)
+        serializer.update(rate_instance, business_name)
 
     except ValidationError as exc:
         # Wrap errors
@@ -972,6 +972,7 @@ def handle_rates_bulk(datalist: list, business_name, company_id = None):
             elif not deleted_flag:
                 update_rate_wrap(
                     data,
+                    business_name,
                     rate_instance=Rate.objects.get(id=rate_id)
                 )
             else:
