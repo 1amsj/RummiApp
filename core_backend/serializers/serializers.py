@@ -189,10 +189,6 @@ class CompanyWithParentSerializer(CompanySerializer):
                     'company_rates',
                     queryset=RateSerializer.get_default_queryset()
                 ),
-                Prefetch(
-                    'extra',
-                    queryset=ExtraAttrSerializer.get_default_queryset()
-                ),
                  Prefetch(
                     'company_relationships_from',
                     queryset=CompanyRelationshipSerializer.get_default_queryset()

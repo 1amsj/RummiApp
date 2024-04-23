@@ -217,9 +217,12 @@ class RateCreateSerializer(RateSerializer):
         model = Rate
         fields = '__all__'
 
-    def create(self, validated_data=None) -> int:
+    def create(self, business_name, validated_data=None) -> int:
         data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
         rate = Rate.objects.create(**data)
+
+        manage_extra_attrs(business_name, rate, extras)
 
         return rate.id
 

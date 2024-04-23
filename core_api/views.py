@@ -1315,7 +1315,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             response["agents_ids"] = agents_ids
 
         if (company_rates_datalist.__len__() > 0):
-            company_rates_ids = handle_rates_bulk(company_rates_datalist, company_id)
+            company_rates_ids = handle_rates_bulk(company_rates_datalist, business_name, company_id)
 
             response["company_rates_ids"] = company_rates_ids
 
