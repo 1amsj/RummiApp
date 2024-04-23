@@ -1027,6 +1027,10 @@ class CompanyWithRolesSerializer(CompanyWithParentSerializer):
                     'requesters',
                     queryset=RequesterSerializer.get_default_queryset(),
                 ),
+                Prefetch(
+                    'company_rates',
+                    queryset=RateSerializer.get_default_queryset(),
+                )
                 )
             )
 
