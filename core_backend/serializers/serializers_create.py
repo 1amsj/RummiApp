@@ -265,10 +265,19 @@ class EventCreateSerializer(extendable_serializer(Event)):
             end_at__gte=formatted_date_start,
             affiliates=affiliates[0].id
         )
+        
+        overlapping_agents = Event.objects.filter(
+            start_at__lte=formatted_date_end,
+            end_at__gte=formatted_date_start,
+            agents=agents[0].id
+        )
 
         if overlapping_events.exists():
             #OVERLAP
             raise Exception("Overlapping event")
+        elif overlapping_agents.exists():
+            #SAME EVENT DIFFER
+            raise Exception("Overlapping medical_provider")
 
         event = Event.objects.create(**data)
 
