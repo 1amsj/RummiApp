@@ -5,7 +5,7 @@ from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
 from core_api.views import basic_view_manager
-from core_backend.models import Event, Language, Payer, Report, User
+from core_backend.models import Event, Language, Payer, Rate, User
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
@@ -32,43 +32,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
 
-        queryset = queryset.filter(
-                Q(reports__status='COMPLETED') &
-                Q(extra__key='claim_number') &  
-                ~Q(payer_company__isnull=True) &  
-                (~Q(payer__isnull=True) |
-                (Q(payer_company__type='clinic') | 
-                    (
-                    Q(extra__key='payer_company_type') & Q(extra__data='patient')
-                    )
-                ) & Q(reports__status='COMPLETED'))
-            ).annotate(
-                has_completed_authorizations_accepted=Count('authorizations', filter=Q(authorizations__status='ACCEPTED' )),
-                has_completed_authorizations_pending=Count('authorizations', filter=Q(authorizations__status='PENDING' )),
-                has_payer_company_clinic=Count('authorizations', filter=Q(payer_company__type='clinic')),
-                has_payer_company_patient=Count('authorizations', filter=(Q(extra__key='payer_company_type') & Q(extra__data='patient'))),
-                has_completed_reports=Count('reports', filter=Q(reports__status='COMPLETED')),
-                has_authorizations=Count('authorizations'),
-                has_reports=Count('reports')
-            ).annotate(
-                authorizations_count=Count('authorizations', distinct=True),
-                reports_count=Count('reports', distinct=True)
-            ).filter(
-                Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0, has_payer_company_clinic=0) |  
-                Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0, has_payer_company_patient=0) |  
-                Q(authorizations_count=0, reports_count__gt=0, has_completed_reports__gt=0) |  
-                Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_accepted__gt=0) | 
-                Q(authorizations_count__gt=0, reports_count=0, has_completed_authorizations_pending__gt=0) | 
-                Q(has_completed_authorizations_accepted__gt=0, has_completed_reports__gt=0)  |
-                Q(has_completed_authorizations_pending__gt=0, has_completed_reports__gt=0)
-            )
-            
-        queryset = queryset.filter(
-            reports__status='COMPLETED',
-            reports__id=Subquery(
-                Report.objects.filter(event=OuterRef('pk')).order_by('-id').values('id')[:1]
-            )
-        )
+        queryset = queryset.filter(Q(booking__status='delivered'))
                 
         
         queryset = cls.apply_filters(queryset.order_by('-start_at'), query_params)
@@ -157,6 +121,26 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
             
             language = Language.objects.filter(alpha3=obj['booking']['target_language_alpha3']).values()
 
+            def rates_values(values):
+                if (len(values.filter(extra__data__contains='"Common Languages"')) > 0 and language[0]['common'] == True) or \
+                (len(values.filter(extra__data__contains='"Rare Languages"')) > 0 and language[0]['common'] == False) or \
+                len(values.filter(extra__data__contains='"All Languages"')) > 0:
+                    return values.values_list('bill_amount')
+                else:
+                    return ""
+            rates = Rate.objects.all().filter(root__description=obj['booking']['service_root']['description']).order_by('-pk')
+
+            if len(rates) > 0:
+                if len(rates.values_list('company')[0]) > 0:
+                    if rates.values_list('company')[0][0] != None:
+                        if obj['payer'] is not None and obj['payer']['companies'] != []:
+                            rates = rates.filter(company=obj['payer']['companies'][-1]['id'])
+                            price = rates_values(rates)
+                        else:
+                            price = rates_values(rates)
+                    else:
+                        price = rates_values(rates)
+            
             values = {
                 #Patient
                 "first_name": obj['affiliates'][0]['recipient']['first_name'],
@@ -199,12 +183,13 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "languague": language[0]['name'],
                 "type_of_appointment": obj['description'],
                 "interpreter": f"{obj['booking']['services'][-1]['provider']['first_name']} {obj['booking']['services'][-1]['provider']['last_name']}" if obj['booking']['services'] != [] else "",
-                "modality": obj['booking']['service_root']['description'] if obj['booking']['services'] != [] else "",
+                "modality": obj['booking']['service_root']['description'],
                 "status_report": obj['reports'][-1]['status'] if obj['reports'] != [] else "",
                 "authorized": "ACCEPTED" if latest_authorization != "" else "",
                 "auth_by": auth_byUnzip,
                 "operators_first_name": obj['booking']['operators'][-1]['first_name'] if obj['booking']['operators'] != [] else "",
                 "operators_last_name": obj['booking']['operators'][-1]['last_name'] if obj['booking']['operators'] != [] else "",
+                "price": price[0][0] if len(price) > 0 else price
             }
             
             report_values.append(values)
