@@ -878,6 +878,12 @@ def validator_short_type(value):
             (value[-1]['payer_company_type'] == 'agency' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'lawfirm' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None)
 
+def validator_claim_number(value):
+    if(value[-1].__contains__('claim_number')):
+        return value[-1]['claim_number']
+    else:
+        return None
+
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None, booking_id=None):
@@ -934,12 +940,12 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 booking.status = "authorized"
             elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
                 booking.status = "override"
-            elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+            elif validator_claim_number(event_datalist) is not None and company_type_validation:
                 booking.status = "booked"
             else:
                 booking.status = "pending"
 
-        elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+        elif validator_claim_number(event_datalist) is not None and company_type_validation:
             booking.status = "booked"
 
         else:
@@ -978,7 +984,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         company_type_short_validation = validator_short_type(event_datalist)
 
         if event_datalist[-1]['_report_datalist'][-1]['status'] == 'COMPLETED' \
-        and company_type_validation and event_datalist[-1]['claim_number'] is not None:
+        and company_type_validation and validator_claim_number(event_datalist) is not None:
             booking.status = "delivered"
 
         elif event_datalist[-1].__contains__('authorizations'):
@@ -992,12 +998,12 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 booking.status = "authorized"
             elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
                 booking.status = "override"
-            elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+            elif validator_claim_number(event_datalist) is not None and company_type_validation:
                 booking.status = "booked"
             else:
                 booking.status = "pending"
 
-        elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+        elif validator_claim_number(event_datalist) is not None and company_type_validation:
             booking.status = "booked"
 
         else:
