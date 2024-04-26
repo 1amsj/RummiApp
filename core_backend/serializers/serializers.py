@@ -99,7 +99,7 @@ class ServiceRootBaseSerializer(generic_serializer(ServiceRoot)):
 
 
 # Serializers
-class RateSerializer(BaseSerializer):
+class RateSerializer(extendable_serializer(Rate)):
     root = ServiceRootBaseSerializer(required=False)
     class Meta:
         model = Rate
@@ -172,7 +172,7 @@ class CompanySerializer(extendable_serializer(Company)):
 
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
-    company_rates = CompanyRateSerializer(many=True, required=False)
+    company_rates = RateSerializer(many=True, required=False)
     company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
     @staticmethod
@@ -187,11 +187,7 @@ class CompanyWithParentSerializer(CompanySerializer):
                 ),
                 Prefetch(
                     'company_rates',
-                    queryset=CompanyRateSerializer.get_default_queryset()
-                ),
-                Prefetch(
-                    'extra',
-                    queryset=ExtraAttrSerializer.get_default_queryset()
+                    queryset=RateSerializer.get_default_queryset()
                 ),
                  Prefetch(
                     'company_relationships_from',
@@ -1031,6 +1027,10 @@ class CompanyWithRolesSerializer(CompanyWithParentSerializer):
                     'requesters',
                     queryset=RequesterSerializer.get_default_queryset(),
                 ),
+                Prefetch(
+                    'company_rates',
+                    queryset=RateSerializer.get_default_queryset(),
+                )
                 )
             )
 

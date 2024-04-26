@@ -1301,7 +1301,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_key_error
     def post(request, business_name=None): 
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
-        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
+        company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
@@ -1315,7 +1315,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             response["agents_ids"] = agents_ids
 
         if (company_rates_datalist.__len__() > 0):
-            company_rates_ids = handle_company_rates_bulk(company_rates_datalist, company_id)
+            company_rates_ids = handle_rates_bulk(company_rates_datalist, business_name, company_id)
 
             response["company_rates_ids"] = company_rates_ids
 
@@ -1332,7 +1332,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_does_not_exist(Contact)
     def put(request, company_id=None):
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
-        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
+        company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
@@ -1345,7 +1345,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             handle_agents_bulk(agents_data, company_id, business_name)
 
         if (company_rates_datalist.__len__() > 0):
-            handle_company_rates_bulk(company_rates_datalist, company_id)
+            handle_rates_bulk(company_rates_datalist, business_name, company_id)
 
         if (company_relationships_data.__len__() > 0):
             handle_company_relationships_bulk(company_relationships_data,  company_id)
