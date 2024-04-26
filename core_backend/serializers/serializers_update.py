@@ -138,11 +138,16 @@ class CompanyUpdateSerializer(CompanyWithParentSerializer):
         instance.save()
 
 class RateUpdateSerializer(RateCreateSerializer):
-    def update(self, instance: Rate, validated_data=None):
+    def update(self, instance: Rate, business, validated_data=None):
         data: dict = validated_data or self.validated_data
+        extras = data.pop('extra', [])
+
         for (k, v) in data.items():
             setattr(instance, k, v)
         instance.save()
+
+        manage_extra_attrs(business, instance, extras)
+
 
 class CompanyRateUpdateSerializer(CompanyRateCreateSerializer):
     def update(self, instance: CompanyRate, validated_data=None):

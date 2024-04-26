@@ -24,11 +24,11 @@ def create_user(data):
     return user.id
 
 @transaction.atomic
-def create_rate_wrap(data):
+def create_rate_wrap(data, business_name):
     try:
         serializer = RateCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        rate = serializer.create()
+        rate = serializer.create(business_name)
     except ValidationError as exc:
         # Wrap errors
         raise ValidationError({
@@ -398,12 +398,12 @@ def create_company_relationships_wrap(data, company_id):
 
 # Update
 @transaction.atomic
-def update_rate_wrap(data, rate_instance):
+def update_rate_wrap(data, business_name, rate_instance):
         # Handle service update
     try:
         serializer = RateUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.update(rate_instance)
+        serializer.update(rate_instance, business_name)
 
     except ValidationError as exc:
         # Wrap errors
@@ -940,7 +940,7 @@ def handle_company_relationships_bulk(datalist: list, company_id):
     return company_relationship_ids
 
 @transaction.atomic
-def handle_rates_bulk(datalist: list):
+def handle_rates_bulk(datalist: list, business_name, company_id = None):
     """
     Create, update or delete rates in bulk, depending on whether the payload includes an ID or not
     """
@@ -955,6 +955,9 @@ def handle_rates_bulk(datalist: list):
     for data in datalist:
         rate_id = data.pop('id', None)
         deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if company_id:
+            data['company'] = company_id
      
 
         if not rate_id and deleted_flag:
@@ -964,11 +967,13 @@ def handle_rates_bulk(datalist: list):
             if not rate_id:
                 rate_id = create_rate_wrap(
                     data,
+                    business_name
                 )
             elif not deleted_flag:
                 update_rate_wrap(
                     data,
-                    rate_instance=CompanyRate.objects.get(id=rate_id)
+                    business_name,
+                    rate_instance=Rate.objects.get(id=rate_id)
                 )
             else:
                 Rate.objects.get(id=rate_id).delete()
