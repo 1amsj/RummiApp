@@ -33,7 +33,7 @@ from core_backend.models import Admin, Affiliation, Agent, Authorization, Bookin
 from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
-    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
+    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, CompanyRelationshipWithCompaniesSerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
     ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RateSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
@@ -1774,11 +1774,16 @@ class ManageCompanyRelationships(basic_view_manager(CompanyRelationship, Company
 
         query_params = prepare_query_params(request.GET)
 
-        queryset = CompanyRelationshipSerializer.get_default_queryset()
+        include_companies = request.GET.get(ApiSpecialKeys.INCLUDE_COMPANIES, False)
+
+        serializer = CompanyRelationshipWithCompaniesSerializer if include_companies else CompanyRelationshipSerializer
+
+        queryset = serializer.get_default_queryset()
 
         queryset = cls.apply_filters(queryset, query_params)
+        
+        serialized = serializer(queryset, many=True)
 
-        serialized = CompanyRelationshipSerializer(queryset, many=True)
         return Response(serialized.data)
 
     @staticmethod

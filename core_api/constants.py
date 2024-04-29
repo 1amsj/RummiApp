@@ -14,6 +14,7 @@ class ApiSpecialKeys(str, Enum):
 
     # Includes
     INCLUDE_BOOKING = '_include_booking'
+    INCLUDE_COMPANIES = '_include_companies'
     INCLUDE_EVENTS = '_include_events'
     INCLUDE_ROLES = '_include_roles'
 
