@@ -878,6 +878,12 @@ def validator_short_type(value):
             (value[-1]['payer_company_type'] == 'agency' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'lawfirm' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None)
 
+def validator_claim_number(value):
+    if(value[-1].__contains__('claim_number')):
+        return value[-1]['claim_number']
+    else:
+        return None
+
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
     def get(cls, request, business_name=None, booking_id=None):
@@ -934,12 +940,12 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 booking.status = "authorized"
             elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
                 booking.status = "override"
-            elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+            elif validator_claim_number(event_datalist) is not None and company_type_validation:
                 booking.status = "booked"
             else:
                 booking.status = "pending"
 
-        elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+        elif validator_claim_number(event_datalist) is not None and company_type_validation:
             booking.status = "booked"
 
         else:
@@ -978,7 +984,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         company_type_short_validation = validator_short_type(event_datalist)
 
         if event_datalist[-1]['_report_datalist'][-1]['status'] == 'COMPLETED' \
-        and company_type_validation and event_datalist[-1]['claim_number'] is not None:
+        and company_type_validation and validator_claim_number(event_datalist) is not None:
             booking.status = "delivered"
 
         elif event_datalist[-1].__contains__('authorizations'):
@@ -992,12 +998,12 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 booking.status = "authorized"
             elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
                 booking.status = "override"
-            elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+            elif validator_claim_number(event_datalist) is not None and company_type_validation:
                 booking.status = "booked"
             else:
                 booking.status = "pending"
 
-        elif event_datalist[-1]['claim_number'] is not None and company_type_validation:
+        elif validator_claim_number(event_datalist) is not None and company_type_validation:
             booking.status = "booked"
 
         else:
@@ -1295,7 +1301,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_key_error
     def post(request, business_name=None): 
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
-        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
+        company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
@@ -1309,7 +1315,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             response["agents_ids"] = agents_ids
 
         if (company_rates_datalist.__len__() > 0):
-            company_rates_ids = handle_company_rates_bulk(company_rates_datalist, company_id)
+            company_rates_ids = handle_rates_bulk(company_rates_datalist, business_name, company_id)
 
             response["company_rates_ids"] = company_rates_ids
 
@@ -1326,7 +1332,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @expect_does_not_exist(Contact)
     def put(request, company_id=None):
         agents_data = request.data.pop(ApiSpecialKeys.AGENTS_DATA, [])
-        company_rates_datalist = request.data.pop(ApiSpecialKeys.COMPANY_RATES_DATALIST, [])
+        company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
@@ -1339,7 +1345,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             handle_agents_bulk(agents_data, company_id, business_name)
 
         if (company_rates_datalist.__len__() > 0):
-            handle_company_rates_bulk(company_rates_datalist, company_id)
+            handle_rates_bulk(company_rates_datalist, business_name, company_id)
 
         if (company_relationships_data.__len__() > 0):
             handle_company_relationships_bulk(company_relationships_data,  company_id)
