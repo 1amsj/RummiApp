@@ -1,10 +1,10 @@
 from rest_framework import serializers
 
-from core_backend.models import Admin, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, Expense, GlobalSetting, Language, \
+from core_backend.models import Admin, Agent, Authorization, Booking, Category, Company, CompanyRelationship, Event, Expense, GlobalSetting, Language, \
     Location, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyRelationshipSerializer, CompanyWithParentSerializer, \
     ContactSerializer, LocationSerializer, NoteSerializer
-from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRateCreateSerializer, CompanyRelationshipCreateSerializer, \
+from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRelationshipCreateSerializer, \
     EventCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RateCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_fields import BusinessField
@@ -146,14 +146,6 @@ class RateUpdateSerializer(RateCreateSerializer):
         instance.save()
 
         manage_extra_attrs(business, instance, extras)
-
-
-class CompanyRateUpdateSerializer(CompanyRateCreateSerializer):
-    def update(self, instance: CompanyRate, validated_data=None):
-        data: dict = validated_data or self.validated_data
-        for (k, v) in data.items():
-            setattr(instance, k, v)
-        instance.save()
 
 class EventUpdateSerializer(EventCreateSerializer):
     def update(self, instance: Event, business, validated_data=None):
