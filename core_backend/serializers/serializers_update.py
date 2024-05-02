@@ -13,7 +13,8 @@ from core_backend.serializers.serializers_plain import ContactUnsafeSerializer, 
 from core_backend.serializers.serializers_utils import extendable_serializer
 from core_backend.services.core_services import manage_extra_attrs, sync_m2m, update_model_unique_field
 from core_backend.services.core_services import user_sync_email_with_contact
-
+from django.contrib.postgres.search import SearchVector
+from django.db.models import Q
 
 class AuthorizationUpdateSerializer(AuthorizationBaseSerializer):
     def update(self, instance: Authorization, validated_data=None):
@@ -161,6 +162,48 @@ class EventUpdateSerializer(EventCreateSerializer):
         affiliates = data.pop('affiliates', [])
         agents = data.pop('agents', [])
         extras = data.pop('extra', [])
+        
+        formatted_date_start = data['start_at'].strftime("%Y-%m-%d %H:%M")
+        formatted_date_end = data['end_at'].strftime("%Y-%m-%d %H:%M")
+        
+        overlapping_events = Event.objects.filter(
+            ~Q(booking_id=data['booking'].id),
+            start_at__lte=formatted_date_end,
+            end_at__gte=formatted_date_start,
+            affiliates=affiliates[0].id
+        )
+        
+        overlapping_agents = Event.objects.filter(
+            ~Q(booking_id=data['booking'].id),
+            start_at__lte=formatted_date_end,
+            end_at__gte=formatted_date_start,
+            agents=agents[0].id
+        )
+        
+        if(extras.__contains__('claim_number')):
+            claim_number = extras['claim_number']
+        else:
+            claim_number = None
+        
+        overlapping_claim = Event.objects.annotate(
+            search=SearchVector('extra__data')
+        ).filter(
+            extra__key='claim_number',
+            search=claim_number
+        ).filter(
+            ~Q(booking_id=data['booking'].id),
+            affiliates=affiliates[0].id,
+        )
+        
+        if overlapping_events.exists():
+            #OVERLAP
+            raise Exception("Overlapping event")
+        elif overlapping_agents.exists():
+            #SAME EVENT DIFFER
+            raise Exception("Overlapping medical provider")
+        elif overlapping_claim.exists():
+            #OVERLAP CLAIM
+            raise Exception("Overlapping claim")
 
         for (k, v) in data.items():
             setattr(instance, k, v)
