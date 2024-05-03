@@ -215,7 +215,7 @@ class CompanyRelationshipWithCompaniesSerializer(CompanyRelationshipSerializer):
 
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
-    company_rates = RateSerializer(many=True, required=False)
+    rates = RateSerializer(many=True, required=False)
     company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
     @staticmethod
@@ -229,7 +229,7 @@ class CompanyWithParentSerializer(CompanySerializer):
                     queryset=CompanySerializer.get_default_queryset()
                 ),
                 Prefetch(
-                    'company_rates',
+                    'rates',
                     queryset=RateSerializer.get_default_queryset()
                 ),
                  Prefetch(
@@ -1071,7 +1071,7 @@ class CompanyWithRolesSerializer(CompanyWithParentSerializer):
                     queryset=RequesterSerializer.get_default_queryset(),
                 ),
                 Prefetch(
-                    'company_rates',
+                    'rates',
                     queryset=RateSerializer.get_default_queryset(),
                 )
                 )
