@@ -52,6 +52,7 @@ class UserSerializer(serializers.ModelSerializer):
             'is_recipient',
             'is_requester',
             'is_payer',
+            'is_admin',
         )
 
     @staticmethod
