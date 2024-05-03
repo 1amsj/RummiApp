@@ -3,7 +3,7 @@ from django.db.models import Prefetch
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Company, CompanyRate, CompanyRelationship, Contact, Event, GlobalSetting, \
+from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Company, CompanyRelationship, Contact, Event, GlobalSetting, \
     Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
@@ -118,26 +118,6 @@ class RateSerializer(extendable_serializer(Rate)):
                 )
             )
         )
-class CompanyRateSerializer(BaseSerializer):
-    root = ServiceRootBaseSerializer(required=False)
-
-    class Meta:
-        model = CompanyRate
-        fields = '__all__'
-
-    @staticmethod
-    def get_default_queryset():
-        return (
-            CompanyRate.objects
-            .all()
-            .not_deleted()
-            .prefetch_related(
-                Prefetch(
-                    'root',
-                    queryset=ServiceRootBaseSerializer.get_default_queryset(),
-                )
-            )
-        )
 
 class CompanySerializer(extendable_serializer(Company)):
     contacts = ContactSerializer(many=True)
@@ -235,7 +215,7 @@ class CompanyRelationshipWithCompaniesSerializer(CompanyRelationshipSerializer):
 
 class CompanyWithParentSerializer(CompanySerializer):
     parent_company = CompanySerializer()
-    company_rates = RateSerializer(many=True, required=False)
+    rates = RateSerializer(many=True, required=False)
     company_relationships_from = CompanyRelationshipSerializer(many=True, default=[])
 
     @staticmethod
@@ -249,7 +229,7 @@ class CompanyWithParentSerializer(CompanySerializer):
                     queryset=CompanySerializer.get_default_queryset()
                 ),
                 Prefetch(
-                    'company_rates',
+                    'rates',
                     queryset=RateSerializer.get_default_queryset()
                 ),
                  Prefetch(
@@ -1091,7 +1071,7 @@ class CompanyWithRolesSerializer(CompanyWithParentSerializer):
                     queryset=RequesterSerializer.get_default_queryset(),
                 ),
                 Prefetch(
-                    'company_rates',
+                    'rates',
                     queryset=RateSerializer.get_default_queryset(),
                 )
                 )
