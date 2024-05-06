@@ -2,11 +2,11 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRate, CompanyRelationship, Event, \
+from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRelationship, Event, \
     Expense, GlobalSetting, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
-    CategorySerializer, CompanyRateSerializer, CompanyRelationshipSerializer, \
+    CategorySerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
     ContactSerializer, ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, RateSerializer, ServiceNoProviderSerializer, \
@@ -217,27 +217,14 @@ class RateCreateSerializer(RateSerializer):
         model = Rate
         fields = '__all__'
 
-    def create(self, validated_data=None) -> int:
+    def create(self, business_name, validated_data=None) -> int:
         data = validated_data or self.validated_data
+        extras = data.pop('extra', {})
         rate = Rate.objects.create(**data)
 
+        manage_extra_attrs(business_name, rate, extras)
+
         return rate.id
-
-class CompanyRateCreateSerializer(CompanyRateSerializer):
-    root = serializers.PrimaryKeyRelatedField(queryset=ServiceRoot.objects.all(), required=False)
-    bill_amount = serializers.DecimalField(max_digits=32, decimal_places=2)
-    bill_rate = serializers.IntegerField()
-
-    class Meta:
-        model = CompanyRate
-        fields = '__all__'
-
-    def create(self, validated_data=None) -> int:
-        data = validated_data or self.validated_data
-        company_rate = CompanyRate.objects.create(**data)
-
-        return company_rate.id
-
 
 class EventCreateSerializer(extendable_serializer(Event)):
     affiliates = serializers.PrimaryKeyRelatedField(many=True, queryset=Affiliation.objects.all(), required=False)
