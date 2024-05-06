@@ -49,7 +49,7 @@ class ManageEventsMixin:
                 filters.extend(query_delivered.values_list('id', flat=True))
             
             if 'override' in reqBod:
-                query_override = queryset.filter(booking__status='authorized')
+                query_override = queryset.filter(booking__status='override')
                 
                 filters.extend(query_override.values_list('id', flat=True))
                 
