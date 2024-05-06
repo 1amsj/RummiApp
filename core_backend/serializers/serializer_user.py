@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
     provider_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_provider')
     recipient_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_recipient')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
-    admin_id = serializers.PrimaryKeyRelatedField(many=True, allow_null=True, read_only=True, source='as_admin')
+    admin_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_admin')
     date_of_birth = serializers.DateField(allow_null=True, required=False)
 
     class Meta:
