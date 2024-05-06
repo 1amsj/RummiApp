@@ -378,7 +378,7 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
         self.location.delete()
 
 class Admin(ExtendableModel, HistoricalModel, SoftDeletableModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='as_admin')
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='as_admin')
     
     class Meta:
         ordering = ['user__first_name', 'user__last_name']
