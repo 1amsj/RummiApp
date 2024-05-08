@@ -279,9 +279,6 @@ class EventCreateSerializer(extendable_serializer(Event)):
         elif overlapping_agents.exists():
             #SAME EVENT DIFFER
             raise Exception("Overlapping medical provider")
-        elif overlapping_claim.exists():
-            #OVERLAP CLAIM
-            raise Exception("Overlapping claim")
 
         event = Event.objects.create(**data)
 
