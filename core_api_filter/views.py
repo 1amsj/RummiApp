@@ -49,7 +49,7 @@ class ManageEventsMixin:
                 filters.extend(query_delivered.values_list('id', flat=True))
             
             if 'override' in reqBod:
-                query_override = queryset.filter(booking__status='authorized')
+                query_override = queryset.filter(booking__status='override')
                 
                 filters.extend(query_override.values_list('id', flat=True))
                 
@@ -82,7 +82,7 @@ class ManageEventsMixin:
                     ),
                     (
                         ~Q(payer_company__type='clinic') &
-                        (Q(extra__key='payer_company_type') & ~Q(extra__data='patient'))
+                        ~Q(extra__data='"patient"')
                     ),
                 )
                 filters.extend(query_no_payer.values_list('id', flat=True))
