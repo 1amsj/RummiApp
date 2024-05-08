@@ -82,7 +82,7 @@ class ManageEventsMixin:
                     ),
                     (
                         ~Q(payer_company__type='clinic') &
-                        (Q(extra__key='payer_company_type') & ~Q(extra__data='patient'))
+                        ~Q(extra__data='"patient"')
                     ),
                 )
                 filters.extend(query_no_payer.values_list('id', flat=True))
