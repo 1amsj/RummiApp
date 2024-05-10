@@ -18,6 +18,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             "recipient": user.is_recipient,
             "requester": user.is_requester,
             "payer": user.is_payer,
+            "admin": user.is_admin,
         }
         token['permissions'] = []  # TODO fetch permissions here
 
