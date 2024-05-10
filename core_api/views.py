@@ -894,6 +894,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
         include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
         recipientId = request.GET.get(ApiSpecialKeys.RECIPIENT_ID, False)
+        agentsId = request.GET.get(ApiSpecialKeys.AGENTS_ID, False)
         startDate = request.GET.get(ApiSpecialKeys.START_DATE, False)
         endDate = request.GET.get(ApiSpecialKeys.END_DATE, False)
 
@@ -902,8 +903,14 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         serializer = BookingSerializer if (include_events or recipientId or startDate) else BookingNoEventsSerializer
         queryset = serializer.get_default_queryset()
 
-        if recipientId:
-            queryset = queryset.filter(events__affiliates__recipient__user=recipientId)
+        if recipientId and agentsId:
+            if queryset.filter(events__affiliates__recipient__user=recipientId) == [] and queryset.filter(events__agents__user=recipientId) == []:
+                queryset = []
+            elif len(queryset.filter(events__affiliates__recipient__user=recipientId)) != 0:
+                queryset = queryset.filter(events__affiliates__recipient__user=recipientId)
+            elif len(queryset.filter(events__agents__user=agentsId)) != 0:
+                print("maybe")
+                queryset = queryset.filter(events__agents__user=agentsId)
 
         if startDate and endDate:
             startDate = startDate.split('T')[0]
