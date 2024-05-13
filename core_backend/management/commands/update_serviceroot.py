@@ -33,25 +33,12 @@ class Command(BaseCommand):
         Booking.objects.filter(service_root_id=14).update(service_root_id=4)
 
         # Delete ServiceRootCategories
-        for serviceroot in ServiceRoot.objects.filter(Q(id=13) | Q(id=6) | Q(id=18) | Q(id=26) | Q(id=21) | Q(id=20) | Q(id=16) | Q(id=22) | Q(id=12) | Q(id=9)):
-            serviceroot.categories.clear()
-        for serviceroot in ServiceRoot.objects.filter(Q(id=23) | Q(id=25)):
-            serviceroot.categories.clear()
-        for serviceroot in ServiceRoot.objects.filter(Q(id=19) | Q(id=17) | Q(id=10) | Q(id=24)):
-            serviceroot.categories.clear()
-        for serviceroot in ServiceRoot.objects.filter(id=15):
-            serviceroot.categories.clear()
-        for serviceroot in ServiceRoot.objects.filter(Q(id=11) | Q(id=8)):
-            serviceroot.categories.clear()
-        for serviceroot in ServiceRoot.objects.filter(id=14):
+        for serviceroot in ServiceRoot.objects.filter(Q(id=13) | Q(id=6) | Q(id=18) | Q(id=26) | Q(id=21) | Q(id=20) | Q(id=16) | Q(id=22) | Q(id=12) | Q(id=9) | \
+            Q(id=23) | Q(id=25) | Q(id=19) | Q(id=17) | Q(id=10) | Q(id=24) | Q(id=15) | Q(id=11) | Q(id=8) | Q(id=14)):
             serviceroot.categories.clear()
 
         # Delete ServiceRoot
-        ServiceRoot.objects.filter(Q(id=13) | Q(id=6) | Q(id=18) | Q(id=26) | Q(id=21) | Q(id=20) | Q(id=16) | Q(id=22) | Q(id=12) | Q(id=9)).delete()
-        ServiceRoot.objects.filter(Q(id=23) | Q(id=25)).delete()
-        ServiceRoot.objects.filter(Q(id=19) | Q(id=17) | Q(id=10) | Q(id=24)).delete()
-        ServiceRoot.objects.filter(id=15).delete()
-        ServiceRoot.objects.filter(Q(id=11) | Q(id=8)).delete()
-        ServiceRoot.objects.filter(id=14).delete()
+        ServiceRoot.objects.filter(Q(id=13) | Q(id=6) | Q(id=18) | Q(id=26) | Q(id=21) | Q(id=20) | Q(id=16) | Q(id=22) | Q(id=12) | Q(id=9) \
+        | Q(id=23) | Q(id=25) | Q(id=19) | Q(id=17) | Q(id=10) | Q(id=24) | Q(id=15) | Q(id=11) | Q(id=8) | Q(id=14)).delete()
 
         self.stdout.write(self.style.SUCCESS('Data updated successfully!'))
