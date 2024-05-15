@@ -902,25 +902,35 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
         serializer = BookingSerializer if (include_events or recipientId or startDate) else BookingNoEventsSerializer
         queryset = serializer.get_default_queryset()
-
-        if queryset.filter(events__affiliates__recipient__user=recipientId) == [] and queryset.filter(events__agents__user=recipientId) == []:
-            queryset = []
-        elif len(queryset.filter(events__affiliates__recipient__user=recipientId)) != 0:
-            queryset = queryset.filter(events__affiliates__recipient__user=recipientId)
-        elif len(queryset.filter(events__agents__user=agentsId)) != 0:
-            queryset = queryset.filter(events__agents__user=agentsId)
-
+        agentsQuerysetFiltered = queryset
+        recipientQuerysetFiltered = queryset
+        
+        if agentsId:
+            agentsQuerysetFiltered = agentsQuerysetFiltered.filter(events__agents=agentsId)
+        
+        if recipientId:
+            recipientQuerysetFiltered = recipientQuerysetFiltered.filter(events__affiliates__recipient__user=recipientId)
+        
         if startDate and endDate:
             startDate = startDate.split('T')[0]
             endDate = endDate.split('T')[0]
-            queryset = queryset.filter(events__start_at__date__gte=startDate, 
-                                events__start_at__date__lte=endDate)
+            queryset = queryset.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
+            recipientQuerysetFiltered = recipientQuerysetFiltered.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
+            agentsQuerysetFiltered = agentsQuerysetFiltered.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
         
         queryset = cls.apply_filters(queryset, query_params)
-
+        recipientFilteredSerialized = cls.apply_filters(recipientQuerysetFiltered, query_params)
+        agentsFilteredSerialized = cls.apply_filters(agentsQuerysetFiltered, query_params)
         serialized = serializer(queryset, many=True)
-        return Response(serialized.data)
-
+        recipientFilteredSerialized = serializer(recipientQuerysetFiltered, many=True)
+        agentsFilteredSerialized = serializer(agentsQuerysetFiltered, many=True)
+        return Response(
+            {
+                'data': serialized.data, 
+                'agentsFilteredData': agentsFilteredSerialized.data, 
+                'recipientFilteredData': recipientFilteredSerialized.data,
+            }
+        )
     @staticmethod
     @transaction.atomic
     @expect_key_error
