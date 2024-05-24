@@ -329,7 +329,7 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
         response = {"global_setting_id": setting_id}
 
         if (rates_datalist.__len__() > 0):
-            rates_ids = handle_rates_bulk(rates_datalist, business_name)
+            rates_ids = handle_rates_bulk(rates_datalist, business_name, global_setting_id=setting_id)
             response["rates_ids"] = rates_ids
 
         return Response(response, status=status.HTTP_201_CREATED)
@@ -342,12 +342,13 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         setting = GlobalSetting.objects.get(client=global_setting_id)
+        setting_id = setting.id
         serializer = GlobalSettingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(setting, business_name)
 
         if (rates_datalist.__len__() > 0):
-            handle_rates_bulk(rates_datalist, business_name)
+            handle_rates_bulk(rates_datalist, business_name, global_setting_id=setting_id)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 

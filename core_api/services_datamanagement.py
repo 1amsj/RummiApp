@@ -860,7 +860,7 @@ def handle_company_relationships_bulk(datalist: list, company_id):
     return company_relationship_ids
 
 @transaction.atomic
-def handle_rates_bulk(datalist: list, business_name, company_id = None):
+def handle_rates_bulk(datalist: list, business_name, company_id = None, global_setting_id = None):
     """
     Create, update or delete rates in bulk, depending on whether the payload includes an ID or not
     """
@@ -878,7 +878,9 @@ def handle_rates_bulk(datalist: list, business_name, company_id = None):
 
         if company_id:
             data['company'] = company_id
-     
+
+        if global_setting_id:
+            data['global_setting'] = global_setting_id
 
         if not rate_id and deleted_flag:
             raise BadRequestException('Company rate flagged as deleted but no ID provided')
