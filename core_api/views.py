@@ -1033,7 +1033,7 @@ class ManageEventsMixin:
 
     @classmethod
     @expect_does_not_exist(Event)
-    @method_decorator(cache_page(60 * 60 * 2))
+    @method_decorator(cache_page(60 * 10))
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
             event = cls.serializer_class.get_default_queryset().get(id=event_id)
