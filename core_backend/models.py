@@ -625,8 +625,7 @@ class Rate(ExtendableModel, HistoricalModel, SoftDeletableModel):
         return F"{self.id} - {self.root}"
 
     def delete_related(self):
-        # TODO review since this is a m2m
-        self.bookings.all().delete()
+        pass
 
 class ServiceArea(SoftDeletableModel, HistoricalModel):
     provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='service_areas')

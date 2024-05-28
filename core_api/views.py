@@ -331,7 +331,7 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
         response = {"global_setting_id": setting_id}
 
         if (rates_datalist.__len__() > 0):
-            rates_ids = handle_rates_bulk(rates_datalist, business_name)
+            rates_ids = handle_rates_bulk(rates_datalist, business_name, global_setting_id=setting_id)
             response["rates_ids"] = rates_ids
 
         return Response(response, status=status.HTTP_201_CREATED)
@@ -344,12 +344,13 @@ class ManageGlobalSettings(basic_view_manager(GlobalSetting, GlobalSettingSerial
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         setting = GlobalSetting.objects.get(client=global_setting_id)
+        setting_id = setting.id
         serializer = GlobalSettingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.update(setting, business_name)
 
         if (rates_datalist.__len__() > 0):
-            handle_rates_bulk(rates_datalist, business_name)
+            handle_rates_bulk(rates_datalist, business_name, global_setting_id=setting_id)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -896,6 +897,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
         include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
         recipientId = request.GET.get(ApiSpecialKeys.RECIPIENT_ID, False)
+        agentsId = request.GET.get(ApiSpecialKeys.AGENTS_ID, False)
         startDate = request.GET.get(ApiSpecialKeys.START_DATE, False)
         endDate = request.GET.get(ApiSpecialKeys.END_DATE, False)
 
@@ -903,21 +905,35 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
         serializer = BookingSerializer if (include_events or recipientId or startDate) else BookingNoEventsSerializer
         queryset = serializer.get_default_queryset()
-
+        agentsQuerysetFiltered = queryset
+        recipientQuerysetFiltered = queryset
+        
+        if agentsId:
+            agentsQuerysetFiltered = agentsQuerysetFiltered.filter(events__agents=agentsId)
+        
         if recipientId:
-            queryset = queryset.filter(events__affiliates__recipient__user=recipientId)
-
+            recipientQuerysetFiltered = recipientQuerysetFiltered.filter(events__affiliates__recipient__user=recipientId)
+        
         if startDate and endDate:
             startDate = startDate.split('T')[0]
             endDate = endDate.split('T')[0]
-            queryset = queryset.filter(events__start_at__date__gte=startDate, 
-                                events__start_at__date__lte=endDate)
+            queryset = queryset.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
+            recipientQuerysetFiltered = recipientQuerysetFiltered.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
+            agentsQuerysetFiltered = agentsQuerysetFiltered.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
         
         queryset = cls.apply_filters(queryset, query_params)
-
+        recipientFilteredSerialized = cls.apply_filters(recipientQuerysetFiltered, query_params)
+        agentsFilteredSerialized = cls.apply_filters(agentsQuerysetFiltered, query_params)
         serialized = serializer(queryset, many=True)
-        return Response(serialized.data)
-
+        recipientFilteredSerialized = serializer(recipientQuerysetFiltered, many=True)
+        agentsFilteredSerialized = serializer(agentsQuerysetFiltered, many=True)
+        return Response(
+            {
+                'data': serialized.data, 
+                'agentsFilteredData': agentsFilteredSerialized.data, 
+                'recipientFilteredData': recipientFilteredSerialized.data,
+            }
+        )
     @staticmethod
     @transaction.atomic
     @expect_key_error
