@@ -127,19 +127,19 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 len(values.filter(extra__data__contains='"All Languages"')) > 0:
                     return values.values_list('bill_amount')
                 else:
-                    return ""
+                    return [[""]]
             rates = Rate.objects.all().filter(root__description=obj['booking']['service_root']['description']).order_by('-pk')
-
+            price = []
             if len(rates) > 0:
                 if len(rates.values_list('company')[0]) > 0:
                     if rates.values_list('company')[0][0] != None:
                         if obj['payer'] is not None and obj['payer']['companies'] != []:
                             rates = rates.filter(company=obj['payer']['companies'][-1]['id'])
-                            price = rates_values(rates)
+                            price.append(rates_values(rates))
                         else:
-                            price = rates_values(rates)
+                            price.append(rates_values(rates))
                     else:
-                        price = rates_values(rates)
+                        price.append(rates_values(rates))
             
             values = {
                 #Patient
@@ -189,7 +189,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "auth_by": auth_byUnzip,
                 "operators_first_name": obj['booking']['operators'][-1]['first_name'] if obj['booking']['operators'] != [] else "",
                 "operators_last_name": obj['booking']['operators'][-1]['last_name'] if obj['booking']['operators'] != [] else "",
-                "price": price[0][0] if len(price) > 0 else price
+                "price": price[0][0][0] if len(price) > 0 else price
             }
             
             report_values.append(values)

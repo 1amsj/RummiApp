@@ -9,6 +9,7 @@ class ApiSpecialKeys(str, Enum):
     EVENTS_QUERY = '_events_query'
     PATCH_QUERY = '_query'
     RECIPIENT_ID = '_recipient_id'
+    AGENTS_ID = '_agents_id'
     START_DATE = '_start_date'
     END_DATE = '_end_date'
 
