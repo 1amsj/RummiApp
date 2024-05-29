@@ -11,6 +11,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.pagination import PageNumberPagination
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 
 from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
@@ -1047,6 +1049,7 @@ class ManageEventsMixin:
 
     @classmethod
     @expect_does_not_exist(Event)
+    @method_decorator(cache_page(60 * 10))
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
             event = cls.serializer_class.get_default_queryset().get(id=event_id)
