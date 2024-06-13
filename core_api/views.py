@@ -938,6 +938,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request, business_name):
+        group_booking = request.data.get('group_booking', None)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
         offer_datalist = request.data.pop(ApiSpecialKeys.OFFER_DATALIST, [])
         company_type_validation = validator_type(event_datalist)
@@ -946,6 +947,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking_id = create_booking(request.data, business_name, request.user)
         
         booking = Booking.objects.get(id=booking_id)
+        
 
         if event_datalist[-1].__contains__('authorizations'):
             def representation_services(repr):
@@ -975,6 +977,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             datalist=event_datalist,
             business=business_name,
             booking_id=booking_id,
+            group_booking=group_booking
         )
 
         offer_ids = create_offers_wrap(
@@ -994,6 +997,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Booking)
     def put(request, booking_id=None):
+        print(request.data)
         booking = Booking.objects.get(id=booking_id)
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
