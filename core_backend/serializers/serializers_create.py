@@ -238,11 +238,12 @@ class EventCreateSerializer(extendable_serializer(Event)):
         model = Event
         fields = '__all__'
 
-    def create(self, business, validated_data=None) -> int:
+    def create(self, business, group_booking, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
         affiliates = data.pop('affiliates', [])
         agents = data.pop('agents', [])
         extras = data.pop('extra', {})
+        print(group_booking)
         
         formatted_date_start = data['start_at'].strftime("%Y-%m-%d %H:%M")
         formatted_date_end = data['end_at'].strftime("%Y-%m-%d %H:%M")
@@ -276,7 +277,7 @@ class EventCreateSerializer(extendable_serializer(Event)):
         if overlapping_events.exists():
             #OVERLAP
             raise Exception("Overlapping event")
-        elif overlapping_agents.exists():
+        elif overlapping_agents.exists()  and not group_booking:
             #SAME EVENT DIFFER
             raise Exception("Overlapping medical provider")
 
