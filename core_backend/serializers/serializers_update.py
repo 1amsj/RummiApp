@@ -149,7 +149,7 @@ class RateUpdateSerializer(RateCreateSerializer):
         manage_extra_attrs(business, instance, extras)
 
 class EventUpdateSerializer(EventCreateSerializer):
-    def update(self, instance: Event, business, validated_data=None):
+    def update(self, instance: Event, business, group_booking, validated_data=None):
         data: dict = validated_data or self.validated_data
         affiliates = data.pop('affiliates', [])
         agents = data.pop('agents', [])
@@ -190,7 +190,7 @@ class EventUpdateSerializer(EventCreateSerializer):
         if overlapping_events.exists():
             #OVERLAP
             raise Exception("Overlapping event")
-        elif overlapping_agents.exists():
+        elif overlapping_agents.exists() and not group_booking:
             #SAME EVENT DIFFER
             raise Exception("Overlapping medical provider")
 
