@@ -546,7 +546,6 @@ def handle_events_bulk(datalist: list, business_name, requester_id, group_bookin
     # TODO It is noteworthy that currently this is not a true bulk operation.
     #  Also, events get created even if an error was found before,
     #  this might make the transaction rollback expensive.
-    print(group_booking)
     event_ids = []
     event_errors = []
     error_found = False

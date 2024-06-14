@@ -243,7 +243,6 @@ class EventCreateSerializer(extendable_serializer(Event)):
         affiliates = data.pop('affiliates', [])
         agents = data.pop('agents', [])
         extras = data.pop('extra', {})
-        print(group_booking)
         
         formatted_date_start = data['start_at'].strftime("%Y-%m-%d %H:%M")
         formatted_date_end = data['end_at'].strftime("%Y-%m-%d %H:%M")

@@ -997,9 +997,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Booking)
     def put(request, booking_id=None):
-        print(request.data)
         group_booking = request.data.get('group_booking', None)
-        print(group_booking)
         booking = Booking.objects.get(id=booking_id)
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
