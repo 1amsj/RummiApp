@@ -998,6 +998,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @expect_does_not_exist(Booking)
     def put(request, booking_id=None):
         print(request.data)
+        group_booking = request.data.get('group_booking', None)
+        print(group_booking)
         booking = Booking.objects.get(id=booking_id)
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
@@ -1033,7 +1035,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             
         booking.save()
 
-        handle_events_bulk(event_datalist, business, requester, booking_id)
+        handle_events_bulk(event_datalist, business, requester, group_booking, booking_id)
 
         serializer = BookingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
