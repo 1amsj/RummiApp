@@ -222,13 +222,13 @@ def create_events_wrap(datalist, business, booking_id, group_booking):
     return event_ids
 
 
-def create_event(data, business_name, requester_id):
+def create_event(data, business_name, requester_id, group_booking):
     if not data.get('requester'):
         data['requester'] = requester_id
 
     serializer = EventCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
-    return serializer.create(business_name)
+    return serializer.create(business_name, group_booking)
 
 
 @transaction.atomic
@@ -508,14 +508,14 @@ def update_company_relationship_wrap(data, company_id, company_relationship_inst
 
 
 @transaction.atomic
-def update_event_wrap(data, business_name, event_instance):
+def update_event_wrap(data, business_name, group_booking, event_instance):
     if not business_name:
         raise BusinessNotProvidedException
 
     try:
         serializer = EventUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        serializer.update(event_instance, business_name)
+        serializer.update(event_instance, business_name, group_booking)
 
     except ValidationError as exc:
         # Wrap errors
@@ -539,14 +539,14 @@ def update_report_wrap(data, report_instance, business):
 
 # Bulk
 @transaction.atomic
-def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=None):
+def handle_events_bulk(datalist: list, business_name, requester_id, group_booking, booking_id=None):
     """
     Create, update or delete the events in bulk, depending on whether the payload includes an ID or not
     """
     # TODO It is noteworthy that currently this is not a true bulk operation.
     #  Also, events get created even if an error was found before,
     #  this might make the transaction rollback expensive.
-
+    print(group_booking)
     event_ids = []
     event_errors = []
     error_found = False
@@ -566,7 +566,8 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
                 event_id = create_event(
                     data,
                     business_name,
-                    requester_id
+                    requester_id, 
+                    group_booking
                 )
 
                 if report_datalist:
@@ -580,6 +581,7 @@ def handle_events_bulk(datalist: list, business_name, requester_id, booking_id=N
                 update_event_wrap(
                     data,
                     business_name,
+                    group_booking,
                     event_instance=Event.objects.get(id=event_id)
                 )
 
