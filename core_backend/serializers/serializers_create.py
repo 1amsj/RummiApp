@@ -258,6 +258,18 @@ class EventCreateSerializer(extendable_serializer(Event)):
             end_at__gte=formatted_date_start,
             agents=agents[0].id
         )
+
+        group_bookings = []
+        for event in overlapping_agents:
+            if event.booking:
+                extras = event.booking.get_extra_attrs()
+                group_booking_previous = extras.get('group_booking', None)
+                group_bookings.append(group_booking_previous)
+
+        group_bookings.append(group_booking)
+        group_bookings = [value == '"True"' or value == True for value in group_bookings]      
+        agentsCanOverlap = all(group_bookings)
+   
         
         if(extras.__contains__('claim_number')):
             claim_number = extras['claim_number']
@@ -276,7 +288,7 @@ class EventCreateSerializer(extendable_serializer(Event)):
         if overlapping_events.exists():
             #OVERLAP
             raise Exception("Overlapping event")
-        elif overlapping_agents.exists()  and not group_booking:
+        elif overlapping_agents.exists() and not agentsCanOverlap:
             #SAME EVENT DIFFER
             raise Exception("Overlapping medical provider")
 
