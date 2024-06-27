@@ -50,6 +50,12 @@ class ManageEventsMixin:
                 query_delivered = queryset.filter(booking__status='delivered')
                 
                 filters.extend(query_delivered.values_list('id', flat=True))
+                
+            if 'not_invoiced' in reqBod:
+                queryset = queryset.filter(booking__status='delivered')
+                query_delivered = queryset.filter(~(Q(extra__data='"True"') & Q(extra__key='marked_as_invoiced')))
+                
+                filters.extend(query_delivered.values_list('id', flat=True))
             
             if 'override' in reqBod:
                 query_override = queryset.filter(booking__status='override')
