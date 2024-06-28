@@ -149,7 +149,7 @@ EMAIL_HOST_PASSWORD = os.environ.get('EmailHostPassword')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.environ.get('DB_NAME', 'core_db'),
+        'NAME': "ebdb",#os.environ.get('DB_NAME', 'core_db'),
         'USER': os.environ.get('DB_USER', 'core_user'),
         'PASSWORD': os.environ.get('DB_PASSWORD', 'core_password'),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
