@@ -508,7 +508,7 @@ def update_company_relationship_wrap(data, company_id, company_relationship_inst
 
 
 @transaction.atomic
-def update_event_wrap(data, business_name, group_booking, event_instance):
+def update_event_wrap(data, business_name, event_instance, group_booking = False):
     if not business_name:
         raise BusinessNotProvidedException
 
