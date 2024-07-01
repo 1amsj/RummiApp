@@ -151,7 +151,6 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                     if(len(jsoncertification) != 0):
                         certification_number = jsoncertification[-1]['certificate_number']
                         certification = Category.objects.filter(id=jsoncertification[-1]['certificate_id']).values('description')[0]['description']
-            print(certification_number, certification)
             
             values = {
                 #Patient
