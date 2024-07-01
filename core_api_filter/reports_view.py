@@ -1,11 +1,12 @@
 from datetime import datetime
+import json
 from rest_framework.response import Response
 from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
 from core_api.views import basic_view_manager
-from core_backend.models import Event, Language, Payer, Rate, User
+from core_backend.models import Category, Event, Language, Payer, Provider, Rate, User
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from rest_framework import status
 from core_api.services_datamanagement import update_event_wrap, create_reports_wrap, create_event
@@ -140,6 +141,17 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                             price.append(rates_values(rates))
                     else:
                         price.append(rates_values(rates))
+            certification_number = []
+            certification = []
+            if(len(obj['booking']['services']) != 0):
+                provider = Provider.objects.filter(id=obj['booking']['services'][0]['provider']['id'])
+                if(provider.filter(extra__key='certifications')):
+                    extract_certification = provider.filter(extra__key='certifications').values_list('extra__data')[0][0]
+                    jsoncertification = json.loads(extract_certification)
+                    if(len(jsoncertification) != 0):
+                        certification_number = jsoncertification[-1]['certificate_number']
+                        certification = Category.objects.filter(id=jsoncertification[-1]['certificate_id']).values('description')[0]['description']
+            print(certification_number, certification)
             
             values = {
                 #Patient
@@ -189,7 +201,10 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
                 "auth_by": auth_byUnzip,
                 "operators_first_name": obj['booking']['operators'][-1]['first_name'] if obj['booking']['operators'] != [] else "",
                 "operators_last_name": obj['booking']['operators'][-1]['last_name'] if obj['booking']['operators'] != [] else "",
-                "price": price[0][0][0] if len(price) > 0 else price
+                "price": price[0][0][0] if len(price) > 0 else price,
+                "certification_number": certification_number,
+                "certification": certification,
+                
             }
             
             report_values.append(values)
