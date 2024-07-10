@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from rest_framework.response import Response
-from core_api.constants import ApiSpecialKeys
+from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
@@ -23,7 +23,7 @@ class ManageEventsMixin:
 
     @classmethod
     @expect_does_not_exist(Event)
-    @method_decorator(cache_page(60 * 10))
+    @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
             event = cls.serializer_class.get_default_queryset().get(id=event_id)

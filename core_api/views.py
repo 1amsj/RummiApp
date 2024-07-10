@@ -14,7 +14,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 
-from core_api.constants import ApiSpecialKeys
+from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
@@ -654,6 +654,7 @@ class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
 
     @classmethod
     @expect_does_not_exist(Operator)
+    @method_decorator(cache_page(CacheTime.DAY))
     def get(cls, request, business_name=None, operator_id=None):
         if operator_id:
             operator = Operator.objects.all().not_deleted('user').get(id=operator_id)
@@ -843,6 +844,7 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
 
     @classmethod
     @expect_does_not_exist(Affiliation)
+    @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, affiliation_id=None):
         if affiliation_id:
             affiliation = Affiliation.objects.all().not_deleted('user').get(id=affiliation_id)
@@ -889,6 +891,7 @@ def validator_claim_number(value):
 
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
+    @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, booking_id=None):
         if booking_id:
             booking = Booking.objects.all().not_deleted('business').get(id=booking_id)
@@ -1053,7 +1056,7 @@ class ManageEventsMixin:
 
     @classmethod
     @expect_does_not_exist(Event)
-    @method_decorator(cache_page(60 * 10))
+    @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
             event = cls.serializer_class.get_default_queryset().get(id=event_id)
@@ -1293,6 +1296,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
     @classmethod
     @expect_does_not_exist(Company)
+    @method_decorator(cache_page(CacheTime.DAY))
     def get(cls, request, company_id=None):
         include_roles = request.GET.get(ApiSpecialKeys.INCLUDE_ROLES, False)
         serializer = CompanyWithRolesSerializer if include_roles else CompanyWithParentSerializer
@@ -1463,6 +1467,7 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootBookingSerial
     pagination_class = StandardResultsSetPagination
 
     @classmethod
+    @method_decorator(cache_page(CacheTime.DAY))
     def get(cls, request, business_name=None, service_root_id=None):
         if service_root_id:
             service_root = ServiceRoot.objects.all().get(id=service_root_id)
@@ -1557,6 +1562,7 @@ class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSe
 
     @classmethod
     @expect_does_not_exist(Authorization)
+    @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, authorization_id=None):
         if authorization_id:
             authorization = AuthorizationSerializer.get_default_queryset().get(id=authorization_id)
