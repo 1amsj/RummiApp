@@ -61,6 +61,7 @@ API_QUERY_LOOKUP_MAP = {
     "lt": "lt",
     "gte": "gte",
     "lte": "lte",
+    "sw": "startswith",
     "array_in": "in",
     "isnull": "isnull",
 }
@@ -90,3 +91,10 @@ class BookingReminderTargets(str, Enum):
 
 class CompanyTypes(str, Enum):
     CLINIC = 'clinic'
+
+class CacheTime(int, Enum):
+    MINUTE = 60
+    HOUR = 3600
+    DAY = 86400
+    WEEK = 604800
+    MONTH = 2592000

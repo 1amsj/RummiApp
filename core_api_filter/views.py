@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from rest_framework.response import Response
-from core_api.constants import ApiSpecialKeys
+from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import handle_events_bulk
@@ -23,7 +23,7 @@ class ManageEventsMixin:
 
     @classmethod
     @expect_does_not_exist(Event)
-    @method_decorator(cache_page(60 * 10))
+    @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
             event = cls.serializer_class.get_default_queryset().get(id=event_id)
@@ -131,6 +131,16 @@ class ManageEventsMixin:
 
             sorted_filtered = unique_filtered
             filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered).order_by('-id')
+
+            if 'start_date[operator]' in request.GET and 'start_date[value]' in request.GET:
+                operator = request.GET.get('start_date[operator]')
+                value = request.GET.get('start_date[value]')
+                if operator == 'onOrAfter':
+                    filterQueryset = filterQueryset.filter(start_at__gte=value)
+                elif operator == 'onOrBefore':
+                    filterQueryset = filterQueryset.filter(start_at__lte=value)
+                elif operator == 'is':
+                    filterQueryset = filterQueryset.filter(start_at__sw=value)
 
             if 'order_to_sort' in request.GET and 'field_to_sort' in request.GET:
                 order_to_sort = request.GET.get('order_to_sort')
