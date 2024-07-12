@@ -61,7 +61,6 @@ API_QUERY_LOOKUP_MAP = {
     "lt": "lt",
     "gte": "gte",
     "lte": "lte",
-    "sw": "startswith",
     "array_in": "in",
     "isnull": "isnull",
 }

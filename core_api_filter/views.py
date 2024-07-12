@@ -140,7 +140,7 @@ class ManageEventsMixin:
                 elif operator == 'onOrBefore':
                     filterQueryset = filterQueryset.filter(start_at__lte=value)
                 elif operator == 'is':
-                    filterQueryset = filterQueryset.filter(start_at__sw=value)
+                    filterQueryset = filterQueryset.filter(start_at__date=value)
 
             if 'order_to_sort' in request.GET and 'field_to_sort' in request.GET:
                 order_to_sort = request.GET.get('order_to_sort')
