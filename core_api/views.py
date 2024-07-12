@@ -200,7 +200,6 @@ def search_bookings(request):
     queryset = queryset.values('id','events__affiliates__recipient__user__first_name', 'events__affiliates__recipient__user__last_name', 'events__affiliates__recipient__user__date_of_birth', 'events__arrive_at', 'events__id', 'public_id')
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.__dict__['instance'])
-    # return Response(serialized.data)
 
 
 @api_view(['POST'])
