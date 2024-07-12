@@ -196,9 +196,11 @@ def search_bookings(request):
 
     if booking_public_id := request.GET.get('booking_id'):
         queryset = queryset.filter(public_id__contains=booking_public_id)
-
+    
+    queryset = queryset.values('id','events__affiliates__recipient__user__first_name', 'events__affiliates__recipient__user__last_name', 'events__affiliates__recipient__user__date_of_birth', 'events__arrive_at', 'events__id', 'public_id')
     serialized = BookingSerializer(queryset, many=True)
-    return Response(serialized.data)
+    return Response(serialized.__dict__['instance'])
+    # return Response(serialized.data)
 
 
 @api_view(['POST'])
