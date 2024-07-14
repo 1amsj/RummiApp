@@ -132,6 +132,16 @@ class ManageEventsMixin:
             sorted_filtered = unique_filtered
             filterQueryset = ExtraQuerySet(Event).filter(id__in=sorted_filtered).order_by('-id')
 
+            if 'start_date[operator]' in request.GET and 'start_date[value]' in request.GET:
+                operator = request.GET.get('start_date[operator]')
+                value = request.GET.get('start_date[value]')
+                if operator == 'onOrAfter':
+                    filterQueryset = filterQueryset.filter(start_at__gte=value)
+                elif operator == 'onOrBefore':
+                    filterQueryset = filterQueryset.filter(start_at__lte=value)
+                elif operator == 'is':
+                    filterQueryset = filterQueryset.filter(start_at__date=value)
+
             if 'order_to_sort' in request.GET and 'field_to_sort' in request.GET:
                 order_to_sort = request.GET.get('order_to_sort')
                 field_to_sort = request.GET.get('field_to_sort')
