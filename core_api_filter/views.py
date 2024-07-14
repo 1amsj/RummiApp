@@ -12,8 +12,8 @@ from core_api.services_datamanagement import update_event_wrap, create_reports_w
 from core_api.exceptions import BadRequestException
 from django.db import transaction
 from django.db.models import Count, Q, Subquery, OuterRef
-from django.views.decorators.cache import cache_page
-from django.utils.decorators import method_decorator
+# from django.views.decorators.cache import cache_page
+# from django.utils.decorators import method_decorator
 
 from core_backend.serializers.serializers import EventNoBookingSerializer, EventSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
@@ -23,7 +23,7 @@ class ManageEventsMixin:
 
     @classmethod
     @expect_does_not_exist(Event)
-    @method_decorator(cache_page(10 * CacheTime.MINUTE))
+    # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
             event = cls.serializer_class.get_default_queryset().get(id=event_id)
