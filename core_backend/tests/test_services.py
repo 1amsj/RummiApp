@@ -2,7 +2,7 @@ from django.test import TestCase
 
 from core_api.constants import ApiSpecialKeys
 from core_backend.models import Booking
-from core_backend.services import filter_extra_attrs
+from core_backend.services.core_services import filter_extra_attrs
 
 
 class ExtrasTestCase(TestCase):

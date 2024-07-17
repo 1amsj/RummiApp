@@ -4,6 +4,17 @@ from typing import Any, Dict, Optional, Union
 from core_api.constants import API_NESTED_QUERY_PARAM_SEPARATOR, API_QUERY_LOOKUP_MAP, API_QUERY_LOOKUP_SEPARATOR
 
 
+# Metaclasses
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+# Query params
 @dataclass
 class Param:
     value: Any
@@ -21,18 +32,18 @@ class QueryParams(Dict[str, QueryParamsValue]):
             for (k, v) in params.items():
                 self[k] = v
 
-    def __getitem__(self, key: QueryParamsKey) -> QueryParamsValue:
-        ks = key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
+    def __getitem__(self, param_key: QueryParamsKey) -> QueryParamsValue:
+        keys = param_key.split(API_NESTED_QUERY_PARAM_SEPARATOR)
         current = self
-        for k in ks:
+        for k in keys:
             current = super(QueryParams, current).__getitem__(k)
         return current
 
     # noinspection PySuperArguments
-    def __setitem__(self, key: QueryParamsKey, value: Any):
-        affixes = key.split(API_QUERY_LOOKUP_SEPARATOR)
+    def __setitem__(self, param_key: QueryParamsKey, value: Any):
+        affixes = param_key.split(API_QUERY_LOOKUP_SEPARATOR)
         if len(affixes) > 2 or len(affixes) < 1:
-            raise ValueError('Invalid query')
+            raise ValueError(F'Invalid query, remember to use {API_NESTED_QUERY_PARAM_SEPARATOR} for nesting and {API_QUERY_LOOKUP_SEPARATOR} for lookups.')
 
         keys = affixes[0].split(API_NESTED_QUERY_PARAM_SEPARATOR)
         try:

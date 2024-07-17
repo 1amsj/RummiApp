@@ -1,4 +1,4 @@
-name: ci
+name: dev
 on:
   push:
     branches:
@@ -44,8 +44,11 @@ jobs:
           APP_NAME: core-communications-rcore-be
           S3_RCORE_VERSION_BUCKET: core-communications-rcore-be-versions
           IMAGE_TAG: ${{ steps.vars.outputs.tag }}
+          URL_BE_DEV: ${{ vars.URL_BE_DEV }}
+          LETSENCRYPT_EMAIL: ${{ vars.LETSENCRYPT_EMAIL }}
         run: |
           sed -i "s/latest/$IMAGE_TAG/" Dockerrun.aws.json
+          echo "sudo certbot -n -d $URL_BE_DEV --nginx --agree-tos --email $LETSENCRYPT_EMAIL" >> .platform/hooks/postdeploy/00_get_certificate.sh
 
           mkdir source-bundle 
           cp Dockerrun.aws.json source-bundle

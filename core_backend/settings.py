@@ -20,6 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 PARENT_DIR = BASE_DIR.parent
 STATIC_ROOT = os.environ.get('FRONTEND_DIR', os.path.join(PARENT_DIR, 'core_frontend'))
 VERSION_FILE_DIR = os.path.join(BASE_DIR, 'logs', 'latest_commit.txt')
+INFO_FILE_DIR = os.path.join(BASE_DIR, 'logs', 'info.log')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
@@ -72,7 +73,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(weeks=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=50),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -99,8 +100,8 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 
     'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
-    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
-    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
+    'SLIDING_TOKEN_LIFETIME': timedelta(weeks=1),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=50),
 }
 
 CORS_ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:8000&http://localhost:3000').split('&')
@@ -118,7 +119,7 @@ ROOT_URLCONF = 'core_backend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(STATIC_ROOT, 'build')],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -135,6 +136,12 @@ STATICFILES_DIRS = [os.path.join(STATIC_ROOT, 'build', 'static')]
 
 WSGI_APPLICATION = 'core_backend.wsgi.application'
 
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get('EmailHostUser')
+EMAIL_HOST_PASSWORD = os.environ.get('EmailHostPassword')
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -147,6 +154,9 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', 'core_password'),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
         'PORT': os.environ.get('DB_PORT', '5432'),
+        'OPTIONS': {
+            'options': '-c client_encoding=utf8',
+        },
     }
 }
 
@@ -192,3 +202,53 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'core_backend.User'
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
+
+# Concord
+CONCORD_CLIENT_ID = os.environ.get('CONCORD_CLIENT_ID', 'concord_client_id')
+CONCORD_CLIENT_SECRET = os.environ.get('CONCORD_CLIENT_SECRET', 'concord_client_secret')
+CONCORD_USERNAME = os.environ.get('CONCORD_USERNAME', 'concord_username')
+CONCORD_PASSWORD = os.environ.get('CONCORD_PASSWORD', 'concord_password')
+
+CONCORD_DEBUG = os.environ.get('CONCORD_DEBUG', 'True').lower() in ('true', '1', 't')
+CONCORD_LOGIN_URL = os.environ.get('CONCORD_LOGIN_URL', 'https://login.concord.net/v1/connect/token')
+CONCORD_API_URL = os.environ.get('CONCORD_API_URL', 'https://ws.concordfax.com/fax/v5')
+CONCORD_NUMBER_OVERRIDE = os.environ.get('CONCORD_NUMBER_OVERRIDE', None)
+
+CONCORD_NOTIFY_AUTH_USERNAME = os.environ.get('CONCORD_NOTIFY_AUTH_USERNAME', None)
+CONCORD_NOTIFY_AUTH_PASSWORD = os.environ.get('CONCORD_NOTIFY_AUTH_PASSWORD', None)
+
+# Phone number default region
+# https://django-phonenumber-field.readthedocs.io/en/latest/reference.html
+
+PHONENUMBER_DEFAULT_REGION = 'US'

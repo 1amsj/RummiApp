@@ -2,10 +2,9 @@ from typing import List
 
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
-
-from core_backend.models import Business, Category, Contact, Expense, Extra, Location, Note, User
+from core_backend.models import Business, Category, Company, CompanyRelationship, Contact, Expense, Extra, Location, Note, User
 from core_backend.serializers.serializers_utils import BaseSerializer, generic_serializer
-from core_backend.services import fetch_updated_from_validated_data
+from core_backend.services.core_services import fetch_updated_from_validated_data
 
 BusinessSerializer = generic_serializer(Business)
 
@@ -141,7 +140,7 @@ class LocationUnsafeSerializer(LocationSerializer):
 
 
 class NoteSerializer(BaseSerializer):
-    created_by = serializers.PrimaryKeyRelatedField(required=True, queryset=User.objects.all())
+    created_by = serializers.PrimaryKeyRelatedField(required=False, allow_null=True, queryset=User.objects.all())
     created_by_first_name = serializers.CharField(read_only=True, source='created_by.first_name')
     created_by_last_name = serializers.CharField(read_only=True, source='created_by.last_name')
     text = serializers.CharField(required=True, allow_blank=True)
@@ -157,7 +156,7 @@ class NoteSerializer(BaseSerializer):
     @staticmethod
     def build_model_instance(data: dict):
         return Note(
-            created_by=data['created_by'],
+            created_by=data.get('created_by', None),
             text=data['text'],
         )
 
@@ -189,3 +188,5 @@ class NoteSerializer(BaseSerializer):
 
 class NoteUnsafeSerializer(NoteSerializer):
     id = serializers.IntegerField(read_only=False, allow_null=True, required=False)
+
+

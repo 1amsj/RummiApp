@@ -3,6 +3,8 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from . import converters, views
+from core_api_filter.views import ManageEventsFilters
+from core_api_filter.reports_view import ManageEventsReports
 
 register_converter(converters.NumericIdConverter, 'id')
 
@@ -39,6 +41,7 @@ urlpatterns = [
     path('token/', csrf_exempt(views.CustomTokenObtainPairView.as_view()), name='token_obtain_pair'),
     path('token/refresh/', csrf_exempt(TokenRefreshView.as_view()), name='token_refresh'),
     path('register/', views.register_user, name='auth_register'),
+    path('email/', csrf_exempt(views.send_email), name='send_email'),
     path('test/', views.test_end_point, name='test'),
     path('version/', views.get_version, name='test'),
 
@@ -47,21 +50,34 @@ urlpatterns = [
     path('payers/', views.ManagePayers.as_view(), name='manage_payers'),
     *path_optionals_xor('providers/', ['<id:provider_id>', '<str:business_name>'], views.ManageProviders.as_view(), name='manage_providers'),
     *path_optionals_xor('agents/', ['<id:agent_id>', '<str:business_name>'], views.ManageAgents.as_view(), name='manage_agents'),
+    *path_optionals_xor('admin/', ['<id:admin_id>', '<str:business_name>'], views.ManageAdmin.as_view(), name='manage_admin'),
     *path_optionals_xor('recipients/', ['<id:recipient_id>', '<str:business_name>'], views.ManageRecipients.as_view(), name='manage_recipients'),
     path('requesters/', views.ManageRequesters.as_view(), name='manage_requesters'),
     path('notes/', views.ManageNote.as_view(), name='manage_notes'),
+    *path_optionals_xor('offers/', ['<id:offer_id>', '<str:business_name>'], views.ManageOffers.as_view(), name='manage_offers'),
+    *path_optionals_xor('global_settings/', ['<id:global_setting_id>', '<str:business_name>'], views.ManageGlobalSettings.as_view(), name='manage_global_settings'),
     
+    *path_optional('notifications/', '<id:notification_id>', views.ManageNotifications.as_view(), name='manage_notifications'),
+
     *path_optional('affiliations/', '<str:business_name>', views.ManageAffiliations.as_view(), name='manage_affiliations'),
     *path_optional('authorizations/', '<id:authorization_id>', views.ManageAuthorizations.as_view(), name='manage_authorizations'),
     *path_optionals_xor('bookings/', ['<id:booking_id>', '<str:business_name>'], views.ManageBooking.as_view(), name='manage_booking'),
     *path_optional('categories/', '<id:category_id>', views.ManageCategories.as_view(), name='manage_categories'),
-    *path_optional('companies/', '<id:company_id>', views.ManageCompany.as_view(), name='manage_companies'),
+    *path_optionals_xor('companies/', ['<id:company_id>', '<str:business_name>'], views.ManageCompany.as_view(), name='manage_companies'),
     *path_optionals_xor('events/', ['<id:event_id>', '<str:business_name>'], views.ManageEvents.as_view(), name='manage_events'),
+    *path_optionals_xor('events_filters/', ['<id:event_id>', '<str:business_name>'], ManageEventsFilters.as_view(), name='manage_events_filters'),
+    *path_optionals_xor('reports/', ['<id:event_id>', '<str:business_name>'], ManageEventsReports.as_view(), name='manage_events_reports'),
+    *path_optionals_xor('events/light', ['<id:event_id>', '<str:business_name>'], views.ManageEventsLight.as_view(), name='manage_events_light'),
     *path_optional('expenses/', '<id:expense_id>', views.ManageExpenses.as_view(), name='manage_expenses'),
+    *path_optional('languages/', '<id:language_id>', views.ManageLanguages.as_view(), name='manage_languages'),
     *path_optional('services/', '<str:business_name>', views.ManageService.as_view(), name='manage_services'),
+    *path_optional('service_areas/', '<id:service_area_id>', views.ManageServiceArea.as_view(), name='manage_service_areas'),
+    *path_optional('company_relationships/', '<id:company_relationship_id>', views.ManageCompanyRelationships.as_view(), name='manage_company_relationships'),
     *path_optional('service_roots/', '<id:service_root_id>', views.ManageServiceRoot.as_view(), name='manage_service_roots'),
 
     path('search/', views.search_bookings, name='search'),
+
+    path('notifications/fax/', views.handle_fax_push_notification, name='fax_push_notification'),
 
     path('', views.get_routes)
 ]

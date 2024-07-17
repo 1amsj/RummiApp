@@ -6,7 +6,7 @@ from rest_framework import serializers
 from core_backend.models import SoftDeletableModel, SoftDeletionQuerySet, User
 from core_backend.serializers.serializers_plain import ContactSerializer, LocationSerializer
 from core_backend.serializers.serializers_utils import BaseSerializer, extendable_serializer
-from core_backend.services import is_extendable
+from core_backend.services.core_services import is_extendable
 
 
 # User needs to be in this file to avoid circular imports
@@ -21,7 +21,8 @@ class UserSerializer(serializers.ModelSerializer):
     provider_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_provider')
     recipient_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_recipient')
     requester_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_requester')
-    date_of_birth = serializers.DateField(required=False)
+    admin_id = serializers.PrimaryKeyRelatedField(allow_null=True, read_only=True, source='as_admin')
+    date_of_birth = serializers.DateField(allow_null=True, required=False)
 
     class Meta:
         model = User
@@ -45,11 +46,13 @@ class UserSerializer(serializers.ModelSerializer):
             'provider_id',
             'recipient_id',
             'requester_id',
+            'admin_id',
             'is_operator',
             'is_provider',
             'is_recipient',
             'is_requester',
             'is_payer',
+            'is_admin',
         )
 
     @staticmethod
