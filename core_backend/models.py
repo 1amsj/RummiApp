@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 from typing import Optional, Tuple
 
+from django.core.validators import MinValueValidator
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -610,7 +611,7 @@ class Rate(ExtendableModel, HistoricalModel, SoftDeletableModel):
     global_setting = models.ForeignKey(GlobalSetting, on_delete=models.CASCADE, related_name='rates', null=True, blank=True)
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='rates', null=True, blank=True)
     root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='rates')
-    bill_amount = models.PositiveIntegerField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.')
+    bill_amount = models.FloatField(_('billing amount'), default=1, help_text='Is how many `bill_rate_type` will get charged, ex: 3 hours, 15 mins, etc.', validators=[MinValueValidator(0.0)])
     bill_rate_type = models.CharField(_('billing rate type'), max_length=255, choices=RateType.choices, default=RateType.FLAT, blank=True, help_text='Is the type of pricing model')
     bill_min_payment = models.DecimalField(_('billing minimum payment'), max_digits=32, decimal_places=2, default=0, help_text='Defines the minimum that the provider will charge for this service')
     bill_no_show_fee = models.DecimalField(_('billing no show fee'), max_digits=32, decimal_places=2, default=0, help_text='Defines the fee thatr will be charge if the rate is not completed')
