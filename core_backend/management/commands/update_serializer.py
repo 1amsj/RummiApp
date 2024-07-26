@@ -8,6 +8,7 @@ django.setup()
 
 from django.core.management.base import BaseCommand
 from core_backend.models import Authorization, Booking, Event
+from django.db.models import Q
 
 pending_count = 0
 booked_count = 0 
@@ -60,7 +61,7 @@ class Command(BaseCommand):
                 
             if payer_company_not_none:
                 if reports_query.count() > 0 and reports_query[0].__dict__['_prefetched_objects_cache']['reports'][:10][-1].status == 'COMPLETED' \
-                and validator_type(event_datalist) \
+                and validator_type(event_datalist) and reports_query.filter(~Q(booking__services=None)) \
                 and event_get_extra.__contains__('claim_number') == True:
                     booking.status = "delivered"
                     delivered_count += 1
@@ -73,13 +74,15 @@ class Command(BaseCommand):
                     elif list_authorizations_status.__contains__('OVERRIDE') and validator_short_type(event_datalist):
                         booking.status = "override"
                         override_count += 1
-                    elif event_get_extra.__contains__('claim_number') == True and validator_type(event_datalist):
+                    elif event_get_extra.__contains__('claim_number') == True and validator_type(event_datalist) \
+                    and general_query.filter(~Q(booking__services=None)):
                         booking.status = "booked"
                         booked_count += 1
                     else:
                         booking.status = "pending"
                         pending_count += 1
-                elif event_get_extra.__contains__('claim_number') == True and validator_type(event_datalist):
+                elif event_get_extra.__contains__('claim_number') == True and validator_type(event_datalist) \
+                and general_query.filter(~Q(booking__services=None)):
                     booking.status = "booked"
                     booked_count += 1
                 else:

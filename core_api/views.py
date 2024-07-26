@@ -964,12 +964,12 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 booking.status = "authorized"
             elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
                 booking.status = "override"
-            elif validator_claim_number(event_datalist) is not None and company_type_validation:
+            elif validator_claim_number(event_datalist) is not None and company_type_validation and booking.services.exists() == True:
                 booking.status = "booked"
             else:
                 booking.status = "pending"
 
-        elif validator_claim_number(event_datalist) is not None and company_type_validation:
+        elif validator_claim_number(event_datalist) is not None and company_type_validation and booking.services.exists() == True:
             booking.status = "booked"
 
         else:
@@ -1010,7 +1010,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         company_type_short_validation = validator_short_type(event_datalist)
 
         if event_datalist[-1]['_report_datalist'][-1]['status'] == 'COMPLETED' \
-        and company_type_validation and validator_claim_number(event_datalist) is not None:
+        and company_type_validation and validator_claim_number(event_datalist) is not None \
+        and booking.services.exists() == True:
             booking.status = "delivered"
 
         elif event_datalist[-1].__contains__('authorizations'):
@@ -1024,12 +1025,12 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 booking.status = "authorized"
             elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
                 booking.status = "override"
-            elif validator_claim_number(event_datalist) is not None and company_type_validation:
+            elif validator_claim_number(event_datalist) is not None and company_type_validation and booking.services.exists() == True:
                 booking.status = "booked"
             else:
                 booking.status = "pending"
 
-        elif validator_claim_number(event_datalist) is not None and company_type_validation:
+        elif validator_claim_number(event_datalist) is not None and company_type_validation and booking.services.exists() == True:
             booking.status = "booked"
 
         else:
