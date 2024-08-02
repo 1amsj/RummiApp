@@ -10,7 +10,7 @@ django-simple-history==3.2.0
 djangorestframework==3.13.1
 djangorestframework-simplejwt==5.0.0
 phonenumbers==8.12.52
-psycopg2==2.9.3
+psycopg2-binary==2.9.3
 pycodestyle==2.8.0
 pydot==1.4.2
 pygraphviz==1.10
@@ -30,3 +30,4 @@ requests~=2.31.0
 certifi~=2023.7.22
 idna~=3.4
 urllib3~=2.0.4
+django-silk==5.1.0
