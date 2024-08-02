@@ -24,6 +24,7 @@ class ApiSpecialKeys(str, Enum):
     
     #Filters
     STATUS = '_status'
+    YEAR_MONTH = '_year_month'
 
     # Appended data
     AFFILIATION_DATALIST = '_affiliation_datalist'
