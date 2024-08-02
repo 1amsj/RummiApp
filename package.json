@@ -3,8 +3,14 @@
     "start": "python manage.py runserver localhost:8000",
     "migrate": "python manage.py migrate",
     "makeMigrations": "python manage.py makemigrations",
-    "makeMigrations merge": "python manage.py makemigrations --merge",
+    "makeMigrationsMerge": "python manage.py makemigrations --merge",
     "showMigrations": "python manage.py showmigrations",
-    "installRequirements": "pip install -r requirements.txt"
+    "installRequirements": "pip install -r requirements.txt",
+    "startMacOS": "python3 manage.py runserver localhost:8000",
+    "migrateMacOS": "python3 manage.py migrate",
+    "makeMigrationsMacOS": "python3 manage.py makemigrations",
+    "makeMigrationsMergeMacOS": "python3 manage.py makemigrations --merge",
+    "showMigrationsMacOS": "python3 manage.py showmigrations",
+    "installRequirementsMacOS": "pip3 install -r requirements.txt"
   }
 }
