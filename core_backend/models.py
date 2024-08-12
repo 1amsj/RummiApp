@@ -223,6 +223,7 @@ class Company(ExtendableModel, SoftDeletableModel, HistoricalModel):
     send_method = models.CharField(_('send method'), max_length=128)
     on_hold = models.BooleanField(_('on hold'))
     parent_company = models.ForeignKey('self', blank=True, null=True, on_delete=models.CASCADE, related_name = 'children_companies')
+    aliases = ArrayField(models.CharField(max_length=150), blank=True, null=True, default=list)
 
     class Meta:
         ordering = ['name']
@@ -306,6 +307,7 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     ssn = models.CharField(_('social security number'), max_length=50, blank=True)
     title = models.CharField(_('title'), max_length=150, blank=True)
     suffix = models.CharField(_('suffix'), max_length=150, blank=True)
+    aliases = ArrayField(models.CharField(max_length=150), blank=True, null=True, default=list)
 
     objects = CoreUserManager()
 
