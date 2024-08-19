@@ -132,7 +132,7 @@ class BookingLightNoEventsSerializer(extendable_serializer(Booking)):
 
     class Meta:
         model = Booking
-        fields = ['id', 'business', 'public_id', 'services', 'companies']
+        fields = ['id', 'business', 'public_id', 'services', 'companies', 'status']
         
     @staticmethod
     def get_default_queryset():
