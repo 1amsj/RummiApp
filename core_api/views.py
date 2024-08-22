@@ -1,6 +1,6 @@
 from typing import Type, Union
 
-from django.db import models, transaction
+from django.db import connection, models, transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 from rest_framework import generics, serializers, status
@@ -18,6 +18,7 @@ from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
+from core_api.queries import ApiSpecialSql
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
@@ -1061,9 +1062,31 @@ class ManageEventsMixin:
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
         if event_id:
-            event = cls.serializer_class.get_default_queryset().get(id=event_id)
-            serialized = cls.serializer_class(event)
-            return Response(serialized.data)
+            event = dict
+
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSql.get_event_sql(event_id))
+                event = cursor.fetchone()[0][0]
+            
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSql.get_affiliates_sql(event_id))
+                event.update({'affiliates': cursor.fetchone()[0][0]})
+                
+            print(str(event["booking_id"]))
+            
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSql.get_booking_sql(event["booking_id"]))
+                event.update({'booking': cursor.fetchone()[0][0]})
+            
+            # with connection.cursor() as cursor:
+            #     cursor.execute(ApiSpecialSql.get_affiliates_sql(event_id))
+            #     event.update({'affiliates': cursor.fetchone()[0][0]})
+            
+            # with connection.cursor() as cursor:
+            #     cursor.execute(ApiSpecialSql.get_affiliates_sql(event_id))
+            #     event.update({'affiliates': cursor.fetchone()[0][0]})
+            
+            return Response(event)
 
         include_booking = request.GET.get(ApiSpecialKeys.INCLUDE_BOOKING, False)
         query_params = prepare_query_params(request.GET)
