@@ -29,11 +29,15 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
         serializer = serializer_class if request.GET.get(ApiSpecialKeys.INCLUDE_BOOKING, False) else no_booking_serializer_class
 
         queryset = serializer.get_default_queryset()
+        reqBod = request.GET.get(ApiSpecialKeys.YEAR_MONTH)
 
         if business_name:
             queryset = queryset.filter(booking__business__name=business_name)
 
-        queryset = queryset.filter(Q(booking__status='delivered'))
+        if reqBod != '':
+            queryset = queryset.filter(booking__status='delivered', start_at__icontains=reqBod)
+        else:
+            queryset = queryset.filter(booking__status='delivered')
                 
         
         queryset = cls.apply_filters(queryset.order_by('-start_at'), query_params)
@@ -90,6 +94,7 @@ class ManageEventsReports(basic_view_manager(Event, EventSerializer)):
             obj_arrive = obj['reports'][-1]['arrive_at'].split('.')[0] if obj['reports'][-1]['arrive_at'] != None else ''
             obj_start = obj['reports'][-1]['start_at'].split('.')[0] if obj['reports'][-1]['start_at'] != None else ''
             obj_end = obj['reports'][-1]['end_at'].split('.')[0] if obj['reports'][-1]['end_at'] != None else ''
+            print(obj_date)
             
             if obj_date.__len__() != 0:
                 dt = datetime.fromisoformat(obj_date.split('Z')[0]) 
