@@ -10,11 +10,10 @@ class ApiSpecialSql():
     
     def get_extras_sql(parent_id, ):
         return """
-            SELECT JSON_AGG(JSONData) FROM (
-            SELECT * FROM core_backend_extra extra
-            WHERE extra.parent_id = """ + str(parent_id) + """
-            AND extra.parent_ct_id = 14
-            ) JSONData
+            SELECT JSON_AGG(t) FROM (
+                SELECT key, data FROM core_backend_extra extra WHERE extra.parent_id = """ + str(parent_id)+ """
+                -- WHERE eventData.id = 311 --
+            ) t
         """
         
     def get_report_sql(event_id):
