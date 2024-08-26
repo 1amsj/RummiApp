@@ -3,24 +3,27 @@ class ApiSpecialSql():
     def get_event_sql(event_id):
         return """
             SELECT JSON_AGG(JSONData) FROM (
-            SELECT 
-                eventData.*
-            FROM core_backend_event eventData
+            SELECT * FROM core_backend_event eventData
             WHERE eventData.id = """ + str(event_id) + """
+            ) JSONData
+        """
+    
+    def get_extras_sql(parent_id, ):
+        return """
+            SELECT JSON_AGG(JSONData) FROM (
+            SELECT * FROM core_backend_extra extra
+            WHERE extra.parent_id = """ + str(parent_id) + """
+            AND extra.parent_ct_id = 14
             ) JSONData
         """
         
     def get_report_sql(event_id):
         return """ 
             SELECT JSON_AGG(JSONData) FROM (
-                SELECT 
-                eventData.*,
-                ARRAY_AGG(report.status || '/' || report.id) AS reports
-                FROM core_backend_event eventData
-                LEFT JOIN core_backend_report report
-                ON report.event_id = eventData.id
-                WHERE eventData.id = """ + str(event_id) + """
-                GROUP BY eventData.id
+            SELECT
+            ARRAY_AGG(report.status || '/' || report.id) AS reports
+            FROM core_backend_report report
+            WHERE report.event_id = """ + str(event_id) + """
             ) JSONData
         """
 
@@ -41,6 +44,39 @@ class ApiSpecialSql():
             LEFT JOIN core_backend_user_contacts userContact on userContact.user_id = userRecipient.id
             LEFT JOIN core_backend_contact contactUs on contactUs.id = userContact.contact_id
             WHERE affiliates.event_id = """ + str(event_id) + """
+            ) JSONData
+        """
+    
+    def get_recipient_sql(recipient_id):
+        return """
+            SELECT JSON_AGG(JSONData) FROM (
+            SELECT * FROM core_backend_recipient recipient
+            LEFT JOIN core_backend_user recipientUser on recipientUser.id = recipient.user_id
+            WHERE recipient.id = """ + str(recipient_id) + """
+        """
+    
+    def get_recipient_notes_sql(recipient_id):
+        return """
+            SELECT JSON_AGG(JSONData) FROM (
+            SELECT * FROM core_backend_note noteRecipient
+            WHERE noteRecipient.recipient_id = """ + str(recipient_id) + """
+            ) JSONData
+        """
+    
+    def get_user_contacts_sql(user_id):
+        return """
+            SELECT JSON_AGG(JSONData) FROM (
+            SELECT * FROM core_backend_user_contacts userContact
+            LEFT JOIN core_backend_contact contact on contact.id = userContact.contact_id
+            WHERE userContact.user_id = """ + str(user_id) + """
+            ) JSONData
+        """
+    
+    def get_location_sql(location_id):
+        return """
+            SELECT JSON_AGG(JSONData) FROM (
+            SELECT * FROM core_backend_location location
+            WHERE location.id = """ + str(location_id) + """
             ) JSONData
         """
     
