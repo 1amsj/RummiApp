@@ -2,19 +2,45 @@ class ApiSpecialSql():
 
     def get_event_sql(event_id):
         return """
-            SELECT JSON_AGG(JSONData) FROM (
-            SELECT * FROM core_backend_event eventData
-            WHERE eventData.id = """ + str(event_id) + """
-            ) JSONData
-        """
-    
-    def get_extras_sql(parent_id, ):
-        return """
-            SELECT JSON_AGG(JSONData) FROM (
-            SELECT * FROM core_backend_extra extra
-            WHERE extra.parent_id = """ + str(parent_id) + """
-            AND extra.parent_ct_id = 14
-            ) JSONData
+            SELECT json_build_object(
+                'id', event.id,
+                'meeting_url', event.meeting_url,
+                'start_at', event.start_at,
+                'end_at', event.end_at,
+                'observations', event.observations,
+                'booking_id', event.booking_id,
+                'location_id', event.location_id,
+                'payer_id', event.payer_id,
+                'requester_id', event.requester_id,
+                'is_deleted', event.is_deleted,
+                'payer_company_id', event.payer_company_id,
+                'arrive_at', event.arrive_at,
+                'description', event.description,
+                'unique_field', event.unique_field,
+                'affiliates', json_agg(json_build_object(
+                    'id', affiliation.id,
+                    'company', affiliation.company_id,
+                    'recipient', json_build_object(
+                        'id', recipient.id,
+                        'user_id', recipient.user_id,
+                        'is_deleted', recipient.is_deleted,
+                        'first_name', recipientUser.first_name,
+                        'last_name', recipientUser.last_name,
+                        'date_of_birth', recipientUser.date_of_birth,
+                        'suffix', recipientUser.suffix,
+                        'title', recipientUser.title
+                    ),
+                    'is_deleted', affiliation.is_deleted
+                ))
+            )
+            FROM core_backend_event event
+            LEFT JOIN core_backend_event_affiliates eventAffiliates on eventAffiliates.event_id = event.id
+            LEFT JOIN core_backend_affiliation affiliation on affiliation.id = eventAffiliates.affiliation_id
+            LEFT JOIN core_backend_recipient recipient on recipient.id = affiliation.recipient_id
+            LEFT JOIN core_backend_user recipientUser on recipientUser.id = recipient.user_id
+            LEFT JOIN core_backend_note recipientNote on recipientNote.recipient_id = recipient.id
+            WHERE event.id = """ + str(event_id) + """
+            GROUP BY event.id
         """
         
     def get_report_sql(event_id):
@@ -33,16 +59,6 @@ class ApiSpecialSql():
             SELECT JSON_AGG(JSONData) FROM (
             SELECT * FROM core_backend_event_affiliates affiliates
             LEFT JOIN core_backend_affiliation affiliation on affiliation.id = affiliates.affiliation_id
-            LEFT JOIN core_backend_recipient recipient on recipient.id = affiliation.recipient_id
-            LEFT JOIN core_backend_user userRecipient on userRecipient.id = recipient.user_id
-            LEFT JOIN core_backend_user_user_permissions userPermissions on userPermissions.user_id = userRecipient.id
-            LEFT JOIN auth_permission authPermissions on authPermissions.id = userPermissions.permission_id
-            LEFT JOIN core_backend_user_groups userGroups on userGroups.user_id = userRecipient.id
-            LEFT JOIN auth_group authGroup on authGroup.id = userGroups.group_id
-            LEFT JOIN auth_group_permissions authGroupPermissions on authGroupPermissions.id = userGroups.group_id
-            LEFT JOIN core_backend_location locationUs on locationUs.id = userRecipient.location_id
-            LEFT JOIN core_backend_user_contacts userContact on userContact.user_id = userRecipient.id
-            LEFT JOIN core_backend_contact contactUs on contactUs.id = userContact.contact_id
             WHERE affiliates.event_id = """ + str(event_id) + """
             ) JSONData
         """
