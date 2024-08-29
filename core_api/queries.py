@@ -17,38 +17,21 @@ class ApiSpecialSql():
                 'arrive_at', event.arrive_at,
                 'description', event.description,
                 'unique_field', event.unique_field,
-                'affiliates', json_agg(json_build_object(
-                    'id', affiliation.id,
-                    'company', affiliation.company_id,
-                    'recipient', json_build_object(
-                        'id', recipient.id,
-                        'user_id', recipient.user_id,
-                        'is_deleted', recipient.is_deleted,
-                        'first_name', recipientUser.first_name,
-                        'last_name', recipientUser.last_name,
-                        'date_of_birth', recipientUser.date_of_birth,
-                        'suffix', recipientUser.suffix,
-                        'title', recipientUser.title
-                    ),
-                    'is_deleted', affiliation.is_deleted
-                ))
+                extra.key, extra.data
             )
             FROM core_backend_event event
-            LEFT JOIN core_backend_event_affiliates eventAffiliates on eventAffiliates.event_id = event.id
-            LEFT JOIN core_backend_affiliation affiliation on affiliation.id = eventAffiliates.affiliation_id
-            LEFT JOIN core_backend_recipient recipient on recipient.id = affiliation.recipient_id
-            LEFT JOIN core_backend_user recipientUser on recipientUser.id = recipient.user_id
-            LEFT JOIN core_backend_note recipientNote on recipientNote.recipient_id = recipient.id
+            LEFT JOIN core_backend_extra extra on extra.parent_id = event.id
             WHERE event.id = """ + str(event_id) + """
-            GROUP BY event.id
+            GROUP BY event.id, extra.key, extra.data
         """
     
     def get_extras_sql(parent_id, ):
         return """
-            SELECT JSON_AGG(t) FROM (
-                SELECT key, data FROM core_backend_extra extra WHERE extra.parent_id = """ + str(parent_id)+ """
-                -- WHERE eventData.id = 311 --
-            ) t
+            SELECT json_build_object(
+                extra.key, extra.data
+            )
+            FROM core_backend_extra extra
+            WHERE extra.parent_id = """ + str(parent_id)+ """
         """
         
     def get_report_sql(event_id):
@@ -64,6 +47,21 @@ class ApiSpecialSql():
 
     def get_affiliates_sql(event_id):
         return """
+            'affiliates', json_agg(json_build_object(
+                    'id', affiliation.id,
+                    'company', affiliation.company_id,
+                    'recipient', json_build_object(
+                        'id', recipient.id,
+                        'user_id', recipient.user_id,
+                        'is_deleted', recipient.is_deleted,
+                        'first_name', recipientUser.first_name,
+                        'last_name', recipientUser.last_name,
+                        'date_of_birth', recipientUser.date_of_birth,
+                        'suffix', recipientUser.suffix,
+                        'title', recipientUser.title
+                    ),
+                    'is_deleted', affiliation.is_deleted
+                ))
             SELECT JSON_AGG(JSONData) FROM (
             SELECT * FROM core_backend_event_affiliates affiliates
             LEFT JOIN core_backend_affiliation affiliation on affiliation.id = affiliates.affiliation_id
