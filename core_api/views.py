@@ -1072,20 +1072,7 @@ class ManageEventsMixin:
 
             with connection.cursor() as cursor:
                 cursor.execute(ApiSpecialSql.get_event_sql(event_id))
-                event = cursor.fetchone()[0][0]
-
-            
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSql.get_extras_sql)
-                extra = cursor.fetchone()[0]
-
-            for item in extra:
-                print(item["data"])
-                event.update({f"{item['key']}":{item['data']}})
-            
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSql.get_extras_sql(event_id))
-                print(cursor.fetchall())
+                event = cursor.fetchone()[0]
 
             # with connection.cursor() as cursor:
             #     cursor.execute(ApiSpecialSql.get_affiliates_sql(event_id))
