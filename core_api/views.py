@@ -18,7 +18,8 @@ from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
-from core_api.queries import ApiSpecialSql
+from core_api.queries.queries import ApiSpecialSql
+from core_api.queries.affiliation import ApiSpecialSqlAffiliates
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
@@ -860,7 +861,12 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
         queryset = cls.apply_filters(queryset, query_params)
 
         serialized = AffiliationSerializer(queryset, many=True)
-        return Response(serialized.data)
+        
+        with connection.cursor() as cursor:
+            cursor.execute(ApiSpecialSqlAffiliates.get_affiliation_sql())
+            event = cursor.fetchone()[0]
+            
+        return Response(event)
 
 
     @staticmethod
