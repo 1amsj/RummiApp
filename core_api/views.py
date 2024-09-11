@@ -6,11 +6,13 @@ from django.utils import timezone
 from rest_framework import generics, serializers, status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.exceptions import ParseError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.utils.urls import replace_query_param
 # from django.views.decorators.cache import cache_page
 # from django.utils.decorators import method_decorator
 
@@ -1317,32 +1319,79 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
     @classmethod
     @expect_does_not_exist(Company)
-    # @method_decorator(cache_page(CacheTime.DAY))
     def get(cls, request, company_id=None):
-        include_roles = request.GET.get(ApiSpecialKeys.INCLUDE_ROLES, False)
-        serializer = CompanyWithRolesSerializer if include_roles else CompanyWithParentSerializer
+        query_param_include_roles = request.GET.get(ApiSpecialKeys.INCLUDE_ROLES, False)
+        query_param_id = request.GET.get('id', None)
+        query_param_name = request.GET.get('name', None)
+        query_param_type = request.GET.get('type', None)
+        query_param_send_method = request.GET.get('send_method', None)
+        query_param_on_hold = request.GET.get('on_hold', None)
 
-        if company_id:
-            company = Company.objects.all().get(id=company_id)
-            serialized = serializer(company)
-            return Response(serialized.data)
+        query_company_id = company_id if company_id is not None else query_param_id
 
-        query_params = prepare_query_params(request.GET)
-        queryset = serializer.get_default_queryset()
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
 
-        if 'page' in request.GET or 'page_size' in request.GET:
-            queryset = queryset.order_by('name')
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
 
-            # Apply pagination
-            paginator = cls.pagination_class()
-            paginated_queryset = paginator.paginate_queryset(queryset, request)
-            serialized = serializer(paginated_queryset, many=True)
-            return paginator.get_paginated_response(serialized.data)
-        else:
-            # No pagination parameters, return all results
-            queryset = cls.apply_filters(queryset, query_params)
-            serialized = serializer(queryset, many=True)
-            return Response(serialized.data)
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+
+        with connection.cursor() as cursor:
+            if query_param_include_roles:
+                result = ApiSpecialSql.get_company_with_roles_sql(
+                    cursor,
+                    query_company_id,
+                    query_param_name,
+                    query_param_type,
+                    query_param_send_method,
+                    query_param_on_hold,
+                    query_param_page_size,
+                    offset
+                )
+            else:
+                result = ApiSpecialSql.get_company_sql(
+                    cursor,
+                    query_company_id,
+                    query_param_name,
+                    query_param_type,
+                    query_param_send_method,
+                    query_param_on_hold,
+                    query_param_page_size,
+                    offset
+                )
+
+        if query_param_page_size > 0:
+            with connection.cursor() as cursor:
+                count = ApiSpecialSql.get_company_count_sql(
+                    cursor,
+                    query_company_id,
+                    query_param_name,
+                    query_param_type,
+                    query_param_send_method,
+                    query_param_on_hold,
+                )
+
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
+
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
+
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
+
+        return Response(result)
         
     @staticmethod
     @transaction.atomic
