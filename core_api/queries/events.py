@@ -32,7 +32,7 @@ class ApiSpecialSqlEvents():
                     event.description
                 FROM "core_backend_event" event
                 WHERE %s
-                ORDER BY event.start_at, event.id DESC
+                ORDER BY event.start_at DESC, event.id
                 %s
             ) _query_result
         """ % (where_conditions, limit_statement)
