@@ -1070,45 +1070,52 @@ class ManageEventsMixin:
     @expect_does_not_exist(Event)
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
-        if event_id:
-            event = dict
+        query_param_id = request.GET.get('id', None)
+        query_event_id = event_id if event_id is not None else query_param_id
 
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
+
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
+
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+
+        with connection.cursor() as cursor:
+            result = ApiSpecialSqlEvents.get_event_sql(
+                cursor,
+                query_event_id,
+                query_param_page_size,
+                offset
+            )
+
+        if query_param_page_size > 0:
             with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlEvents.get_event_sql(event_id))
-                event = cursor.fetchone()[0]
+                count = ApiSpecialSqlEvents.get_event_count_sql(
+                    cursor,
+                    query_event_id
+                )
 
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlAffiliations.get_affiliates_sql(event_id))
-                event.update({'affiliates': cursor.fetchone()[0]})
-            
-            # with connection.cursor() as cursor:
-            #     cursor.execute(ApiSpecialSql.get_booking_sql(event["booking_id"]))
-            #     event.update({'booking': cursor.fetchone()[0][0]})
-            
-            return Response(event)
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
 
-        include_booking = request.GET.get(ApiSpecialKeys.INCLUDE_BOOKING, False)
-        query_params = prepare_query_params(request.GET)
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
 
-        serializer = cls.serializer_class if include_booking else cls.no_booking_serializer_class
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
 
-        queryset = serializer.get_default_queryset()
-
-        if business_name:
-            queryset = queryset.filter(booking__business__name=business_name)
-
-        # Check for pagination parameters
-        if 'page' in request.GET or 'page_size' in request.GET:
-            # Apply pagination
-            paginator = cls.pagination_class()
-            paginated_queryset = paginator.paginate_queryset(queryset, request)
-            serialized = serializer(paginated_queryset, many=True)
-            return paginator.get_paginated_response(serialized.data)
-        else:
-            # No pagination parameters, return all results
-            queryset = cls.apply_filters(queryset, query_params)
-            serialized = serializer(queryset, many=True)
-            return Response(serialized.data)
+        return Response(result)
 
     @staticmethod
     @transaction.atomic
