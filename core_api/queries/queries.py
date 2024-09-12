@@ -1,30 +1,4 @@
-class ApiSpecialSql():
-
-    def get_event_sql(event_id):
-        return """
-            SELECT json_build_object(
-                'id', event.id,
-                'meeting_url', event.meeting_url,
-                'start_at', event.start_at,
-                'end_at', event.end_at,
-                'observations', event.observations,
-                'booking_id', event.booking_id,
-                'location_id', event.location_id,
-                'payer_id', event.payer_id,
-                'requester_id', event.requester_id,
-                'is_deleted', event.is_deleted,
-                'payer_company_id', event.payer_company_id,
-                'arrive_at', event.arrive_at,
-                'description', event.description,
-                'unique_field', event.unique_field,
-                extra.key, extra.data
-            )
-            FROM core_backend_event event
-            LEFT JOIN core_backend_extra extra on extra.parent_id = event.id
-            WHERE event.id = """ + str(event_id) + """
-            GROUP BY event.id, extra.key, extra.data
-        """
-    
+class ApiSpecialSql():    
     def get_extras_sql(parent_id, ):
         return """
             SELECT json_build_object(
@@ -41,31 +15,6 @@ class ApiSpecialSql():
             ARRAY_AGG(report.status || '/' || report.id) AS reports
             FROM core_backend_report report
             WHERE report.event_id = """ + str(event_id) + """
-            ) JSONData
-        """
-
-
-    def get_affiliates_sql(event_id):
-        return """
-            'affiliates', json_agg(json_build_object(
-                    'id', affiliation.id,
-                    'company', affiliation.company_id,
-                    'recipient', json_build_object(
-                        'id', recipient.id,
-                        'user_id', recipient.user_id,
-                        'is_deleted', recipient.is_deleted,
-                        'first_name', recipientUser.first_name,
-                        'last_name', recipientUser.last_name,
-                        'date_of_birth', recipientUser.date_of_birth,
-                        'suffix', recipientUser.suffix,
-                        'title', recipientUser.title
-                    ),
-                    'is_deleted', affiliation.is_deleted
-                ))
-            SELECT JSON_AGG(JSONData) FROM (
-            SELECT * FROM core_backend_event_affiliates affiliates
-            LEFT JOIN core_backend_affiliation affiliation on affiliation.id = affiliates.affiliation_id
-            WHERE affiliates.event_id = """ + str(event_id) + """
             ) JSONData
         """
     

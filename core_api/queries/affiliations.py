@@ -1,5 +1,5 @@
-class ApiSpecialSqlAffiliates:
-    def get_affiliation_sql():
+class ApiSpecialSqlAffiliations:
+    def get_affiliations_sql():
         return """
         SELECT JSON_AGG(t) FROM ( SELECT * FROM core_backend_affiliation affiliate
             LEFT JOIN LATERAL (
@@ -48,3 +48,26 @@ class ApiSpecialSqlAffiliates:
         WHERE recipient IS NOT NULL
         Order by id desc
         ) t"""
+    
+    def get_affiliates_sql(event_id):
+        return """
+            SELECT JSON_AGG(json_build_object(
+                'id', affiliation.id,
+                'company', affiliation.company_id,
+                'recipient', json_build_object(
+                    'id', recipient.id,
+                    'is_deleted', recipient.is_deleted,
+                    'user_id', recipient.user_id,
+                    'first_name', recipientUser.first_name,
+                    'last_name', recipientUser.last_name,
+                    'date_of_birth', recipientUser.date_of_birth,
+                    'title', recipientUser.title,
+                    'suffix', recipientUser.suffix
+                ),
+                'is_deleted', affiliation.is_deleted
+            )) FROM core_backend_event_affiliates affiliates
+            LEFT JOIN core_backend_affiliation affiliation on affiliation.id = affiliates.affiliation_id
+            LEFT JOIN core_backend_recipient recipient on recipient.id = affiliation.recipient_id
+            LEFT JOIN core_backend_user recipientUser on recipientUser.id = recipient.user_id
+            WHERE affiliates.event_id = """ + str(event_id) + """
+        """

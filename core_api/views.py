@@ -18,8 +18,9 @@ from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
+from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.queries import ApiSpecialSql
-from core_api.queries.affiliation import ApiSpecialSqlAffiliates
+from core_api.queries.affiliations import ApiSpecialSqlAffiliations
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
@@ -863,7 +864,7 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
         serialized = AffiliationSerializer(queryset, many=True)
         
         with connection.cursor() as cursor:
-            cursor.execute(ApiSpecialSqlAffiliates.get_affiliation_sql())
+            cursor.execute(ApiSpecialSqlAffiliations.get_affiliations_sql())
             event = cursor.fetchone()[0]
             
         return Response(event)
@@ -1071,12 +1072,12 @@ class ManageEventsMixin:
             event = dict
 
             with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSql.get_event_sql(event_id))
+                cursor.execute(ApiSpecialSqlEvents.get_event_sql(event_id))
                 event = cursor.fetchone()[0]
 
-            # with connection.cursor() as cursor:
-            #     cursor.execute(ApiSpecialSql.get_affiliates_sql(event_id))
-            #     event.update({'affiliates': cursor.fetchone()[0][0]})
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlAffiliations.get_affiliates_sql(event_id))
+                event.update({'affiliates': cursor.fetchone()[0]})
             
             # with connection.cursor() as cursor:
             #     cursor.execute(ApiSpecialSql.get_booking_sql(event["booking_id"]))
