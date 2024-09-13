@@ -1,4 +1,19 @@
 class ApiSpecialSqlEvents():
+    @staticmethod
+    def get_event_sql_ct_id(cursor):
+        query = """
+            SELECT
+                id
+            FROM "django_content_type" content_type
+            WHERE app_label = 'core_backend' AND model = 'event'
+        """
+
+        cursor.execute(query, [id])
+        result = cursor.fetchone()
+        if result is not None:
+            return result[0]
+
+        return None
 
     @staticmethod
     def get_event_sql_where_clause(id, limit, offset):
@@ -19,23 +34,33 @@ class ApiSpecialSqlEvents():
     
     @staticmethod
     def get_event_sql(cursor, id, limit, offset):
+        parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset)
 
         query = """
-            SELECT json_agg(row_to_json(_query_result)) AS result FROM (
+            SELECT json_agg(_query_result.json_data) AS result FROM (
                 SELECT
-                    event.id,
-                    event.is_deleted,
-                    event.start_at,
-                    event.end_at,
-                    event.arrive_at,
-                    event.description
+                    (json_build_object(
+                    'id', event.id,
+                    'is_deleted', event.is_deleted,
+                    'start_at', event.start_at,
+                    'end_at', event.end_at,
+                    'arrive_at', event.arrive_at,
+                    'description', event.description,
+                    'booking_id', event.booking_id
+                    )::jsonb ||
+                    (
+                        SELECT
+                            json_object_agg(extra.key, extra.data #>> '{}')
+                        FROM "core_backend_extra" extra
+                        WHERE extra.parent_ct_id = %s AND extra.parent_id=event.id
+                    )::jsonb) AS json_data
                 FROM "core_backend_event" event
                 WHERE %s
                 ORDER BY event.start_at DESC, event.id
                 %s
             ) _query_result
-        """ % (where_conditions, limit_statement)
+        """ % (parent_ct_id, where_conditions, limit_statement)
 
         cursor.execute(query, params)
         result = cursor.fetchone()

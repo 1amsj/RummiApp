@@ -21,7 +21,7 @@ from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
 from core_api.queries.events import ApiSpecialSqlEvents
-from core_api.queries.queries import ApiSpecialSql
+from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
@@ -1115,7 +1115,7 @@ class ManageEventsMixin:
                 'results': result
             })
 
-        return Response(result)
+        return Response(result[0])
 
     @staticmethod
     @transaction.atomic
@@ -1351,7 +1351,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         with connection.cursor() as cursor:
             if query_param_include_roles:
-                result = ApiSpecialSql.get_company_with_roles_sql(
+                result = ApiSpecialSqlCompanies.get_company_with_roles_sql(
                     cursor,
                     query_company_id,
                     query_param_name,
@@ -1362,7 +1362,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
                     offset
                 )
             else:
-                result = ApiSpecialSql.get_company_sql(
+                result = ApiSpecialSqlCompanies.get_company_sql(
                     cursor,
                     query_company_id,
                     query_param_name,
@@ -1375,7 +1375,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         if query_param_page_size > 0:
             with connection.cursor() as cursor:
-                count = ApiSpecialSql.get_company_count_sql(
+                count = ApiSpecialSqlCompanies.get_company_count_sql(
                     cursor,
                     query_company_id,
                     query_param_name,
