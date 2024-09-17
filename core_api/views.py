@@ -1390,6 +1390,9 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
                 'previous': previous_page,
                 'results': result
             })
+            
+        if company_id:
+            return Response(result[0])
 
         return Response(result)
         
