@@ -48,78 +48,133 @@ class ApiSpecialSqlEvents():
                         'arrive_at', event.arrive_at,
                         'description', event.description,
                         'booking', (
-                            SELECT 
-                            json_build_object(
-                                'id', _booking.id,
-                                'status', _booking.status,
-                                'parent_id', _booking.parent_id,
-                                'public_id', _booking.public_id,
-                                'created_at', _booking.created_at,
-                                'is_deleted', _booking.is_deleted,
-                                'business_id', _booking.business_id,
-                                'created_by_id', _booking.created_by_id,
-                                'service_root_id', _booking.service_root_id,
-                                'services', (
-                                    SELECT
-                                        json_agg(json_build_object(
-                                            'id', _services.id,
-                                            'root_id', _services.root_id,
-                                            'bill_rate', _services.bill_rate,
-                                            'is_deleted', _services.is_deleted,
-                                            'bill_amount', _services.bill_amount,
-                                            'business_id', _services.business_id,
-                                            'bill_rate_type', _services.bill_rate_type,
-                                            'bill_min_payment', _services.bill_min_payment,
-                                            'bill_no_show_fee', _services.bill_no_show_fee,
-                                            'bill_rate_minutes_threshold', _services.bill_rate_minutes_threshold,
-                                            'provider', (
-                                                SELECT
-                                                    json_build_object(
-                                                        'id', _providers.id,
-                                                        'salary', _providers.salary,
-                                                        'is_deleted', _providers.is_deleted,
-                                                        'payment_via', _providers.payment_via,
-                                                        'contract_type', _providers.contract_type,
-                                                        'payment_account', _providers.payment_account,
-                                                        'payment_routing', _providers.payment_routing,
-                                                        'minimum_bookings', _providers.minimum_bookings,
-                                                        'payment_account_type', _providers.payment_account_type,
-                                                        'first_name', _users.first_name,
-                                                        'last_name', _users.last_name,
-                                                        'user_id', _users.id
-                                                    )
-                                                FROM "core_backend_provider" _providers
-                                                    INNER JOIN "core_backend_user" _users
-                                                        ON _users.id = _providers.user_id
-                                                WHERE _providers.id = _services.provider_id
-                                            )
-                                        ))
-                                    FROM "core_backend_booking_services" _booking_services
-                                        INNER JOIN "core_backend_service" _services
-                                            ON _services.id = _booking_services.service_id
-                                    WHERE _booking_services.booking_id = _booking.id
+                            SELECT
+                                json_build_object(
+                                    'id', _booking.id,
+                                    'status', _booking.status,
+                                    'parent_id', _booking.parent_id,
+                                    'public_id', _booking.public_id,
+                                    'created_at', _booking.created_at,
+                                    'is_deleted', _booking.is_deleted,
+                                    'business_id', _booking.business_id,
+                                    'created_by_id', _booking.created_by_id,
+                                    'service_root_id', _booking.service_root_id,
+                                    'services', COALESCE((
+                                        SELECT
+                                            json_agg(json_build_object(
+                                                'id', _services.id,
+                                                'root_id', _services.root_id,
+                                                'bill_rate', _services.bill_rate,
+                                                'is_deleted', _services.is_deleted,
+                                                'bill_amount', _services.bill_amount,
+                                                'business_id', _services.business_id,
+                                                'bill_rate_type', _services.bill_rate_type,
+                                                'bill_min_payment', _services.bill_min_payment,
+                                                'bill_no_show_fee', _services.bill_no_show_fee,
+                                                'bill_rate_minutes_threshold', _services.bill_rate_minutes_threshold,
+                                                'provider', (
+                                                    SELECT
+                                                        json_build_object(
+                                                            'id', _providers.id,
+                                                            'salary', _providers.salary,
+                                                            'is_deleted', _providers.is_deleted,
+                                                            'payment_via', _providers.payment_via,
+                                                            'contract_type', _providers.contract_type,
+                                                            'payment_account', _providers.payment_account,
+                                                            'payment_routing', _providers.payment_routing,
+                                                            'minimum_bookings', _providers.minimum_bookings,
+                                                            'payment_account_type', _providers.payment_account_type,
+                                                            'first_name', _users.first_name,
+                                                            'last_name', _users.last_name,
+                                                            'user_id', _users.id
+                                                        )
+                                                    FROM "core_backend_provider" _providers
+                                                        INNER JOIN "core_backend_user" _users
+                                                            ON _users.id = _providers.user_id
+                                                    WHERE _providers.id = _services.provider_id
+                                                )
+                                            ))
+                                        FROM "core_backend_booking_services" _booking_services
+                                            INNER JOIN "core_backend_service" _services
+                                                ON _services.id = _booking_services.service_id
+                                        WHERE _booking_services.booking_id = _booking.id
+                                    ), '[]'::JSON),
+                                    'companies', COALESCE((
+                                        SELECT
+                                            json_agg(json_build_object(
+                                                'id', _companies.id,
+                                                'name', _companies.name,
+                                                'is_deleted', _companies.is_deleted,
+                                                'type', _companies.type
+                                            ))
+                                        FROM "core_backend_booking_companies" _booking_companies
+                                            INNER JOIN "core_backend_company" _companies
+                                                ON _companies.id = _booking_companies.company_id
+                                        WHERE _booking_companies.booking_id = _booking.id
+                                    ), '[]'::JSON),
+                                    'operators', COALESCE((
+                                        SELECT
+                                            json_agg(json_build_object(
+                                                'id', _operators.id,
+                                                'first_name', _users.first_name,
+                                                'last_name', _users.last_name,
+                                                'user_id', _users.id
+                                            ))
+                                        FROM "core_backend_booking_operators" _booking_operators
+                                            INNER JOIN "core_backend_operator" _operators
+                                                ON _operators.id = _booking_operators.operator_id
+                                            INNER JOIN "core_backend_user" _users
+                                                ON _users.id = _operators.user_id
+                                        WHERE _booking_operators.booking_id = _booking.id
+                                    ), '[]'::JSON)
                                 )
-                            )
                             FROM "core_backend_booking" _booking
                             WHERE _booking.id = event.booking_id
                         ),
-                        'affiliates', (
+                        'affiliates', COALESCE((
                             SELECT
                                 json_agg(json_build_object(
                                     'id', _affiliations.id,
                                     'company', _affiliations.company_id,
                                     'is_deleted', _affiliations.is_deleted,
-                                    'recipient', _affiliations.recipient_id
+                                    'recipient', (
+                                        SELECT
+                                            json_build_object(
+                                                'id', _recipients.id,
+                                                'first_name', _users.first_name,
+                                                'last_name', _users.last_name,
+                                                'user_id', _users.id
+                                            )
+                                        FROM "core_backend_recipient" _recipients
+                                            INNER JOIN "core_backend_user" _users
+                                                ON _users.id = _recipients.user_id
+                                        WHERE _recipients.id = _affiliations.recipient_id
+                                    )
                                 ))
                             FROM "core_backend_event_affiliates" _event_affiliates
                                 INNER JOIN "core_backend_affiliation" _affiliations
                                     ON _affiliations.id = _event_affiliates.affiliation_id
                             WHERE _event_affiliates.event_id = event.id
-                        )
+                        ), '[]'::JSON),
+                        'reports', COALESCE((
+                            SELECT
+                                json_agg(json_build_object(
+                                    'id', _reports.id,
+                                    'is_deleted', _reports.is_deleted,
+                                    'status', _reports.status,
+                                    'arrive_at', _reports.arrive_at,
+                                    'arrive_at', _reports.arrive_at,
+                                    'start_at', _reports.start_at,
+                                    'end_at', _reports.end_at,
+                                    'observations', _reports.observations
+                                ))
+                            FROM "core_backend_report" _reports
+                            WHERE _reports.event_id = event.id
+                        ), '[]'::JSON)
                     )::jsonb ||
                     (
                         SELECT
-                            json_object_agg(extra.key, extra.data #>> '{}')
+                            json_object_agg(extra.key, extra.data)
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=event.id
                     )::jsonb) AS json_data
