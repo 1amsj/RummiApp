@@ -23,6 +23,7 @@ from core_api.permissions import CanManageOperators, CanPushFaxNotifications, ca
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
+from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
@@ -1566,9 +1567,11 @@ class ManageServiceRoot(basic_view_manager(ServiceRoot, ServiceRootBookingSerial
             return paginator.get_paginated_response(serialized.data)
         else:
             # No pagination parameters, return all results
-            queryset = cls.apply_filters(queryset, query_params)
-            serialized = ServiceRootBookingSerializer(queryset, many=True)
-            return Response(serialized.data)
+        
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlServiceRoot.get_service_root_sql())
+                event = cursor.fetchone()[0]
+                return Response(event)
     
     @staticmethod
     def post(request):
