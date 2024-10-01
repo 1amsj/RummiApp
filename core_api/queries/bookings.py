@@ -1,3 +1,6 @@
+from core_api.queries.events import ApiSpecialSqlEvents
+
+
 class ApiSpecialSqlBookings():
     @staticmethod
     def get_booking_sql_ct_id(cursor):
@@ -34,7 +37,8 @@ class ApiSpecialSqlBookings():
     
     @staticmethod
     def get_booking_sql(cursor, id, limit, offset):
-        parent_ct_id = ApiSpecialSqlBookings.get_booking_sql_ct_id(cursor)
+        parent_booking_ct_id = ApiSpecialSqlBookings.get_booking_sql_ct_id(cursor)
+        parent_event_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset)
 
         query = """
@@ -117,6 +121,30 @@ class ApiSpecialSqlBookings():
                                 INNER JOIN "core_backend_user" _users
                                     ON _users.id = _operators.user_id
                             WHERE _booking_operators.booking_id = booking.id
+                        ), '[]'::JSON),
+                        'service_root', (
+                            SELECT
+                                json_build_object(
+                                    'id', _serviceroot.id,
+                                    'name', _serviceroot.name,
+                                    'is_deleted', _serviceroot.is_deleted,
+                                    'description', _serviceroot.description
+                                )
+                            FROM "core_backend_serviceroot" _serviceroot
+                            WHERE _serviceroot.id = booking.service_root_id
+                        ),
+                        'events', COALESCE((
+                            SELECT
+                                json_agg(json_build_object(
+                                    'id', event.id,
+                                    'is_deleted', event.is_deleted,
+                                    'start_date', event.start_at,
+                                    'end_date', event.end_at,
+                                    'arrive_at', event.arrive_at,
+                                    'description', event.description
+                                ))
+                            FROM "core_backend_event" event
+                            WHERE event.booking_id = booking.id
                         ), '[]'::JSON)
                     )::jsonb ||
                     (
@@ -130,7 +158,7 @@ class ApiSpecialSqlBookings():
                 ORDER BY booking.public_id DESC, booking.id
                 %s
             ) _query_result
-        """ % (parent_ct_id, where_conditions, limit_statement)
+        """ % (parent_booking_ct_id, where_conditions, limit_statement)
 
         cursor.execute(query, params)
         result = cursor.fetchone()
