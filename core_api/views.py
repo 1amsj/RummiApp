@@ -23,6 +23,7 @@ from core_api.permissions import CanManageOperators, CanPushFaxNotifications, ca
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
+from core_api.queries.operators import ApiSpecialSqlOperators
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
@@ -663,19 +664,58 @@ class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
     @expect_does_not_exist(Operator)
     # @method_decorator(cache_page(CacheTime.DAY))
     def get(cls, request, business_name=None, operator_id=None):
-        if operator_id:
-            operator = Operator.objects.all().not_deleted('user').get(id=operator_id)
-            serialized = OperatorSerializer(operator)
-            return Response(serialized.data)
 
-        query_params = prepare_query_params(request.GET)
+        query_param_id = request.GET.get('id', None)
+        query_operator_id = operator_id if operator_id is not None else query_param_id
 
-        queryset = OperatorSerializer.get_default_queryset()
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
 
-        queryset = cls.apply_filters(queryset, query_params)
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
 
-        serialized = OperatorSerializer(queryset, many=True)
-        return Response(serialized.data)
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+
+        with connection.cursor() as cursor:
+            result = ApiSpecialSqlOperators.get_operator_sql(
+                cursor,
+                query_operator_id,
+                query_param_page_size,
+                offset
+            )
+
+        if query_param_page_size > 0:
+            with connection.cursor() as cursor:
+                count = ApiSpecialSqlOperators.get_operator_count_sql(
+                    cursor,
+                    query_operator_id
+                )
+
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
+
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
+
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
+
+        if (query_operator_id is not None):
+            return Response(result[0])
+
+        return Response(result)
+    
+
 
 class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
     @staticmethod
