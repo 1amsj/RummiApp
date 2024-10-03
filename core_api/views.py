@@ -20,6 +20,7 @@ from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
+from core_api.queries.authorizations import ApiSpecialSqlAuthorizations
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
@@ -1399,6 +1400,9 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
                 'previous': previous_page,
                 'results': result
             })
+            
+        if query_company_id:
+            return Response(result[0])
 
         return Response(result)
         
@@ -1625,39 +1629,31 @@ class ManageNote(basic_view_manager(Note, NoteSerializer)):
 
 
 class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSerializer)):
-    @staticmethod
-    def apply_nested_filters(queryset, nested_params):
-        # Only supports filtering by event and its extras
-
-        if nested_params.is_empty():
-            return queryset
-
-        event_params, extra_params, _ = filter_params(Event, nested_params.get('events', {}))
-        if not event_params.is_empty():
-            queryset = queryset.filter(**event_params.to_dict('events__'))
-
-        if not extra_params.is_empty():
-            queryset = queryset.filter_by_extra_query_params(extra_params, related_prefix='events__')
-
-        return queryset
 
     @classmethod
-    @expect_does_not_exist(Authorization)
+    # @expect_does_not_exist(Authorization)
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, authorization_id=None):
         if authorization_id:
-            authorization = AuthorizationSerializer.get_default_queryset().get(id=authorization_id)
-            serialized = AuthorizationSerializer(authorization)
-            return Response(serialized.data)
+        
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, None))
+                result = cursor.fetchone()[0][0]
+                return Response(result)
 
-        query_params = prepare_query_params(request.GET)
+        query_params = request.GET.get('event_id', None)
+        
+        if query_params is not None:
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, query_params))
+                result = cursor.fetchone()[0]
+                return Response(result)
 
-        queryset = AuthorizationSerializer.get_default_queryset()
-
-        queryset = cls.apply_filters(queryset, query_params)
-
-        serialized = AuthorizationSerializer(queryset, many=True)
-        return Response(serialized.data)
+    
+        with connection.cursor() as cursor:
+            cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, None))
+            result = cursor.fetchone()[0]
+            return Response(result)
 
     @staticmethod
     @transaction.atomic
