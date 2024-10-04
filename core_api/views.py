@@ -26,6 +26,7 @@ from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
 from core_api.queries.operators import ApiSpecialSqlOperators
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
+from core_api.queries.services import ApiSpecialSqlServices
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
@@ -1516,18 +1517,25 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     @expect_does_not_exist(Service)
     def get(cls, request, service_id=None):
         if service_id:
-            service = Service.objects.all().get(id=service_id)
-            serialized = ServiceSerializer(service)
-            return Response(serialized.data)
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlServices.get_services_sql(None, None, None, service_id))
+                services = cursor.fetchone()[0]
 
-        query_params = prepare_query_params(request.GET)
-
-        queryset = ServiceSerializer.get_default_queryset()
-
-        queryset = cls.apply_filters(queryset, query_params)
-
-        serialized = ServiceSerializer(queryset, many=True)
-        return Response(serialized.data)
+        query_params_source = request.GET.get('source_language_alpha3')
+        query_params_target = request.GET.get('target_language_alpha3')
+        query_params_root = request.GET.get('root.id')
+        
+        if query_params_target is not None and query_params_source is not None:
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlServices.get_services_sql(query_params_target, query_params_source, query_params_root, None))
+                services = cursor.fetchone()[0]
+                
+        else:
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlServices.get_services_sql(None, None, None, None))
+                services = cursor.fetchone()[0]
+            
+        return Response(services)
 
     @staticmethod
     @transaction.atomic
