@@ -1516,26 +1516,45 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     @classmethod
     @expect_does_not_exist(Service)
     def get(cls, request, service_id=None):
-        if service_id:
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlServices.get_services_sql(None, None, None, service_id))
-                services = cursor.fetchone()[0]
 
         query_params_source = request.GET.get('source_language_alpha3')
         query_params_target = request.GET.get('target_language_alpha3')
         query_params_root = request.GET.get('root.id')
         
-        if query_params_target is not None and query_params_source is not None:
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlServices.get_services_sql(query_params_target, query_params_source, query_params_root, None))
-                services = cursor.fetchone()[0]
-                
-        else:
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlServices.get_services_sql(None, None, None, None))
-                services = cursor.fetchone()[0]
+        with connection.cursor() as cursor:
             
-        return Response(services)
+            if service_id:
+                    service = ApiSpecialSqlServices.get_services_sql(
+                        cursor, 
+                        query_params_target, 
+                        query_params_source, 
+                        query_params_root, 
+                        service_id
+                    )
+                    
+                    services = service[0]
+                    
+            elif query_params_target is not None and query_params_source is not None:
+                with connection.cursor() as cursor:
+                    services = ApiSpecialSqlServices.get_services_sql(
+                        cursor,
+                        query_params_target, 
+                        query_params_source, 
+                        query_params_root, 
+                        service_id
+                    )
+                    
+            else:
+                with connection.cursor() as cursor:
+                    services = ApiSpecialSqlServices.get_services_sql(
+                        cursor,
+                        query_params_target, 
+                        query_params_source, 
+                        query_params_root, 
+                        service_id
+                    )
+            
+        return Response(services[0])
 
     @staticmethod
     @transaction.atomic

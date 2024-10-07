@@ -1,6 +1,6 @@
 class ApiSpecialSqlServices:
     
-    def get_services_sql(source_languague_alpha3, target_languague_alpha3, root, service_id):
+    def get_services_sql(cursor, source_languague_alpha3, target_languague_alpha3, root, service_id):
         where_conditions = 'service.is_deleted = FALSE'
         where_conditions_source = ''
         where_conditions_target = ''
@@ -89,4 +89,7 @@ class ApiSpecialSqlServices:
         ) t
         """ % (where_conditions_source, where_conditions_target, where_conditions)
         
-        return query
+        cursor.execute(query)
+        services = cursor.fetchone()
+        
+        return services
