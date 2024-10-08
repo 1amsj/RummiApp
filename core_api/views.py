@@ -1157,8 +1157,11 @@ class ManageEventsMixin:
                 'previous': previous_page,
                 'results': result
             })
-
-        return Response(result[0])
+            
+        if (query_event_id is not None):
+            return Response(result[0])
+        
+        return Response(result)
 
     @staticmethod
     @transaction.atomic
