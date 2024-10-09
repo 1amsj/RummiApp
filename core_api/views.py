@@ -1115,6 +1115,9 @@ class ManageEventsMixin:
     def get(cls, request, business_name=None, event_id=None):
         query_param_start_at = request.GET.get('start_at', None)
         query_param_end_at = request.GET.get('end_at', None)
+        query_patam_status = request.GET.get('status', None)
+        query_param_recipient_id = request.GET.get('recipient_id', None)
+        query_param_agent_id = request.GET.get('agent_id', None)
         query_param_id = request.GET.get('id', None)
         query_event_id = event_id if event_id is not None else query_param_id
 
@@ -1137,7 +1140,10 @@ class ManageEventsMixin:
                 query_param_page_size,
                 offset,
                 query_param_start_at,
-                query_param_end_at
+                query_param_end_at,
+                query_patam_status,
+                query_param_recipient_id,
+                query_param_agent_id
             )
 
         if query_param_page_size > 0:
@@ -1146,7 +1152,10 @@ class ManageEventsMixin:
                     cursor,
                     query_event_id,
                     query_param_start_at,
-                    query_param_end_at
+                    query_param_end_at,
+                    query_patam_status,
+                    query_param_recipient_id,
+                    query_param_agent_id
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None

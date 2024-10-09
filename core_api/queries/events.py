@@ -16,7 +16,7 @@ class ApiSpecialSqlEvents():
         return None
 
     @staticmethod
-    def get_event_sql_where_clause(id, limit, offset, start_at, end_at):
+    def get_event_sql_where_clause(id, limit, offset, start_at, end_at, status, recipient_id, agent_id):
         params = []
         limit_statement = ''
         where_conditions = 'event.is_deleted = FALSE'
@@ -32,6 +32,23 @@ class ApiSpecialSqlEvents():
         if end_at is not None:
             where_conditions += ' AND event.end_at <= %s'
             params.append(end_at)
+            
+        if status is not None:
+            where_conditions += ' AND booking.status = %s'
+            params.append(status)
+            
+        if recipient_id is not None and agent_id is None:
+            where_conditions += ' AND recipient.id = %s'
+            params.append(recipient_id)
+        
+        if agent_id is not None and recipient_id is None:
+            where_conditions += ' AND agent.id = %s'
+            params.append(agent_id)
+            
+        if recipient_id is not None and agent_id is not None:
+            where_conditions += ' AND (recipient.id = %s OR agent.id = %s)'
+            params.append(recipient_id)
+            params.append(agent_id)
 
         if limit is not None and limit > 0 and offset is not None and offset >= 0:
             limit_statement = 'LIMIT %s OFFSET %s'
@@ -41,9 +58,9 @@ class ApiSpecialSqlEvents():
         return params, where_conditions, limit_statement
     
     @staticmethod
-    def get_event_sql(cursor, id, limit, offset, start_at, end_at):
+    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status, recipient_id, agent_id):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
-        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at)
+        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at, status, recipient_id, agent_id)
 
         query = """--sql
             SELECT json_agg(_query_result.json_data) AS result FROM (
@@ -113,7 +130,22 @@ class ApiSpecialSqlEvents():
                                                 'id', _companies.id,
                                                 'name', _companies.name,
                                                 'is_deleted', _companies.is_deleted,
-                                                'type', _companies.type
+                                                'type', _companies.type,
+                                                'agents', COALESCE((
+                                                    SELECT
+                                                        json_agg(json_build_object(
+                                                            'id', _agents.id,
+                                                            'first_name', _users.first_name,
+                                                            'last_name', _users.last_name,
+                                                            'user_id', _users.id
+                                                        ))
+                                                    FROM "core_backend_agent_companies" _agent_companies
+                                                        INNER JOIN "core_backend_agent" _agents
+                                                            ON _agents.id = _agent_companies.agent_id
+                                                        INNER JOIN "core_backend_user" _users
+                                                            ON _users.id = _agents.user_id
+                                                    WHERE _agent_companies.company_id = _companies.id
+                                                ), '[]'::JSON)
                                             ))
                                         FROM "core_backend_booking_companies" _booking_companies
                                             INNER JOIN "core_backend_company" _companies
@@ -187,6 +219,22 @@ class ApiSpecialSqlEvents():
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=event.id
                     )::jsonb) AS json_data
                 FROM "core_backend_event" event
+                    INNER JOIN "core_backend_booking" booking
+                        ON booking.id = event.booking_id
+                    INNER JOIN "core_backend_event_affiliates" event_affiliates
+                        ON event_affiliates.event_id = event.id
+                    INNER JOIN "core_backend_affiliation" affiliation
+                        ON affiliation.id = event_affiliates.affiliation_id
+                    INNER JOIN "core_backend_recipient" recipient
+                        ON recipient.id = affiliation.recipient_id
+                    INNER JOIN "core_backend_booking_companies" booking_companies
+                        ON booking_companies.booking_id = booking.id
+                    INNER JOIN "core_backend_company" company
+                        ON company.id = booking_companies.company_id
+                    INNER JOIN "core_backend_agent_companies" agent_companies
+                        ON agent_companies.company_id = company.id
+                    INNER JOIN "core_backend_agent" agent
+                        ON agent.id = agent_companies.agent_id
                 WHERE %s
                 ORDER BY event.start_at DESC, event.id
                 %s
@@ -201,13 +249,29 @@ class ApiSpecialSqlEvents():
         return []
     
     @staticmethod
-    def get_event_count_sql(cursor, id, start_at, end_at):
-        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None, start_at, end_at)
+    def get_event_count_sql(cursor, id, start_at, end_at, status, recipient_id, agent_id):
+        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None, start_at, end_at, status, recipient_id, agent_id)
 
-        query = """
+        query = """--sql
             SELECT
-               COUNT(*)
+               COUNT(DISTINCT event.id)
             FROM "core_backend_event" event
+                INNER JOIN "core_backend_booking" booking
+                    ON booking.id = event.booking_id
+                INNER JOIN "core_backend_event_affiliates" event_affiliates
+                    ON event_affiliates.event_id = event.id
+                INNER JOIN "core_backend_affiliation" affiliation
+                    ON affiliation.id = event_affiliates.affiliation_id
+                INNER JOIN "core_backend_recipient" recipient
+                    ON recipient.id = affiliation.recipient_id
+                INNER JOIN "core_backend_booking_companies" booking_companies
+                    ON booking_companies.booking_id = booking.id
+                INNER JOIN "core_backend_company" company
+                    ON company.id = booking_companies.company_id
+                INNER JOIN "core_backend_agent_companies" agent_companies
+                    ON agent_companies.company_id = company.id
+                INNER JOIN "core_backend_agent" agent
+                    ON agent.id = agent_companies.agent_id
             WHERE %s
         """ % where_conditions
 
