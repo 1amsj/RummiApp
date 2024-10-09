@@ -1113,6 +1113,8 @@ class ManageEventsMixin:
     @expect_does_not_exist(Event)
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
+        query_param_start_at = request.GET.get('start_at', None)
+        query_param_end_at = request.GET.get('end_at', None)
         query_param_id = request.GET.get('id', None)
         query_event_id = event_id if event_id is not None else query_param_id
 
@@ -1133,14 +1135,18 @@ class ManageEventsMixin:
                 cursor,
                 query_event_id,
                 query_param_page_size,
-                offset
+                offset,
+                query_param_start_at,
+                query_param_end_at
             )
 
         if query_param_page_size > 0:
             with connection.cursor() as cursor:
                 count = ApiSpecialSqlEvents.get_event_count_sql(
                     cursor,
-                    query_event_id
+                    query_event_id,
+                    query_param_start_at,
+                    query_param_end_at
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None

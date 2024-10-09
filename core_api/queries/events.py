@@ -16,7 +16,7 @@ class ApiSpecialSqlEvents():
         return None
 
     @staticmethod
-    def get_event_sql_where_clause(id, limit, offset):
+    def get_event_sql_where_clause(id, limit, offset, start_at, end_at):
         params = []
         limit_statement = ''
         where_conditions = 'event.is_deleted = FALSE'
@@ -24,6 +24,14 @@ class ApiSpecialSqlEvents():
         if id is not None:
             where_conditions += ' AND event.id = %s'
             params.append(id)
+            
+        if start_at is not None:
+            where_conditions += ' AND event.start_at >= %s'
+            params.append(start_at)
+            
+        if end_at is not None:
+            where_conditions += ' AND event.end_at <= %s'
+            params.append(end_at)
 
         if limit is not None and limit > 0 and offset is not None and offset >= 0:
             limit_statement = 'LIMIT %s OFFSET %s'
@@ -33,11 +41,11 @@ class ApiSpecialSqlEvents():
         return params, where_conditions, limit_statement
     
     @staticmethod
-    def get_event_sql(cursor, id, limit, offset):
+    def get_event_sql(cursor, id, limit, offset, start_at, end_at):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
-        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset)
+        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at)
 
-        query = """
+        query = """--sql
             SELECT json_agg(_query_result.json_data) AS result FROM (
                 SELECT
                     (json_build_object(
@@ -193,8 +201,8 @@ class ApiSpecialSqlEvents():
         return []
     
     @staticmethod
-    def get_event_count_sql(cursor, id):
-        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None)
+    def get_event_count_sql(cursor, id, start_at, end_at):
+        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None, start_at, end_at)
 
         query = """
             SELECT
