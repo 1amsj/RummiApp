@@ -130,22 +130,7 @@ class ApiSpecialSqlEvents():
                                                 'id', _companies.id,
                                                 'name', _companies.name,
                                                 'is_deleted', _companies.is_deleted,
-                                                'type', _companies.type,
-                                                'agents', COALESCE((
-                                                    SELECT
-                                                        json_agg(json_build_object(
-                                                            'id', _agents.id,
-                                                            'first_name', _users.first_name,
-                                                            'last_name', _users.last_name,
-                                                            'user_id', _users.id
-                                                        ))
-                                                    FROM "core_backend_agent_companies" _agent_companies
-                                                        INNER JOIN "core_backend_agent" _agents
-                                                            ON _agents.id = _agent_companies.agent_id
-                                                        INNER JOIN "core_backend_user" _users
-                                                            ON _users.id = _agents.user_id
-                                                    WHERE _agent_companies.company_id = _companies.id
-                                                ), '[]'::JSON)
+                                                'type', _companies.type
                                             ))
                                         FROM "core_backend_booking_companies" _booking_companies
                                             INNER JOIN "core_backend_company" _companies
@@ -210,6 +195,21 @@ class ApiSpecialSqlEvents():
                                 ))
                             FROM "core_backend_report" _reports
                             WHERE _reports.event_id = event.id
+                        ), '[]'::JSON),
+                        'agents', COALESCE((
+                            SELECT
+                                json_agg(json_build_object(
+                                    'id', _agents.id,
+                                    'first_name', _users.first_name,
+                                    'last_name', _users.last_name,
+                                    'user_id', _users.id
+                                ))
+                            FROM "core_backend_event_agents" _event_agents
+                                INNER JOIN "core_backend_agent" _agents
+                                    ON _agents.id = _event_agents.agent_id
+                                INNER JOIN "core_backend_user" _users
+                                    ON _users.id = _agents.user_id
+                            WHERE _event_agents.event_id = event.id
                         ), '[]'::JSON)
                     )::jsonb ||
                     (
@@ -227,14 +227,10 @@ class ApiSpecialSqlEvents():
                         ON affiliation.id = event_affiliates.affiliation_id
                     INNER JOIN "core_backend_recipient" recipient
                         ON recipient.id = affiliation.recipient_id
-                    INNER JOIN "core_backend_booking_companies" booking_companies
-                        ON booking_companies.booking_id = booking.id
-                    INNER JOIN "core_backend_company" company
-                        ON company.id = booking_companies.company_id
-                    INNER JOIN "core_backend_agent_companies" agent_companies
-                        ON agent_companies.company_id = company.id
+                    INNER JOIN "core_backend_event_agents" event_agents
+                        ON event_agents.event_id = event.id
                     INNER JOIN "core_backend_agent" agent
-                        ON agent.id = agent_companies.agent_id
+                        ON agent.id = event_agents.agent_id
                 WHERE %s
                 ORDER BY event.start_at DESC, event.id
                 %s
@@ -264,14 +260,10 @@ class ApiSpecialSqlEvents():
                     ON affiliation.id = event_affiliates.affiliation_id
                 INNER JOIN "core_backend_recipient" recipient
                     ON recipient.id = affiliation.recipient_id
-                INNER JOIN "core_backend_booking_companies" booking_companies
-                    ON booking_companies.booking_id = booking.id
-                INNER JOIN "core_backend_company" company
-                    ON company.id = booking_companies.company_id
-                INNER JOIN "core_backend_agent_companies" agent_companies
-                    ON agent_companies.company_id = company.id
+                INNER JOIN "core_backend_event_agents" event_agents
+                    ON event_agents.event_id = event.id
                 INNER JOIN "core_backend_agent" agent
-                    ON agent.id = agent_companies.agent_id
+                    ON agent.id = event_agents.agent_id
             WHERE %s
         """ % where_conditions
 
