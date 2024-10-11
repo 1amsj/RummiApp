@@ -21,10 +21,13 @@ from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
 from core_api.queries.bookings import ApiSpecialSqlBookings
+from core_api.queries.authorizations import ApiSpecialSqlAuthorizations
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
+from core_api.queries.operators import ApiSpecialSqlOperators
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
+from core_api.queries.services import ApiSpecialSqlServices
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
@@ -664,19 +667,58 @@ class ManageOperators(user_subtype_view_manager(Operator, OperatorSerializer)):
     @expect_does_not_exist(Operator)
     # @method_decorator(cache_page(CacheTime.DAY))
     def get(cls, request, business_name=None, operator_id=None):
-        if operator_id:
-            operator = Operator.objects.all().not_deleted('user').get(id=operator_id)
-            serialized = OperatorSerializer(operator)
-            return Response(serialized.data)
 
-        query_params = prepare_query_params(request.GET)
+        query_param_id = request.GET.get('id', None)
+        query_operator_id = operator_id if operator_id is not None else query_param_id
 
-        queryset = OperatorSerializer.get_default_queryset()
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
 
-        queryset = cls.apply_filters(queryset, query_params)
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
 
-        serialized = OperatorSerializer(queryset, many=True)
-        return Response(serialized.data)
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+
+        with connection.cursor() as cursor:
+            result = ApiSpecialSqlOperators.get_operator_sql(
+                cursor,
+                query_operator_id,
+                query_param_page_size,
+                offset
+            )
+
+        if query_param_page_size > 0:
+            with connection.cursor() as cursor:
+                count = ApiSpecialSqlOperators.get_operator_count_sql(
+                    cursor,
+                    query_operator_id
+                )
+
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
+
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
+
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
+
+        if (query_operator_id is not None):
+            return Response(result[0])
+
+        return Response(result)
+    
+
 
 class ManagePayers(user_subtype_view_manager(Payer, PayerSerializer)):
     @staticmethod
@@ -1078,6 +1120,11 @@ class ManageEventsMixin:
     @expect_does_not_exist(Event)
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
+        query_param_start_at = request.GET.get('start_at', None)
+        query_param_end_at = request.GET.get('end_at', None)
+        query_patam_status = request.GET.get('status', None)
+        query_param_recipient_id = request.GET.get('recipient_id', None)
+        query_param_agent_id = request.GET.get('agent_id', None)
         query_param_id = request.GET.get('id', None)
         query_event_id = event_id if event_id is not None else query_param_id
 
@@ -1098,14 +1145,24 @@ class ManageEventsMixin:
                 cursor,
                 query_event_id,
                 query_param_page_size,
-                offset
+                offset,
+                query_param_start_at,
+                query_param_end_at,
+                query_patam_status,
+                query_param_recipient_id,
+                query_param_agent_id
             )
 
         if query_param_page_size > 0:
             with connection.cursor() as cursor:
                 count = ApiSpecialSqlEvents.get_event_count_sql(
                     cursor,
-                    query_event_id
+                    query_event_id,
+                    query_param_start_at,
+                    query_param_end_at,
+                    query_patam_status,
+                    query_param_recipient_id,
+                    query_param_agent_id
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
@@ -1122,8 +1179,11 @@ class ManageEventsMixin:
                 'previous': previous_page,
                 'results': result
             })
-
-        return Response(result[0])
+            
+        if (query_event_id is not None):
+            return Response(result[0])
+        
+        return Response(result)
 
     @staticmethod
     @transaction.atomic
@@ -1406,6 +1466,9 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
                 'previous': previous_page,
                 'results': result
             })
+        
+        if query_company_id:
+            return Response(result[0])
 
         return Response(result)
         
@@ -1478,19 +1541,45 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     @classmethod
     @expect_does_not_exist(Service)
     def get(cls, request, service_id=None):
-        if service_id:
-            service = Service.objects.all().get(id=service_id)
-            serialized = ServiceSerializer(service)
-            return Response(serialized.data)
 
-        query_params = prepare_query_params(request.GET)
-
-        queryset = ServiceSerializer.get_default_queryset()
-
-        queryset = cls.apply_filters(queryset, query_params)
-
-        serialized = ServiceSerializer(queryset, many=True)
-        return Response(serialized.data)
+        query_params_source = request.GET.get('source_language_alpha3')
+        query_params_target = request.GET.get('target_language_alpha3')
+        query_params_root = request.GET.get('root.id')
+        
+        with connection.cursor() as cursor:
+            
+            if service_id:
+                    service = ApiSpecialSqlServices.get_services_sql(
+                        cursor, 
+                        query_params_target, 
+                        query_params_source, 
+                        query_params_root, 
+                        service_id
+                    )
+                    
+                    services = service[0]
+                    
+            elif query_params_target is not None and query_params_source is not None:
+                with connection.cursor() as cursor:
+                    services = ApiSpecialSqlServices.get_services_sql(
+                        cursor,
+                        query_params_target, 
+                        query_params_source, 
+                        query_params_root, 
+                        service_id
+                    )
+                    
+            else:
+                with connection.cursor() as cursor:
+                    services = ApiSpecialSqlServices.get_services_sql(
+                        cursor,
+                        query_params_target, 
+                        query_params_source, 
+                        query_params_root, 
+                        service_id
+                    )
+            
+        return Response(services[0])
 
     @staticmethod
     @transaction.atomic
@@ -1632,39 +1721,31 @@ class ManageNote(basic_view_manager(Note, NoteSerializer)):
 
 
 class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSerializer)):
-    @staticmethod
-    def apply_nested_filters(queryset, nested_params):
-        # Only supports filtering by event and its extras
-
-        if nested_params.is_empty():
-            return queryset
-
-        event_params, extra_params, _ = filter_params(Event, nested_params.get('events', {}))
-        if not event_params.is_empty():
-            queryset = queryset.filter(**event_params.to_dict('events__'))
-
-        if not extra_params.is_empty():
-            queryset = queryset.filter_by_extra_query_params(extra_params, related_prefix='events__')
-
-        return queryset
 
     @classmethod
-    @expect_does_not_exist(Authorization)
+    # @expect_does_not_exist(Authorization)
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, authorization_id=None):
         if authorization_id:
-            authorization = AuthorizationSerializer.get_default_queryset().get(id=authorization_id)
-            serialized = AuthorizationSerializer(authorization)
-            return Response(serialized.data)
+        
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, None))
+                result = cursor.fetchone()[0][0]
+                return Response(result)
 
-        query_params = prepare_query_params(request.GET)
+        query_params = request.GET.get('event_id', None)
+        
+        if query_params is not None:
+            with connection.cursor() as cursor:
+                cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, query_params))
+                result = cursor.fetchone()[0]
+                return Response(result)
 
-        queryset = AuthorizationSerializer.get_default_queryset()
-
-        queryset = cls.apply_filters(queryset, query_params)
-
-        serialized = AuthorizationSerializer(queryset, many=True)
-        return Response(serialized.data)
+    
+        with connection.cursor() as cursor:
+            cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, None))
+            result = cursor.fetchone()[0]
+            return Response(result)
 
     @staticmethod
     @transaction.atomic

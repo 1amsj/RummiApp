@@ -13,7 +13,6 @@ phonenumbers==8.12.52
 psycopg2-binary==2.9.3
 pycodestyle==2.8.0
 pydot==1.4.2
-pygraphviz==1.10
 PyJWT==2.4.0
 pyparsing==3.0.9
 python-monkey-business==1.0.0

@@ -71,7 +71,7 @@ class ApiSpecialSqlServiceRoot:
                                     ) as location_lateral
                                     WHERE core_backend_user.id = provider.user_id
                                 ) AS provider_lateral
-                                WHERE provider.id = 10
+                                WHERE provider.id = _service.provider_id
                             ) t
                         ) AS provider_lateral
                     WHERE _service.root_id = serviceroot.id
