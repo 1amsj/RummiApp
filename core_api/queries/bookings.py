@@ -1,4 +1,5 @@
 from core_api.queries.events import ApiSpecialSqlEvents
+from core_api.queries.services import ApiSpecialSqlServices
 
 
 class ApiSpecialSqlBookings():
@@ -39,9 +40,10 @@ class ApiSpecialSqlBookings():
     def get_booking_sql(cursor, id, limit, offset):
         parent_booking_ct_id = ApiSpecialSqlBookings.get_booking_sql_ct_id(cursor)
         parent_event_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
+        parent_service_ct_id = ApiSpecialSqlServices.get_service_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset)
 
-        query = """
+        query = """--sql
             SELECT json_agg(_query_result.json_data) AS result FROM (
                 SELECT
                     (json_build_object(
@@ -88,7 +90,13 @@ class ApiSpecialSqlBookings():
                                                 ON _users.id = _providers.user_id
                                         WHERE _providers.id = _services.provider_id
                                     )
-                                ))
+                                )::jsonb ||
+                                (
+                                    SELECT
+                                        json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                    FROM "core_backend_extra" extra
+                                    WHERE extra.parent_ct_id = %s AND extra.parent_id = _services.id
+                                )::jsonb)
                             FROM "core_backend_booking_services" _booking_services
                                 INNER JOIN "core_backend_service" _services
                                     ON _services.id = _booking_services.service_id
@@ -164,7 +172,13 @@ class ApiSpecialSqlBookings():
                 ORDER BY booking.public_id DESC, booking.id
                 %s
             ) _query_result
-        """ % (parent_event_ct_id, parent_booking_ct_id, where_conditions, limit_statement)
+        """ % (
+                parent_service_ct_id, 
+                parent_event_ct_id, 
+                parent_booking_ct_id, 
+                where_conditions, 
+                limit_statement
+               )
 
         cursor.execute(query, params)
         result = cursor.fetchone()
