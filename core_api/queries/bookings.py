@@ -1,6 +1,8 @@
+from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.events import ApiSpecialSqlEvents
+from core_api.queries.operators import ApiSpecialSqlOperators
+from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
-
 
 class ApiSpecialSqlBookings():
     @staticmethod
@@ -10,6 +12,22 @@ class ApiSpecialSqlBookings():
                 id
             FROM "django_content_type" content_type
             WHERE app_label = 'core_backend' AND model = 'booking'
+        """
+
+        cursor.execute(query, [id])
+        result = cursor.fetchone()
+        if result is not None:
+            return result[0]
+
+        return None
+    
+    @staticmethod
+    def get_provider_sql_ct_id(cursor):
+        query = """
+            SELECT
+                id
+            FROM "django_content_type" content_type
+            WHERE app_label = 'core_backend' AND model = 'provider'
         """
 
         cursor.execute(query, [id])
@@ -41,9 +59,13 @@ class ApiSpecialSqlBookings():
         parent_booking_ct_id = ApiSpecialSqlBookings.get_booking_sql_ct_id(cursor)
         parent_event_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         parent_service_ct_id = ApiSpecialSqlServices.get_service_sql_ct_id(cursor)
+        parent_provider_ct_id = ApiSpecialSqlBookings.get_provider_sql_ct_id(cursor)
+        parent_companies_ct_id = ApiSpecialSqlCompanies.get_companies_sql_ct_id(cursor)
+        parent_operator_ct_id = ApiSpecialSqlOperators.get_operator_sql_ct_id(cursor)
+        parent_service_root_ct_id = ApiSpecialSqlServiceRoot.get_service_root_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset)
 
-        query = """--sql
+        query = """
             SELECT json_agg(_query_result.json_data) AS result FROM (
                 SELECT
                     (json_build_object(
@@ -84,7 +106,16 @@ class ApiSpecialSqlBookings():
                                                 'first_name', _users.first_name,
                                                 'last_name', _users.last_name,
                                                 'user_id', _users.id
-                                            )
+                                            )::jsonb ||
+                                            COALESCE(
+                                                (
+                                                    SELECT
+                                                        json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                                    FROM "core_backend_extra" extra
+                                                    WHERE extra.parent_ct_id = %s AND extra.parent_id = _providers.id
+                                                )::jsonb,
+                                                '{}'::jsonb
+                                            )::jsonb
                                         FROM "core_backend_provider" _providers
                                             INNER JOIN "core_backend_user" _users
                                                 ON _users.id = _providers.user_id
@@ -109,7 +140,16 @@ class ApiSpecialSqlBookings():
                                     'name', _companies.name,
                                     'is_deleted', _companies.is_deleted,
                                     'type', _companies.type
-                                ))
+                                )::jsonb ||
+                                COALESCE(
+                                    (
+                                        SELECT
+                                            json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                        FROM "core_backend_extra" extra
+                                        WHERE extra.parent_ct_id = %s AND extra.parent_id = _booking_companies.company_id
+                                    )::jsonb,
+                                    '{}'::jsonb
+                                )::jsonb)
                             FROM "core_backend_booking_companies" _booking_companies
                                 INNER JOIN "core_backend_company" _companies
                                     ON _companies.id = _booking_companies.company_id
@@ -122,7 +162,16 @@ class ApiSpecialSqlBookings():
                                     'first_name', _users.first_name,
                                     'last_name', _users.last_name,
                                     'user_id', _users.id
-                                ))
+                                )::jsonb ||
+                                COALESCE(
+                                    (
+                                        SELECT
+                                            json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                        FROM "core_backend_extra" extra
+                                        WHERE extra.parent_ct_id = %s AND extra.parent_id = _booking_operators.operator_id
+                                    )::jsonb,
+                                    '{}'::jsonb
+                                )::jsonb)
                             FROM "core_backend_booking_operators" _booking_operators
                                 INNER JOIN "core_backend_operator" _operators
                                     ON _operators.id = _booking_operators.operator_id
@@ -137,7 +186,16 @@ class ApiSpecialSqlBookings():
                                     'name', _serviceroot.name,
                                     'is_deleted', _serviceroot.is_deleted,
                                     'description', _serviceroot.description
-                                )
+                                )::jsonb ||
+                                COALESCE(
+                                    (
+                                        SELECT
+                                            json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                        FROM "core_backend_extra" extra
+                                        WHERE extra.parent_ct_id = %s AND extra.parent_id = _serviceroot.id
+                                    )::jsonb,
+                                    '{}'::jsonb
+                                )::jsonb
                             FROM "core_backend_serviceroot" _serviceroot
                             WHERE _serviceroot.id = booking.service_root_id
                         ),
@@ -163,7 +221,7 @@ class ApiSpecialSqlBookings():
                     )::jsonb ||
                     (
                         SELECT
-                            json_object_agg(extra.key, extra.data)
+                            json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=booking.id
                     )::jsonb) AS json_data
@@ -173,7 +231,11 @@ class ApiSpecialSqlBookings():
                 %s
             ) _query_result
         """ % (
-                parent_service_ct_id, 
+                parent_provider_ct_id,
+                parent_service_ct_id,
+                parent_companies_ct_id, 
+                parent_operator_ct_id,
+                parent_service_root_ct_id,
                 parent_event_ct_id, 
                 parent_booking_ct_id, 
                 where_conditions, 

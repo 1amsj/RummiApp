@@ -1,4 +1,20 @@
 class ApiSpecialSqlOperators():
+  
+    @staticmethod
+    def get_operator_sql_ct_id(cursor):
+        query = """
+            SELECT
+                id
+            FROM "django_content_type" content_type
+            WHERE app_label = 'core_backend' AND model = 'operator'
+        """
+
+        cursor.execute(query, [id])
+        result = cursor.fetchone()
+        if result is not None:
+            return result[0]
+
+        return None
     @staticmethod
     def get_operator_sql_where_clause(id, limit, offset):
         params = []
