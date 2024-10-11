@@ -142,7 +142,13 @@ class ApiSpecialSqlBookings():
                                     'end_date', event.end_at,
                                     'arrive_at', event.arrive_at,
                                     'description', event.description
-                                ))
+                                )::jsonb ||
+                                (
+                                    SELECT
+                                        json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                    FROM "core_backend_extra" extra
+                                    WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id
+                                )::jsonb)
                             FROM "core_backend_event" event
                             WHERE event.booking_id = booking.id
                         ), '[]'::JSON)
@@ -158,7 +164,7 @@ class ApiSpecialSqlBookings():
                 ORDER BY booking.public_id DESC, booking.id
                 %s
             ) _query_result
-        """ % (parent_booking_ct_id, where_conditions, limit_statement)
+        """ % (parent_event_ct_id, parent_booking_ct_id, where_conditions, limit_statement)
 
         cursor.execute(query, params)
         result = cursor.fetchone()
