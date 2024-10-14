@@ -949,6 +949,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, booking_id=None):
         query_param_id = request.GET.get('id', None)
+        query_param_parent_id = request.GET.get('parent[id]', None)
         query_booking_id = booking_id if booking_id is not None else query_param_id
 
         try:
@@ -968,7 +969,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 cursor,
                 query_booking_id,
                 query_param_page_size,
-                offset
+                offset,
+                query_param_parent_id
             )
 
         if query_param_page_size > 0:

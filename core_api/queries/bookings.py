@@ -38,7 +38,7 @@ class ApiSpecialSqlBookings():
         return None
 
     @staticmethod
-    def get_booking_sql_where_clause(id, limit, offset):
+    def get_booking_sql_where_clause(id, limit, offset, parent_id):
         params = []
         limit_statement = ''
         where_conditions = 'booking.is_deleted = FALSE'
@@ -46,6 +46,10 @@ class ApiSpecialSqlBookings():
         if id is not None:
             where_conditions += ' AND booking.id = %s'
             params.append(id)
+        
+        if parent_id is not None:
+            where_conditions += ' AND _event.id = %s'
+            params.append(parent_id)
 
         if limit is not None and limit > 0 and offset is not None and offset >= 0:
             limit_statement = 'LIMIT %s OFFSET %s'
@@ -55,7 +59,7 @@ class ApiSpecialSqlBookings():
         return params, where_conditions, limit_statement
     
     @staticmethod
-    def get_booking_sql(cursor, id, limit, offset):
+    def get_booking_sql(cursor, id, limit, offset, parent_id):
         parent_booking_ct_id = ApiSpecialSqlBookings.get_booking_sql_ct_id(cursor)
         parent_event_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         parent_service_ct_id = ApiSpecialSqlServices.get_service_sql_ct_id(cursor)
@@ -63,7 +67,7 @@ class ApiSpecialSqlBookings():
         parent_companies_ct_id = ApiSpecialSqlCompanies.get_companies_sql_ct_id(cursor)
         parent_operator_ct_id = ApiSpecialSqlOperators.get_operator_sql_ct_id(cursor)
         parent_service_root_ct_id = ApiSpecialSqlServiceRoot.get_service_root_sql_ct_id(cursor)
-        params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset)
+        params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset, parent_id)
 
         query = """
             SELECT json_agg(_query_result.json_data) AS result FROM (
@@ -226,6 +230,8 @@ class ApiSpecialSqlBookings():
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=booking.id
                     )::jsonb) AS json_data
                 FROM "core_backend_booking" booking
+                    INNER JOIN "core_backend_event" _event 
+                        ON booking.id = _event.booking_id
                 WHERE %s
                 ORDER BY booking.public_id DESC, booking.id
                 %s
