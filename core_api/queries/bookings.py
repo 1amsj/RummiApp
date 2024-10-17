@@ -48,7 +48,7 @@ class ApiSpecialSqlBookings():
             params.append(id)
         
         if parent_id is not None:
-            where_conditions += ' AND _event.id = %s'
+            where_conditions += ' AND booking.parent_id = %s'
             params.append(parent_id)
 
         if limit is not None and limit > 0 and offset is not None and offset >= 0:
