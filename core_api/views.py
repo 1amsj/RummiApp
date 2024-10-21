@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from typing import Type, Union
 
 from django.db import connection, models, transaction
@@ -1124,8 +1124,8 @@ class ManageEventsMixin:
         query_param_id = request.GET.get('id', None)
         
         query_event_id = event_id if event_id is not None else query_param_id
-        query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f %z").astimezone(pytz.utc) if query_param_start_at is not None else None
-        query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f %z").astimezone(pytz.utc) if query_param_end_at is not None else None
+        query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
+        query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
 
         try:
             query_param_page_size = int(request.GET.get('page_size', '-1'))
