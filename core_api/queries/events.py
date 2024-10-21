@@ -58,7 +58,7 @@ class ApiSpecialSqlEvents():
         return params, where_conditions, limit_statement
     
     @staticmethod
-    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status, recipient_id, agent_id):
+    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status, status_excluded, recipient_id, agent_id):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at, status, recipient_id, agent_id)
 
