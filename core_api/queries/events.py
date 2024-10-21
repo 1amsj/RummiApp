@@ -245,7 +245,7 @@ class ApiSpecialSqlEvents():
         return []
     
     @staticmethod
-    def get_event_count_sql(cursor, id, start_at, end_at, status, recipient_id, agent_id):
+    def get_event_count_sql(cursor, id, start_at, end_at, status, status_excluded, recipient_id, agent_id):
         params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None, start_at, end_at, status, recipient_id, agent_id)
 
         query = """--sql
