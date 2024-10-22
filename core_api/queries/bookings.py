@@ -69,7 +69,7 @@ class ApiSpecialSqlBookings():
         parent_service_root_ct_id = ApiSpecialSqlServiceRoot.get_service_root_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset, parent_id)
 
-        query = """
+        query = """--sql
             SELECT json_agg(_query_result.json_data) AS result FROM (
                 SELECT
                     (json_build_object(
@@ -211,7 +211,231 @@ class ApiSpecialSqlBookings():
                                     'start_date', event.start_at,
                                     'end_date', event.end_at,
                                     'arrive_at', event.arrive_at,
-                                    'description', event.description
+                                    'description', event.description,
+                                    'affiliates', COALESCE((
+                                        SELECT JSON_AGG(json_build_object(
+                                            'id', affiliation.id,
+                                            'company', affiliation.company_id,
+                                            'recipient', json_build_object(
+                                                'id', recipient.id,
+                                                'is_deleted', recipient.is_deleted,
+                                                'user_id', recipient.user_id,
+                                                'first_name', recipientUser.first_name,
+                                                'last_name', recipientUser.last_name,
+                                                'date_of_birth', recipientUser.date_of_birth,
+                                                'title', recipientUser.title,
+                                                'suffix', recipientUser.suffix
+                                            ),
+                                            'is_deleted', affiliation.is_deleted
+                                        )) FROM core_backend_event_affiliates affiliates
+                                        LEFT JOIN core_backend_affiliation affiliation on affiliation.id = affiliates.affiliation_id
+                                        LEFT JOIN core_backend_recipient recipient on recipient.id = affiliation.recipient_id
+                                        LEFT JOIN core_backend_user recipientUser on recipientUser.id = recipient.user_id
+                                        WHERE affiliates.event_id = event.id
+                                    ), '[]'::JSON),
+                                    'agents', COALESCE((
+                                        SELECT JSON_AGG(t) as agents FROM (
+                                            SELECT ARRAY[core_backend_event_agents.agent_id] as agents_id, 
+                                            ARRAY[core_backend_event_agents.id] as companies, 
+                                            agent_lateral.*, user_lateral.*, user_contacts_lateral.*,
+                                            location_lateral.*, contacts_lateral.*, requester_lateral.*, payer_lateral.*
+                                            FROM core_backend_event_agents,
+                                            LATERAL (
+                                                SELECT agent_id as id, role, is_deleted, user_id AS userId, user_id FROM core_backend_agent WHERE id = core_backend_event_agents.agent_id
+                                            ) as agent_lateral,
+                                            LATERAL (
+                                                SELECT username, email, first_name, last_name, national_id, ssn, date_of_birth, title, suffix, location_id FROM core_backend_user
+                                                WHERE core_backend_user.id = userId
+                                            ) AS user_lateral,
+                                            LATERAL (
+                                                SELECT JSON_AGG(t) -> 0 as user_contacts_ids FROM (
+                                                SELECT contact_id FROM core_backend_user_contacts WHERE core_backend_user_contacts.user_id = userId
+                                                ) t
+                                            ) AS user_contacts_lateral,
+                                            LATERAL (
+                                                SELECT JSON_AGG(t) as contacts FROM (
+                                                SELECT * FROM core_backend_contact WHERE core_backend_contact.id = (user_contacts_lateral.user_contacts_ids ->> 'contact_id')::integer
+                                                ) t
+                                            ) As contacts_lateral,
+                                            LATERAL (
+                                                SELECT JSON_AGG(t) as location FROM (
+                                                SELECT * FROM core_backend_location WHERE core_backend_location.id = location_id
+                                                ) t
+                                            ) As location_lateral,
+                                            LATERAL (
+                                                SELECT id as requester_id, COALESCE(id IS NOT NULL, true) as is_requester FROM core_backend_requester WHERE core_backend_requester.user_id = userId
+                                            ) AS requester_lateral,
+                                            LATERAL (
+                                                SELECT id as payer_id, COALESCE(id IS NOT NULL, true) as is_payer FROM core_backend_payer WHERE core_backend_payer.user_id = userId
+                                            ) AS payer_lateral
+                                            WHERE core_backend_event_agents.event_id = event.id
+                                        ) t
+                                    ), '[]'::JSON),
+                                    'authorizations', COALESCE((
+                                        SELECT JSON_AGG(t) FROM (
+                                            SELECT auth.*,
+                                            COALESCE((
+                                                SELECT json_agg(row_to_json(events)) FROM 
+                                                    core_backend_authorization_events auth_events
+                                                        INNER JOIN core_backend_event events ON auth_events.event_id = events.id
+                                                WHERE auth_events.authorization_id = auth.id
+                                            ), '[]'::JSON) As events,
+                                            COALESCE((
+                                                SELECT
+                                                    row_to_json(_contacts)
+                                                FROM "core_backend_contact" _contacts
+                                                WHERE _contacts.id = auth.contact_id AND _contacts.is_deleted=FALSE
+                                            ), '{}'::JSON) As contact,
+                                            COALESCE((
+                                                SELECT row_to_json(t) FROM ( 
+                                                SELECT payer.*, COALESCE(id IS NOT NULL, true) AS is_payer, payer_lateral.* FROM core_backend_payer payer,
+                                                LATERAL (
+                                                    SELECT username, email, first_name, last_name, national_id, ssn, date_of_birth, title, suffix,
+                                                    user_contacts_lateral.*, contacts_lateral.*, company_lateral.*, notes_lateral.*, location_lateral.*, payer_companies_lateral.* FROM core_backend_user,
+                                                    LATERAL (
+                                                        SELECT json_agg(row_to_json(t)) -> 0 as user_contacts_ids FROM (
+                                                        SELECT contact_id FROM core_backend_user_contacts WHERE core_backend_user_contacts.user_id = core_backend_user.id
+                                                        ) t
+                                                    ) AS user_contacts_lateral,
+                                                    LATERAL (
+                                                        SELECT JSON_AGG(t) as contacts FROM (
+                                                        SELECT * FROM core_backend_contact WHERE core_backend_contact.id = (user_contacts_lateral.user_contacts_ids ->> 'contact_id')::integer
+                                                        ) t
+                                                    ) As contacts_lateral,  
+                                                    LATERAL (
+                                                        SELECT payer_id AS payer_id, company_id as company_id FROM core_backend_payer_companies WHERE payer_id = payer.id
+                                                    ) AS payer_companies_lateral,
+                                                    LATERAL (
+                                                        SELECT JSON_AGG(t) as companies FROM (
+                                                        SELECT * FROM core_backend_company WHERE core_backend_company.id = company_id
+                                                        ) t
+                                                    ) As company_lateral,
+                                                    LATERAL (
+                                                        SELECT JSON_AGG(t) as notes FROM (
+                                                        SELECT * FROM core_backend_note WHERE core_backend_note.payer_id = payer_id
+                                                        ) t
+                                                    ) As notes_lateral,
+                                                    LATERAL (
+                                                        SELECT JSON_AGG(t) as location FROM (
+                                                        SELECT * FROM core_backend_location WHERE core_backend_location.id = core_backend_user.location_id
+                                                        ) t
+                                                    ) As location_lateral
+                                                    WHERE core_backend_user.id = payer.user_id
+                                                ) AS payer_lateral
+                                                WHERE payer.id = auth.authorizer_id
+                                                ) t
+                                            ), '[]'::JSON) AS authorizer,
+                                            _authorization_events.event_id AS event_id,
+                                            company_lateral.*
+                                            FROM core_backend_authorization_events _authorization_events
+                                                INNER JOIN core_backend_authorization auth 
+                                                    ON auth.id = _authorization_events.authorization_id,
+                                            LATERAL(
+                                                SELECT row_to_json(_query_result) AS company FROM (
+                                                    SELECT
+                                                        company.id,
+                                                        company.type
+                                                    FROM "core_backend_company" company
+                                                    WHERE auth.company_id = company.id
+                                                    ORDER BY company.name, company.id
+                                                ) _query_result
+                                            ) AS company_lateral
+                                            WHERE _authorization_events.event_id = event.id
+                                        ) t
+                                    ), '[]'::JSON),
+                                    'payer', COALESCE((
+                                        SELECT JSON_AGG(t) FROM ( 
+                                            SELECT payer.*, COALESCE(id IS NOT NULL, true) AS is_payer, payer_lateral.* FROM core_backend_payer payer,
+                                            LATERAL (
+                                                SELECT username, email, first_name, last_name, national_id, ssn, date_of_birth, title, suffix,
+                                                user_contacts_lateral.*, contacts_lateral.*, company_lateral.*, notes_lateral.*, location_lateral.*, payer_companies_lateral.* FROM core_backend_user,
+                                                LATERAL (
+                                                    SELECT JSON_AGG(t) -> 0 as user_contacts_ids FROM (
+                                                    SELECT contact_id FROM core_backend_user_contacts WHERE core_backend_user_contacts.user_id = core_backend_user.id
+                                                    ) t
+                                                ) AS user_contacts_lateral,
+                                                LATERAL (
+                                                    SELECT JSON_AGG(t) as contacts FROM (
+                                                    SELECT * FROM core_backend_contact WHERE core_backend_contact.id = (user_contacts_lateral.user_contacts_ids ->> 'contact_id')::integer
+                                                    ) t
+                                                ) As contacts_lateral,  
+                                                LATERAL (
+                                                    SELECT payer_id AS payer_id, company_id as company_id FROM core_backend_payer_companies WHERE payer_id = payer.id
+                                                ) AS payer_companies_lateral,
+                                                LATERAL (
+                                                    SELECT JSON_AGG(t) as companies FROM (
+                                                    SELECT * FROM core_backend_company WHERE core_backend_company.id = company_id
+                                                    ) t
+                                                ) As company_lateral,
+                                                LATERAL (
+                                                    SELECT JSON_AGG(t) as notes FROM (
+                                                    SELECT * FROM core_backend_note WHERE core_backend_note.payer_id = payer_id
+                                                    ) t
+                                                ) As notes_lateral,
+                                                LATERAL (
+                                                    SELECT JSON_AGG(t) as location FROM (
+                                                    SELECT * FROM core_backend_location WHERE core_backend_location.id = core_backend_user.location_id
+                                                    ) t
+                                                ) As location_lateral
+                                                WHERE core_backend_user.id = payer.user_id
+                                            ) AS payer_lateral
+                                            WHERE payer.id = event.payer_id
+                                        ) t
+                                    ), '[]'::JSON),
+                                    'payer_company', COALESCE((
+                                        SELECT json_agg(t) from (
+                                            SELECT * FROM core_backend_payer_companies WHERE id = event.payer_company_id
+                                        ) t
+                                    ), '[]'::JSON),
+                                    'reports', COALESCE((
+                                        SELECT
+                                            json_agg(json_build_object(
+                                                'id', _reports.id,
+                                                'is_deleted', _reports.is_deleted,
+                                                'status', _reports.status,
+                                                'arrive_at', _reports.arrive_at,
+                                                'arrive_at', _reports.arrive_at,
+                                                'start_at', _reports.start_at,
+                                                'end_at', _reports.end_at,
+                                                'observations', _reports.observations
+                                            ))
+                                        FROM "core_backend_report" _reports
+                                        WHERE _reports.event_id = event.id
+                                    ), '[]'::JSON),
+                                    'requester', COALESCE((
+                                        SELECT row_to_json(t) FROM ( 
+                                            SELECT requester.*, COALESCE(id IS NULL, false) AS is_requester, requester_lateral.* FROM core_backend_requester requester,
+                                                LATERAL (
+                                                    SELECT username, email, first_name, last_name, national_id, ssn, date_of_birth, title, suffix,
+                                                    user_contacts_lateral.*, contacts_lateral.*, company_lateral.*, location_lateral.*, requester_companies_lateral.* FROM core_backend_user,
+                                                    LATERAL (
+                                                        SELECT JSON_AGG(t) -> 0 as user_contacts_ids FROM (
+                                                        SELECT contact_id FROM core_backend_user_contacts WHERE core_backend_user_contacts.user_id = core_backend_user.id
+                                                        ) t
+                                                    ) AS user_contacts_lateral,
+                                                    LATERAL (
+                                                        SELECT JSON_AGG(t) as contacts FROM (
+                                                        SELECT * FROM core_backend_contact WHERE core_backend_contact.id = (user_contacts_lateral.user_contacts_ids ->> 'contact_id')::integer
+                                                        ) t
+                                                    ) As contacts_lateral,  
+                                                    LATERAL (
+                                                        SELECT requester_id AS requester_id, company_id as company_id FROM core_backend_requester_companies WHERE requester_id = requester.id
+                                                    ) AS requester_companies_lateral,
+                                                    LATERAL (
+                                                        SELECT JSON_AGG(t) as companies FROM (
+                                                        SELECT * FROM core_backend_company WHERE core_backend_company.id = company_id
+                                                        ) t
+                                                    ) As company_lateral,
+                                                    LATERAL (
+                                                        SELECT JSON_AGG(t) as location FROM (
+                                                        SELECT * FROM core_backend_location WHERE core_backend_location.id = core_backend_user.location_id
+                                                        ) t
+                                                    ) As location_lateral
+                                                WHERE core_backend_user.id = requester.user_id
+                                            ) AS requester_lateral
+                                            WHERE requester.id = event.requester_id
+                                        ) t
+                                    ), '[]'::JSON)
                                 )::jsonb ||
                                 (
                                     SELECT
