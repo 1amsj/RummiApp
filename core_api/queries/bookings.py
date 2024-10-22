@@ -189,7 +189,14 @@ class ApiSpecialSqlBookings():
                                     'id', _serviceroot.id,
                                     'name', _serviceroot.name,
                                     'is_deleted', _serviceroot.is_deleted,
-                                    'description', _serviceroot.description
+                                    'description', _serviceroot.description,
+                                    'categories', COALESCE((
+                                        SELECT json_agg(row_to_json(_categories))
+                                        FROM core_backend_serviceroot_categories _root_categories
+                                            INNER JOIN core_backend_category _categories
+                                                ON _categories.id = _root_categories.category_id
+                                        WHERE _root_categories.serviceroot_id = _serviceroot.id
+                                    ), '[]'::JSON)
                                 )::jsonb ||
                                 COALESCE(
                                     (
