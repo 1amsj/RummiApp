@@ -210,6 +210,15 @@ class ApiSpecialSqlBookings():
                             FROM "core_backend_serviceroot" _serviceroot
                             WHERE _serviceroot.id = booking.service_root_id
                         ),
+                        'children', COALESCE((
+                            SELECT
+                                json_agg(json_build_object(
+                                    'id', booking_children.id,
+                                    'public_id', booking_children.public_id
+                                ))
+                                FROM "core_backend_booking" booking_children
+                                WHERE booking_children.parent_id = booking.id
+                        ), '[]'::JSON),
                         'events', COALESCE((
                             SELECT
                                 json_agg(json_build_object(
