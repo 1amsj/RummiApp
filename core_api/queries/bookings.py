@@ -98,7 +98,7 @@ class ApiSpecialSqlBookings():
                                     'provider', (
                                         SELECT
                                             json_build_object(
-                                                'provider_id', _providers.id,
+                                                'id', _providers.id,
                                                 'salary', _providers.salary,
                                                 'is_deleted', _providers.is_deleted,
                                                 'payment_via', _providers.payment_via,
