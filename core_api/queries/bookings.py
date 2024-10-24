@@ -98,7 +98,7 @@ class ApiSpecialSqlBookings():
                                     'provider', (
                                         SELECT
                                             json_build_object(
-                                                'id', _providers.id,
+                                                'provider_id', _providers.id,
                                                 'salary', _providers.salary,
                                                 'is_deleted', _providers.is_deleted,
                                                 'payment_via', _providers.payment_via,
@@ -162,7 +162,7 @@ class ApiSpecialSqlBookings():
                         'operators', COALESCE((
                             SELECT
                                 json_agg(json_build_object(
-                                    'id', _operators.id,
+                                    'operator_id', _operators.id,
                                     'first_name', _users.first_name,
                                     'last_name', _users.last_name,
                                     'user_id', _users.id,
