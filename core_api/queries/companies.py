@@ -1,4 +1,20 @@
 class ApiSpecialSqlCompanies():
+    
+    @staticmethod
+    def get_companies_sql_ct_id(cursor):
+        query = """
+            SELECT
+                id
+            FROM "django_content_type" content_type
+            WHERE app_label = 'core_backend' AND model = 'company'
+        """
+
+        cursor.execute(query, [id])
+        result = cursor.fetchone()
+        if result is not None:
+            return result[0]
+
+        return None
     @staticmethod
     def get_company_sql_where_clause(id, name, type, send_method, on_hold, limit, offset):
         params = []

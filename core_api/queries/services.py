@@ -1,5 +1,22 @@
 class ApiSpecialSqlServices:
     
+    @staticmethod
+    def get_service_sql_ct_id(cursor):
+        query = """
+            SELECT
+                id
+            FROM "django_content_type" content_type
+            WHERE app_label = 'core_backend' AND model = 'service'
+        """
+
+        cursor.execute(query, [id])
+        result = cursor.fetchone()
+        if result is not None:
+            return result[0]
+
+        return None
+    
+    @staticmethod
     def get_services_sql(cursor, source_languague_alpha3, target_languague_alpha3, root, service_id):
         where_conditions = 'service.is_deleted = FALSE'
         where_conditions_source = ''

@@ -22,6 +22,7 @@ from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
+from core_api.queries.bookings import ApiSpecialSqlBookings
 from core_api.queries.authorizations import ApiSpecialSqlAuthorizations
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
@@ -949,50 +950,58 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, booking_id=None):
-        if booking_id:
-            booking = Booking.objects.all().not_deleted('business').get(id=booking_id)
-            serialized = BookingSerializer(booking)
-            return Response(serialized.data)
+        query_param_id = request.GET.get('id', None)
+        query_param_parent_id = request.GET.get('parent[id]', None)
+        query_booking_id = booking_id if booking_id is not None else query_param_id
 
-        include_events = request.GET.get(ApiSpecialKeys.INCLUDE_EVENTS, False)
-        recipientId = request.GET.get(ApiSpecialKeys.RECIPIENT_ID, False)
-        agentsId = request.GET.get(ApiSpecialKeys.AGENTS_ID, False)
-        startDate = request.GET.get(ApiSpecialKeys.START_DATE, False)
-        endDate = request.GET.get(ApiSpecialKeys.END_DATE, False)
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
 
-        query_params = prepare_query_params(request.GET)
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
 
-        serializer = BookingSerializer if (include_events or recipientId or startDate) else BookingNoEventsSerializer
-        queryset = serializer.get_default_queryset()
-        agentsQuerysetFiltered = queryset
-        recipientQuerysetFiltered = queryset
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+
+        with connection.cursor() as cursor:
+            result = ApiSpecialSqlBookings.get_booking_sql(
+                cursor,
+                query_booking_id,
+                query_param_page_size,
+                offset,
+                query_param_parent_id
+            )
+
+        if query_param_page_size > 0:
+            with connection.cursor() as cursor:
+                count = ApiSpecialSqlBookings.get_booking_count_sql(
+                    cursor,
+                    query_booking_id
+                )
+
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
+
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
+
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
         
-        if agentsId:
-            agentsQuerysetFiltered = agentsQuerysetFiltered.filter(events__agents=agentsId)
-        
-        if recipientId:
-            recipientQuerysetFiltered = recipientQuerysetFiltered.filter(events__affiliates__recipient__user=recipientId)
-        
-        if startDate and endDate:
-            startDate = startDate.split('T')[0]
-            endDate = endDate.split('T')[0]
-            queryset = queryset.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
-            recipientQuerysetFiltered = recipientQuerysetFiltered.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
-            agentsQuerysetFiltered = agentsQuerysetFiltered.filter(events__start_at__date__gte=startDate, events__start_at__date__lte=endDate)
-        
-        queryset = cls.apply_filters(queryset, query_params)
-        recipientFilteredSerialized = cls.apply_filters(recipientQuerysetFiltered, query_params)
-        agentsFilteredSerialized = cls.apply_filters(agentsQuerysetFiltered, query_params)
-        serialized = serializer(queryset, many=True)
-        recipientFilteredSerialized = serializer(recipientQuerysetFiltered, many=True)
-        agentsFilteredSerialized = serializer(agentsQuerysetFiltered, many=True)
-        return Response(
-            {
-                'data': serialized.data, 
-                'agentsFilteredData': agentsFilteredSerialized.data, 
-                'recipientFilteredData': recipientFilteredSerialized.data,
-            }
-        )
+        if query_booking_id:
+            return Response(result[0])
+
+        return Response(result)
+
     @staticmethod
     @transaction.atomic
     @expect_key_error
