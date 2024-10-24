@@ -165,7 +165,43 @@ class ApiSpecialSqlBookings():
                                     'id', _operators.id,
                                     'first_name', _users.first_name,
                                     'last_name', _users.last_name,
-                                    'user_id', _users.id
+                                    'user_id', _users.id,
+                                    'is_deleted', _operators.is_deleted,
+                                    'hiring_date', _operators.hiring_date,
+                                    'title', _users.title,
+                                    'suffix', _users.suffix,
+                                    'date_of_birth', _users.date_of_birth,
+                                    'location', (
+                                        SELECT 
+                                        json_build_object(
+                                            'id', location.id,
+                                            'country', location.country,
+                                            'address', location.address,
+                                            'city', location.city,
+                                            'state', location.state,
+                                            'zip', location.zip,
+                                            'unit_number', location.unit_number
+                                        )
+                                        FROM "core_backend_location" location
+                                        WHERE location.id = _users.location_id
+                                    ),
+                                    'contacts', COALESCE((
+                                        SELECT json_agg(
+                                        json_build_object(
+                                            'id', contact.id,
+                                            'email', contact.email,
+                                            'phone', contact.phone,
+                                            'fax', contact.fax,
+                                            'phone_context', contact.phone_context,
+                                            'email_context', contact.email_context,
+                                            'fax_context', contact.fax_context
+                                        )
+                                        )
+                                        FROM "core_backend_user_contacts" _user_contact
+                                        INNER JOIN "core_backend_contact" contact
+                                            ON _user_contact.contact_id = contact.id
+                                        WHERE _user_contact.user_id = _users.id
+                                    ), '[]'::json)
                                 )::jsonb ||
                                 COALESCE(
                                     (
