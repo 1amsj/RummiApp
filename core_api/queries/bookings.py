@@ -340,7 +340,7 @@ class ApiSpecialSqlBookings():
                                             ), '{}'::JSON) As contact,
                                             COALESCE((
                                                 SELECT row_to_json(t) FROM ( 
-                                                SELECT payer.*, COALESCE(id IS NOT NULL, true) AS is_payer, payer_lateral.* FROM core_backend_payer payer,
+                                                SELECT payer.*, COALESCE(id IS NOT NULL, true) AS is_payer, payer.id as payer_id, payer_lateral.* FROM core_backend_payer payer,
                                                 LATERAL (
                                                     SELECT username, email, first_name, last_name, national_id, ssn, date_of_birth, title, suffix,
                                                     user_contacts_lateral.*, contacts_lateral.*, company_lateral.*, notes_lateral.*, location_lateral.*, payer_companies_lateral.* FROM core_backend_user,
@@ -396,7 +396,7 @@ class ApiSpecialSqlBookings():
                                         ) t
                                     ), '[]'::JSON),
                                     'payer', COALESCE((
-                                        SELECT JSON_AGG(t) FROM ( 
+                                        SELECT row_to_json(t) FROM ( 
                                             SELECT payer.*, COALESCE(id IS NOT NULL, true) AS is_payer, payer_lateral.* FROM core_backend_payer payer,
                                             LATERAL (
                                                 SELECT username, email, first_name, last_name, national_id, ssn, date_of_birth, title, suffix,
@@ -435,8 +435,10 @@ class ApiSpecialSqlBookings():
                                         ) t
                                     ), '[]'::JSON),
                                     'payer_company', COALESCE((
-                                        SELECT json_agg(t) from (
-                                            SELECT * FROM core_backend_payer_companies WHERE id = event.payer_company_id
+                                        SELECT row_to_json(t) from (
+                                            SELECT * FROM core_backend_payer_companies
+                                                INNER JOIN core_backend_company company ON company.id = core_backend_payer_companies.company_id
+                                                    WHERE core_backend_payer_companies.id = event.payer_company_id
                                         ) t
                                     ), '[]'::JSON),
                                     'reports', COALESCE((
