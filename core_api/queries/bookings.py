@@ -533,7 +533,7 @@ class ApiSpecialSqlBookings():
 
         return []
     
-    def get_booking_single_sql(cursor, id, limit, offset, parent_id):
+    def get_bookings_sql(cursor, id, limit, offset, parent_id):
         parent_booking_ct_id = ApiSpecialSqlBookings.get_booking_sql_ct_id(cursor)
         parent_event_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         parent_service_ct_id = ApiSpecialSqlServices.get_service_sql_ct_id(cursor)

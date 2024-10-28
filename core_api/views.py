@@ -976,7 +976,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                     query_param_parent_id
                 )
             else:
-                result = ApiSpecialSqlBookings.get_booking_single_sql(
+                result = ApiSpecialSqlBookings.get_bookings_sql(
                     cursor,
                     query_booking_id,
                     query_param_page_size,
