@@ -1137,6 +1137,8 @@ class ManageEventsMixin:
         query_param_end_at = request.GET.get('end_at', None)
         query_param_status_included = request.GET.get('status_included', None)
         query_param_status_excluded = request.GET.get('status_excluded', None)
+        query_param_pending_items_included = request.GET.get('pending_items_included', None)
+        query_param_pending_items_excluded = request.GET.get('pending_items_excluded', None)
         query_param_recipient_id = request.GET.get('recipient_id', None)
         query_param_agent_id = request.GET.get('agent_id', None)
         query_param_id = request.GET.get('id', None)
