@@ -34,7 +34,7 @@ class ApiSpecialSqlServices:
         if target_languague_alpha3 is not None:
             where_conditions_target = " AND data::text LIKE '%"+target_languague_alpha3+"%'"
         
-        query = """
+        query = """--sql
         SELECT JSON_AGG(t) FROM (
             SELECT 
                 service.*,
