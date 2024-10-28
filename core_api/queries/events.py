@@ -58,7 +58,7 @@ class ApiSpecialSqlEvents():
         return params, where_conditions, limit_statement
     
     @staticmethod
-    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status, status_excluded, recipient_id, agent_id):
+    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status, status_excluded, recipient_id, agent_id, field_to_sort, order_to_sort):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at, status, recipient_id, agent_id)
 
@@ -221,21 +221,35 @@ class ApiSpecialSqlEvents():
                 FROM "core_backend_event" event
                     INNER JOIN "core_backend_booking" booking
                         ON booking.id = event.booking_id
+                    INNER JOIN "core_backend_booking_companies" booking_companies
+                        ON booking_companies.booking_id = booking.id
+                    INNER JOIN "core_backend_company" company
+                        ON company.id = booking_companies.company_id
+                    INNER JOIN "core_backend_booking_services" booking_services
+                        ON booking_services.booking_id = booking.id
+                    INNER JOIN "core_backend_service" service
+                        ON service.id = booking_services.service_id
+                    INNER JOIN "core_backend_provider" provider
+                        ON provider.id = service.provider_id
+                    INNER JOIN "core_backend_user" provider_user
+                        ON provider_user.id = provider.user_id
                     INNER JOIN "core_backend_event_affiliates" event_affiliates
                         ON event_affiliates.event_id = event.id
                     INNER JOIN "core_backend_affiliation" affiliation
                         ON affiliation.id = event_affiliates.affiliation_id
                     INNER JOIN "core_backend_recipient" recipient
                         ON recipient.id = affiliation.recipient_id
+                    INNER JOIN "core_backend_user" recipient_user
+                        ON recipient_user.id = recipient.user_id
                     INNER JOIN "core_backend_event_agents" event_agents
                         ON event_agents.event_id = event.id
                     INNER JOIN "core_backend_agent" agent
                         ON agent.id = event_agents.agent_id
                 WHERE %s
-                ORDER BY event.start_at DESC, event.id
+                ORDER BY %s %s NULLS LAST, event.id
                 %s
             ) _query_result
-        """ % (parent_ct_id, where_conditions, limit_statement)
+        """ % (parent_ct_id, where_conditions, field_to_sort, order_to_sort, limit_statement)
 
         cursor.execute(query, params)
         result = cursor.fetchone()
@@ -254,12 +268,26 @@ class ApiSpecialSqlEvents():
             FROM "core_backend_event" event
                 INNER JOIN "core_backend_booking" booking
                     ON booking.id = event.booking_id
+                INNER JOIN "core_backend_booking_companies" booking_companies
+                    ON booking_companies.booking_id = booking.id
+                INNER JOIN "core_backend_company" company
+                    ON company.id = booking_companies.company_id
+                INNER JOIN "core_backend_booking_services" booking_services
+                    ON booking_services.booking_id = booking.id
+                INNER JOIN "core_backend_service" service
+                    ON service.id = booking_services.service_id
+                INNER JOIN "core_backend_provider" provider
+                    ON provider.id = service.provider_id
+                INNER JOIN "core_backend_user" provider_user
+                    ON provider_user.id = provider.user_id
                 INNER JOIN "core_backend_event_affiliates" event_affiliates
                     ON event_affiliates.event_id = event.id
                 INNER JOIN "core_backend_affiliation" affiliation
                     ON affiliation.id = event_affiliates.affiliation_id
                 INNER JOIN "core_backend_recipient" recipient
                     ON recipient.id = affiliation.recipient_id
+                INNER JOIN "core_backend_user" recipient_user
+                    ON recipient_user.id = recipient.user_id
                 INNER JOIN "core_backend_event_agents" event_agents
                     ON event_agents.event_id = event.id
                 INNER JOIN "core_backend_agent" agent

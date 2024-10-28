@@ -1132,12 +1132,26 @@ class ManageEventsMixin:
         query_param_pending_items_excluded = request.GET.get('pending_items_excluded', None)
         query_param_recipient_id = request.GET.get('recipient_id', None)
         query_param_agent_id = request.GET.get('agent_id', None)
+        query_param_field_to_sort = request.GET.get('field_to_sort', None)
+        query_param_order_to_sort = request.GET.get('order_to_sort', None)
         query_param_id = request.GET.get('id', None)
         
         query_event_id = event_id if event_id is not None else query_param_id
         query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
         query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
-
+        query_field_to_sort = 'event.start_at'
+        query_order_to_sort = 'DESC' if query_param_order_to_sort == 'desc' else 'ASC'
+        
+        if query_param_field_to_sort is not None:
+            if query_param_field_to_sort == 'booking__services__provider__user__first_name':
+                query_field_to_sort = 'provider_user.first_name'
+            elif query_param_field_to_sort == 'booking__public_id':
+                query_field_to_sort = 'booking.public_id'
+            elif query_param_field_to_sort == 'affiliates__recipient__user__first_name':
+                query_field_to_sort = 'recipient_user.first_name'
+            elif query_param_field_to_sort == 'booking__companies__name':
+                query_field_to_sort = 'company.name'
+            
         try:
             query_param_page_size = int(request.GET.get('page_size', '-1'))
         except:
@@ -1161,7 +1175,9 @@ class ManageEventsMixin:
                 query_param_status_included,
                 query_param_status_excluded,
                 query_param_recipient_id,
-                query_param_agent_id
+                query_param_agent_id,
+                query_field_to_sort,
+                query_order_to_sort
             )
 
         if query_param_page_size > 0:
