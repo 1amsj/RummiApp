@@ -539,8 +539,6 @@ class ApiSpecialSqlBookings():
         parent_service_ct_id = ApiSpecialSqlServices.get_service_sql_ct_id(cursor)
         parent_provider_ct_id = ApiSpecialSqlBookings.get_provider_sql_ct_id(cursor)
         parent_companies_ct_id = ApiSpecialSqlCompanies.get_companies_sql_ct_id(cursor)
-        parent_operator_ct_id = ApiSpecialSqlOperators.get_operator_sql_ct_id(cursor)
-        parent_service_root_ct_id = ApiSpecialSqlServiceRoot.get_service_root_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset, parent_id)
 
         query = """--sql
@@ -759,8 +757,6 @@ class ApiSpecialSqlBookings():
                 parent_provider_ct_id,
                 parent_service_ct_id,
                 parent_companies_ct_id, 
-                parent_operator_ct_id,
-                parent_service_root_ct_id,
                 parent_event_ct_id, 
                 parent_booking_ct_id, 
                 where_conditions, 
