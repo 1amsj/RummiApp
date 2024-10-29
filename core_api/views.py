@@ -1140,7 +1140,7 @@ class ManageEventsMixin:
         query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
         query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
         query_field_to_sort = 'event.start_at'
-        query_order_to_sort = 'DESC' if query_param_order_to_sort == 'desc' else 'ASC'
+        query_order_to_sort = 'ASC' if query_param_order_to_sort == 'asc' else 'DESC'
         
         if query_param_field_to_sort is not None:
             if query_param_field_to_sort == 'booking__services__provider__user__first_name':
