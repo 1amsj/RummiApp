@@ -1569,45 +1569,67 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     @classmethod
     @expect_does_not_exist(Service)
     def get(cls, request, service_id=None):
-
         query_params_source = request.GET.get('source_language_alpha3')
         query_params_target = request.GET.get('target_language_alpha3')
         query_params_root = request.GET.get('root.id')
+        query_param_id = request.GET.get('id', None)
         
+        query_service_id = service_id if service_id is not None else query_param_id
+        
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
+
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
+
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+
         with connection.cursor() as cursor:
+            result = ApiSpecialSqlServices.get_service_sql(
+                cursor,
+                query_service_id,
+                query_param_page_size,
+                offset,
+                query_params_root,
+                query_params_source,
+                query_params_target
+            )
+
+        if query_param_page_size > 0:
+            with connection.cursor() as cursor:
+                count = ApiSpecialSqlServices.get_service_count_sql(
+                    cursor,
+                    query_service_id,
+                    query_param_page_size,
+                    offset,
+                    query_params_root,
+                    query_params_source,
+                    query_params_target
+                )
+
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
+
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
+
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
             
-            if service_id:
-                    service = ApiSpecialSqlServices.get_services_sql(
-                        cursor, 
-                        query_params_target, 
-                        query_params_source, 
-                        query_params_root, 
-                        service_id
-                    )
-                    
-                    services = service[0]
-                    
-            elif query_params_target is not None and query_params_source is not None:
-                with connection.cursor() as cursor:
-                    services = ApiSpecialSqlServices.get_services_sql(
-                        cursor,
-                        query_params_target, 
-                        query_params_source, 
-                        query_params_root, 
-                        service_id
-                    )
-                    
-            else:
-                with connection.cursor() as cursor:
-                    services = ApiSpecialSqlServices.get_services_sql(
-                        cursor,
-                        query_params_target, 
-                        query_params_source, 
-                        query_params_root, 
-                        service_id
-                    )
-            
-        return Response(services[0])
+        if (query_service_id is not None):
+            return Response(result[0])
+        
+        return Response(result)
 
     @staticmethod
     @transaction.atomic
