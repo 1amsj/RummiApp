@@ -33,9 +33,9 @@ class ApiSpecialSqlAuthorizations:
                             'description', events.description,
                             'unique_field', events.unique_field
                         ))
-                        FROM  core_backend_authorization_events auth_events
-                            INNER JOIN core_backend_event events ON auth_events.event_id = events.id
-                        WHERE auth_events.authorization_id = auth.id
+                        FROM  "core_backend_authorization_events" auth_events
+                            INNER JOIN "core_backend_event" events ON auth_events.event_id = events.id
+                                WHERE auth_events.authorization_id = auth.id
                     ), '[]'::JSON),
                     'contact', COALESCE((
                         SELECT json_build_object(
@@ -49,7 +49,7 @@ class ApiSpecialSqlAuthorizations:
                             'phone_context', _contacts.phone_context
                         )
                         FROM "core_backend_contact" _contacts
-                        WHERE _contacts.id = auth.contact_id AND _contacts.is_deleted=FALSE
+                            WHERE _contacts.id = auth.contact_id AND _contacts.is_deleted=FALSE
                     ), '{}'::JSON),
                     'authorizer', COALESCE((
                         SELECT json_build_object(
@@ -78,8 +78,8 @@ class ApiSpecialSqlAuthorizations:
                                     'fax_context', _contact.fax_context,
                                     'phone_context', _contact.phone_context
                                 )   
-                                FROM core_backend_user_contacts user_contacts
-                                    INNER JOIN core_backend_contact _contact on _contact.id = user_contacts.contact_id
+                                FROM "core_backend_user_contacts" user_contacts
+                                    INNER JOIN "core_backend_contact" _contact on _contact.id = user_contacts.contact_id
                                         WHERE user_contacts.user_id = payer.user_id
                             ), '{}'::JSON),
                             'companies', COALESCE((
@@ -93,8 +93,8 @@ class ApiSpecialSqlAuthorizations:
                                     'parent_company_id', _companies.parent_company_id,
                                     'aliases', _companies.aliases
                                 ))
-                                FROM core_backend_payer_companies payer_companies
-                                    INNER JOIN core_backend_company _companies on _companies.id = payer_companies.company_id
+                                FROM "core_backend_payer_companies" payer_companies
+                                    INNER JOIN "core_backend_company" _companies on _companies.id = payer_companies.company_id
                                         WHERE payer_companies.payer_id = payer.id
                             ), '[]'::JSON),
                             'notes', COALESCE((
@@ -105,7 +105,7 @@ class ApiSpecialSqlAuthorizations:
                                     'text', _note.text,
                                     'payer_id', _note.payer_id
                                 ))
-                                FROM core_backend_note  _note
+                                FROM "core_backend_note" _note
                                     WHERE _note.payer_id = payer_id
                             ), '[]'::JSON),
                             'location', COALESCE((
@@ -119,12 +119,12 @@ class ApiSpecialSqlAuthorizations:
                                     'is_deleted', _location.is_deleted,
                                     'unit_number', _location.unit_number
                                 ))
-                                FROM core_backend_location _location
+                                FROM "core_backend_location" _location
                                     WHERE _location.id = _user.location_id
                             ), '[]'::JSON)
                         ) 
-                        FROM core_backend_payer payer
-                            INNER JOIN core_backend_user _user ON _user.id = payer.user_id
+                        FROM "core_backend_payer" payer
+                            INNER JOIN "core_backend_user" _user ON _user.id = payer.user_id
                                 WHERE payer.id = auth.authorizer_id
                     ), '{}'::JSON),
                     'company', COALESCE((
@@ -137,8 +137,8 @@ class ApiSpecialSqlAuthorizations:
                     ), '{}'::JSON),
                     'event_id', _authorization_events.event_id
                 )::jsonb) AS json_data
-            FROM core_backend_authorization_events _authorization_events
-                INNER JOIN core_backend_authorization auth 
+            FROM "core_backend_authorization_events" _authorization_events
+                INNER JOIN "core_backend_authorization" auth 
                     ON auth.id = _authorization_events.authorization_id
             WHERE %s
         """ % where_conditions
