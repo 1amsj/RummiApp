@@ -1785,26 +1785,17 @@ class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSe
     # @expect_does_not_exist(Authorization)
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, authorization_id=None):
-        if authorization_id:
         
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, None))
-                result = cursor.fetchone()[0][0]
-                return Response(result)
-
         query_params = request.GET.get('event_id', None)
-        
-        if query_params is not None:
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, query_params))
-                result = cursor.fetchone()[0]
-                return Response(result)
-
-    
+            
         with connection.cursor() as cursor:
-            cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, None))
-            result = cursor.fetchone()[0]
-            return Response(result)
+            result = ApiSpecialSqlAuthorizations.get_authorizations_sql(
+                cursor, 
+                authorization_id, 
+                query_params
+            )
+            
+        return Response(result)
 
     @staticmethod
     @transaction.atomic
