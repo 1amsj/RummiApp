@@ -967,13 +967,22 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
 
         with connection.cursor() as cursor:
-            result = ApiSpecialSqlBookings.get_booking_sql(
-                cursor,
-                query_booking_id,
-                query_param_page_size,
-                offset,
-                query_param_parent_id
-            )
+            if query_param_parent_id is None:
+                result = ApiSpecialSqlBookings.get_booking_sql(
+                    cursor,
+                    query_booking_id,
+                    query_param_page_size,
+                    offset,
+                    query_param_parent_id
+                )
+            else:
+                result = ApiSpecialSqlBookings.get_bookings_sql(
+                    cursor,
+                    query_booking_id,
+                    query_param_page_size,
+                    offset,
+                    query_param_parent_id
+                )
 
         if query_param_page_size > 0:
             with connection.cursor() as cursor:
