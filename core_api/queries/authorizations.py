@@ -68,7 +68,7 @@ class ApiSpecialSqlAuthorizations:
                             'title', _user.title,
                             'suffix', _user.suffix,
                             'contacts', COALESCE((
-                                SELECT json_build_object(
+                                SELECT json_agg(json_build_object(
                                     'id', _contact.id,
                                     'email', _contact.email,
                                     'phone', _contact.phone,
@@ -77,11 +77,11 @@ class ApiSpecialSqlAuthorizations:
                                     'email_context', _contact.email_context,
                                     'fax_context', _contact.fax_context,
                                     'phone_context', _contact.phone_context
-                                )   
+                                ))  
                                 FROM "core_backend_user_contacts" user_contacts
                                     INNER JOIN "core_backend_contact" _contact on _contact.id = user_contacts.contact_id
                                         WHERE user_contacts.user_id = payer.user_id
-                            ), '{}'::JSON),
+                            ), '[]'::JSON),
                             'companies', COALESCE((
                                 SELECT json_agg(json_build_object(
                                     'id', _companies.id,
