@@ -225,13 +225,13 @@ class ApiSpecialSqlEvents():
                         ON booking_companies.booking_id = booking.id
                     INNER JOIN "core_backend_company" company
                         ON company.id = booking_companies.company_id
-                    INNER JOIN "core_backend_booking_services" booking_services
+                    LEFT JOIN "core_backend_booking_services" booking_services
                         ON booking_services.booking_id = booking.id
-                    INNER JOIN "core_backend_service" service
+                    LEFT JOIN "core_backend_service" service
                         ON service.id = booking_services.service_id
-                    INNER JOIN "core_backend_provider" provider
+                    LEFT JOIN "core_backend_provider" provider
                         ON provider.id = service.provider_id
-                    INNER JOIN "core_backend_user" provider_user
+                    LEFT JOIN "core_backend_user" provider_user
                         ON provider_user.id = provider.user_id
                     INNER JOIN "core_backend_event_affiliates" event_affiliates
                         ON event_affiliates.event_id = event.id
