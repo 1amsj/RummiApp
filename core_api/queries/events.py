@@ -16,7 +16,7 @@ class ApiSpecialSqlEvents():
         return None
 
     @staticmethod
-    def get_event_sql_where_clause(id, limit, offset, start_at, end_at, status, recipient_id, agent_id):
+    def get_event_sql_where_clause(id, limit, offset, start_at, end_at, status_included, status_excluded, recipient_id, agent_id):
         params = []
         limit_statement = ''
         where_conditions = 'event.is_deleted = FALSE'
@@ -33,9 +33,13 @@ class ApiSpecialSqlEvents():
             where_conditions += ' AND event.end_at <= %s'
             params.append(end_at)
             
-        if status is not None:
-            where_conditions += ' AND booking.status = %s'
-            params.append(status)
+        if status_included is not None and len(status_included) > 0:
+            where_conditions += ' AND booking.status IN %s'
+            params.append(tuple(status_included))
+            
+        if status_excluded is not None and len(status_excluded) > 0:
+            where_conditions += ' AND booking.status NOT IN %s'
+            params.append(tuple(status_excluded))
             
         if recipient_id is not None and agent_id is None:
             where_conditions += ' AND recipient.id = %s'
@@ -58,9 +62,9 @@ class ApiSpecialSqlEvents():
         return params, where_conditions, limit_statement
     
     @staticmethod
-    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status, status_excluded, recipient_id, agent_id, field_to_sort, order_to_sort):
+    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status_included, status_excluded, recipient_id, agent_id, field_to_sort, order_to_sort):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
-        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at, status, recipient_id, agent_id)
+        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at, status_included, status_excluded, recipient_id, agent_id)
 
         query = """--sql
             SELECT json_agg(_query_result.json_data) AS result FROM (
@@ -259,8 +263,8 @@ class ApiSpecialSqlEvents():
         return []
     
     @staticmethod
-    def get_event_count_sql(cursor, id, start_at, end_at, status, status_excluded, recipient_id, agent_id):
-        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None, start_at, end_at, status, recipient_id, agent_id)
+    def get_event_count_sql(cursor, id, start_at, end_at, status_included, status_excluded, recipient_id, agent_id):
+        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None, start_at, end_at, status_included, status_excluded, recipient_id, agent_id)
 
         query = """--sql
             SELECT
