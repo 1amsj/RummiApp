@@ -76,6 +76,8 @@ class ApiSpecialSqlEvents():
                         'end_at', event.end_at,
                         'arrive_at', event.arrive_at,
                         'description', event.description,
+                        'payer', event.payer_id,
+                        'payer_company', event.payer_company_id,
                         'booking', (
                             SELECT
                                 json_build_object(
@@ -218,7 +220,7 @@ class ApiSpecialSqlEvents():
                     )::jsonb ||
                     (
                         SELECT
-                            json_object_agg(extra.key, extra.data)
+                            json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=event.id
                     )::jsonb) AS json_data
