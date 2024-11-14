@@ -33,11 +33,11 @@ class ApiSpecialSqlEvents():
             where_conditions += ' AND event.end_at <= %s'
             params.append(end_at)
             
-        if status_included is not None and len(status_included) > 0:
+        if len(status_included) > 0:
             where_conditions += ' AND booking.status IN %s'
             params.append(tuple(status_included))
             
-        if status_excluded is not None and len(status_excluded) > 0:
+        if len(status_excluded) > 0:
             where_conditions += ' AND booking.status NOT IN %s'
             params.append(tuple(status_excluded))
             
