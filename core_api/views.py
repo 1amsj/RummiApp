@@ -1183,6 +1183,8 @@ class ManageEventsMixin:
                 query_end_at,
                 query_param_status_included,
                 query_param_status_excluded,
+                query_param_pending_items_included,
+                query_param_pending_items_excluded,
                 query_param_recipient_id,
                 query_param_agent_id,
                 query_field_to_sort,
@@ -1198,6 +1200,8 @@ class ManageEventsMixin:
                     query_end_at,
                     query_param_status_included,
                     query_param_status_excluded,
+                    query_param_pending_items_included,
+                    query_param_pending_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id
                 )

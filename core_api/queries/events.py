@@ -1,7 +1,7 @@
 class ApiSpecialSqlEvents():
     @staticmethod
     def get_event_sql_ct_id(cursor):
-        query = """
+        query = """--sql
             SELECT
                 id
             FROM "django_content_type" content_type
@@ -16,7 +16,20 @@ class ApiSpecialSqlEvents():
         return None
 
     @staticmethod
-    def get_event_sql_where_clause(id, limit, offset, start_at, end_at, status_included, status_excluded, recipient_id, agent_id):
+    def get_event_sql_where_clause(
+        id,
+        limit,
+        offset,
+        parent_ct_id,
+        start_at,
+        end_at,
+        status_included,
+        status_excluded,
+        pending_items_included,
+        pending_items_excluded,
+        recipient_id,
+        agent_id
+    ):
         params = []
         limit_statement = ''
         where_conditions = 'event.is_deleted = FALSE'
@@ -41,6 +54,30 @@ class ApiSpecialSqlEvents():
             where_conditions += ' AND booking.status NOT IN %s'
             params.append(tuple(status_excluded))
             
+        if 'case' in pending_items_included:
+            where_conditions += ' AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+            params.append(parent_ct_id)
+            params.append('claim_number')
+            
+        if 'case' in pending_items_excluded:
+            where_conditions += ' AND EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+            params.append(parent_ct_id)
+            params.append('claim_number')
+            
+        if 'payer' in pending_items_included:
+            where_conditions += ' AND (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
+            params.append(parent_ct_id)
+            params.append('payer_company_type')
+            params.append('clinic')
+            params.append('patient')
+            
+        if 'payer' in pending_items_excluded:
+            where_conditions += ' AND (event.payer_id IS NOT NULL AND event.payer_company_id IS NOT NULL) OR EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
+            params.append(parent_ct_id)
+            params.append('payer_company_type')
+            params.append('clinic')
+            params.append('patient')
+            
         if recipient_id is not None and agent_id is None:
             where_conditions += ' AND recipient.id = %s'
             params.append(recipient_id)
@@ -62,9 +99,37 @@ class ApiSpecialSqlEvents():
         return params, where_conditions, limit_statement
     
     @staticmethod
-    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status_included, status_excluded, recipient_id, agent_id, field_to_sort, order_to_sort):
+    def get_event_sql(
+        cursor,
+        id,
+        limit,
+        offset,
+        start_at,
+        end_at,
+        status_included,
+        status_excluded,
+        pending_items_included,
+        pending_items_excluded,
+        recipient_id,
+        agent_id,
+        field_to_sort,
+        order_to_sort
+    ):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
-        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at, status_included, status_excluded, recipient_id, agent_id)
+        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(
+            id,
+            limit,
+            offset,
+            parent_ct_id,
+            start_at,
+            end_at,
+            status_included,
+            status_excluded,
+            pending_items_included,
+            pending_items_excluded,
+            recipient_id,
+            agent_id
+        )
 
         query = """--sql
             SELECT json_agg(_query_result.json_data) AS result FROM (
@@ -265,8 +330,33 @@ class ApiSpecialSqlEvents():
         return []
     
     @staticmethod
-    def get_event_count_sql(cursor, id, start_at, end_at, status_included, status_excluded, recipient_id, agent_id):
-        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None, start_at, end_at, status_included, status_excluded, recipient_id, agent_id)
+    def get_event_count_sql(
+        cursor,
+        id,
+        start_at,
+        end_at,
+        status_included,
+        status_excluded,
+        pending_items_included,
+        pending_items_excluded,
+        recipient_id,
+        agent_id
+    ):
+        parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
+        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(
+            id,
+            None,
+            None,
+            parent_ct_id,
+            start_at,
+            end_at,
+            status_included,
+            status_excluded,
+            pending_items_included,
+            pending_items_excluded,
+            recipient_id,
+            agent_id
+        )
 
         query = """--sql
             SELECT
