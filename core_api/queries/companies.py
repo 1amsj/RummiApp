@@ -434,7 +434,7 @@ class ApiSpecialSqlCompanies():
                                 ), '[]'::JSON),
                                 'location', COALESCE((
                                     SELECT
-                                        json_agg(json_build_object(
+                                        json_build_object(
                                             'id', locations.id,
                                             'address', locations.address,
                                             'city', locations.city,
@@ -443,10 +443,10 @@ class ApiSpecialSqlCompanies():
                                             'zip', locations.zip,
                                             'is_deleted', locations.is_deleted,
                                             'unit_number', locations.unit_number
-                                        ))
+                                        )
                                     FROM "core_backend_location" locations
                                     WHERE locations.id = users.location_id
-                                ), '[]'::JSON),
+                                ), '{}'::JSON),
                                 'companies', COALESCE((
                                     SELECT
                                         json_agg(json_build_object(
