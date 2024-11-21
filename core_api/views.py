@@ -1135,10 +1135,10 @@ class ManageEventsMixin:
     def get(cls, request, business_name=None, event_id=None):
         query_param_start_at = request.GET.get('start_at', None)
         query_param_end_at = request.GET.get('end_at', None)
-        query_param_status_included = request.GET.get('status_included', None)
-        query_param_status_excluded = request.GET.get('status_excluded', None)
-        query_param_pending_items_included = request.GET.get('pending_items_included', None)
-        query_param_pending_items_excluded = request.GET.get('pending_items_excluded', None)
+        query_param_status_included = request.GET.getlist('status_included', [])
+        query_param_status_excluded = request.GET.getlist('status_excluded', [])
+        query_param_pending_items_included = request.GET.get('pending_items_included', [])
+        query_param_pending_items_excluded = request.GET.get('pending_items_excluded', [])
         query_param_recipient_id = request.GET.get('recipient_id', None)
         query_param_agent_id = request.GET.get('agent_id', None)
         query_param_field_to_sort = request.GET.get('field_to_sort', None)
@@ -1183,6 +1183,8 @@ class ManageEventsMixin:
                 query_end_at,
                 query_param_status_included,
                 query_param_status_excluded,
+                query_param_pending_items_included,
+                query_param_pending_items_excluded,
                 query_param_recipient_id,
                 query_param_agent_id,
                 query_field_to_sort,
@@ -1198,6 +1200,8 @@ class ManageEventsMixin:
                     query_end_at,
                     query_param_status_included,
                     query_param_status_excluded,
+                    query_param_pending_items_included,
+                    query_param_pending_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id
                 )

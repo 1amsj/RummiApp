@@ -1,7 +1,7 @@
 class ApiSpecialSqlEvents():
     @staticmethod
     def get_event_sql_ct_id(cursor):
-        query = """
+        query = """--sql
             SELECT
                 id
             FROM "django_content_type" content_type
@@ -16,7 +16,20 @@ class ApiSpecialSqlEvents():
         return None
 
     @staticmethod
-    def get_event_sql_where_clause(id, limit, offset, start_at, end_at, status, recipient_id, agent_id):
+    def get_event_sql_where_clause(
+        id,
+        limit,
+        offset,
+        parent_ct_id,
+        start_at,
+        end_at,
+        status_included,
+        status_excluded,
+        pending_items_included,
+        pending_items_excluded,
+        recipient_id,
+        agent_id
+    ):
         params = []
         limit_statement = ''
         where_conditions = 'event.is_deleted = FALSE'
@@ -33,9 +46,43 @@ class ApiSpecialSqlEvents():
             where_conditions += ' AND event.end_at <= %s'
             params.append(end_at)
             
-        if status is not None:
-            where_conditions += ' AND booking.status = %s'
-            params.append(status)
+        if len(status_included) > 0:
+            where_conditions += ' AND booking.status IN %s'
+            params.append(tuple(status_included))
+            
+        if len(status_excluded) > 0:
+            where_conditions += ' AND booking.status NOT IN %s'
+            params.append(tuple(status_excluded))
+            
+        if 'case' in pending_items_included:
+            where_conditions += ' AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+            params.append(parent_ct_id)
+            params.append('claim_number')
+            
+        if 'case' in pending_items_excluded:
+            where_conditions += ' AND EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+            params.append(parent_ct_id)
+            params.append('claim_number')
+            
+        if 'payer' in pending_items_included:
+            where_conditions += ' AND (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
+            params.append(parent_ct_id)
+            params.append('payer_company_type')
+            params.append('clinic')
+            params.append('patient')
+            
+        if 'payer' in pending_items_excluded:
+            where_conditions += ' AND (event.payer_id IS NOT NULL AND event.payer_company_id IS NOT NULL) OR EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
+            params.append(parent_ct_id)
+            params.append('payer_company_type')
+            params.append('clinic')
+            params.append('patient')
+
+        if 'interpreter' in pending_items_included:
+            where_conditions += ' AND provider.id IS NULL'
+
+        if 'interpreter' in pending_items_excluded:
+            where_conditions += ' AND provider.id IS NOT NULL'
             
         if recipient_id is not None and agent_id is None:
             where_conditions += ' AND recipient.id = %s'
@@ -58,9 +105,37 @@ class ApiSpecialSqlEvents():
         return params, where_conditions, limit_statement
     
     @staticmethod
-    def get_event_sql(cursor, id, limit, offset, start_at, end_at, status, status_excluded, recipient_id, agent_id, field_to_sort, order_to_sort):
+    def get_event_sql(
+        cursor,
+        id,
+        limit,
+        offset,
+        start_at,
+        end_at,
+        status_included,
+        status_excluded,
+        pending_items_included,
+        pending_items_excluded,
+        recipient_id,
+        agent_id,
+        field_to_sort,
+        order_to_sort
+    ):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
-        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(id, limit, offset, start_at, end_at, status, recipient_id, agent_id)
+        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(
+            id,
+            limit,
+            offset,
+            parent_ct_id,
+            start_at,
+            end_at,
+            status_included,
+            status_excluded,
+            pending_items_included,
+            pending_items_excluded,
+            recipient_id,
+            agent_id
+        )
 
         query = """--sql
             SELECT json_agg(_query_result.json_data) AS result FROM (
@@ -72,6 +147,8 @@ class ApiSpecialSqlEvents():
                         'end_at', event.end_at,
                         'arrive_at', event.arrive_at,
                         'description', event.description,
+                        'payer', event.payer_id,
+                        'payer_company', event.payer_company_id,
                         'booking', (
                             SELECT
                                 json_build_object(
@@ -214,7 +291,7 @@ class ApiSpecialSqlEvents():
                     )::jsonb ||
                     (
                         SELECT
-                            json_object_agg(extra.key, extra.data)
+                            json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=event.id
                     )::jsonb) AS json_data
@@ -259,8 +336,33 @@ class ApiSpecialSqlEvents():
         return []
     
     @staticmethod
-    def get_event_count_sql(cursor, id, start_at, end_at, status, status_excluded, recipient_id, agent_id):
-        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(id, None, None, start_at, end_at, status, recipient_id, agent_id)
+    def get_event_count_sql(
+        cursor,
+        id,
+        start_at,
+        end_at,
+        status_included,
+        status_excluded,
+        pending_items_included,
+        pending_items_excluded,
+        recipient_id,
+        agent_id
+    ):
+        parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
+        params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(
+            id,
+            None,
+            None,
+            parent_ct_id,
+            start_at,
+            end_at,
+            status_included,
+            status_excluded,
+            pending_items_included,
+            pending_items_excluded,
+            recipient_id,
+            agent_id
+        )
 
         query = """--sql
             SELECT
@@ -272,13 +374,13 @@ class ApiSpecialSqlEvents():
                     ON booking_companies.booking_id = booking.id
                 INNER JOIN "core_backend_company" company
                     ON company.id = booking_companies.company_id
-                INNER JOIN "core_backend_booking_services" booking_services
+                LEFT JOIN "core_backend_booking_services" booking_services
                     ON booking_services.booking_id = booking.id
-                INNER JOIN "core_backend_service" service
+                LEFT JOIN "core_backend_service" service
                     ON service.id = booking_services.service_id
-                INNER JOIN "core_backend_provider" provider
+                LEFT JOIN "core_backend_provider" provider
                     ON provider.id = service.provider_id
-                INNER JOIN "core_backend_user" provider_user
+                LEFT JOIN "core_backend_user" provider_user
                     ON provider_user.id = provider.user_id
                 INNER JOIN "core_backend_event_affiliates" event_affiliates
                     ON event_affiliates.event_id = event.id

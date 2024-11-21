@@ -183,7 +183,8 @@ class ApiSpecialSqlServices:
     
     @staticmethod
     def get_service_count_sql(cursor, id, root, source, target):
-        params, where_conditions, _ = ApiSpecialSqlServices.get_service_sql_where_clause(id, None, None, root, source, target)
+        parent_ct_id = ApiSpecialSqlServices.get_service_sql_ct_id(cursor)
+        params, where_conditions, _ = ApiSpecialSqlServices.get_service_sql_where_clause(id, None, None, root, parent_ct_id, source, target)
 
         query = """--sql
             SELECT
