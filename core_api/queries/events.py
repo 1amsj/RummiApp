@@ -65,14 +65,14 @@ class ApiSpecialSqlEvents():
             params.append('claim_number')
             
         if 'payer' in pending_items_included:
-            where_conditions += ' AND (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
+            where_conditions += ' AND (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s OR REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s) )'
             params.append(parent_ct_id)
             params.append('payer_company_type')
             params.append('clinic')
             params.append('patient')
             
         if 'payer' in pending_items_excluded:
-            where_conditions += ' AND (event.payer_id IS NOT NULL AND event.payer_company_id IS NOT NULL) OR EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
+            where_conditions += ' AND (event.payer_id IS NOT NULL AND event.payer_company_id IS NOT NULL) OR EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s OR REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s) )'
             params.append(parent_ct_id)
             params.append('payer_company_type')
             params.append('clinic')
