@@ -63,6 +63,16 @@ class ApiSpecialSqlEvents():
             where_conditions += ' AND EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
             params.append(parent_ct_id)
             params.append('claim_number')
+
+        if 'marked_as_invoiced' in pending_items_included:
+            where_conditions += ' AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+            params.append(parent_ct_id)
+            params.append('marked_as_invoiced')
+            
+        if 'marked_as_invoiced' in pending_items_excluded:
+            where_conditions += ' AND EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+            params.append(parent_ct_id)
+            params.append('marked_as_invoiced')
             
         if 'payer' in pending_items_included:
             where_conditions += ' AND (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
