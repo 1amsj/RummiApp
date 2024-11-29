@@ -196,20 +196,11 @@ class ApiSpecialSqlEvents():
                         'end_at', event.end_at,
                         'arrive_at', event.arrive_at,
                         'description', event.description,
-                        'payer', COALESCE((
-                            SELECT 
-                                json_build_object(
-                                    'id', event.payer_id,
-                                    'first_name', _user.first_name,
-                                    'last_name', _user.last_name,
-                                    'is_payer', true,
-                                    'user_id', _payer.user_id
-                                )
-                            FROM "core_backend_payer" _payer
-                                INNER JOIN "core_backend_user" _user
-                                    ON _user.id = _payer.user_id
-                            WHERE _payer.id = event.payer_id
-                        )),
+                        'payer', COALESCE(( 
+                            json_build_object(
+                                'id', event.payer_id
+                            )
+                        ), '{}'::JSON),
                         'payer_company', COALESCE((
                             SELECT 
                                 json_build_object(
@@ -218,7 +209,7 @@ class ApiSpecialSqlEvents():
                                 )
                             FROM "core_backend_company" _company
                             WHERE _company.id = event.payer_company_id
-                        ), '[]'::JSON),
+                        ), '{}'::JSON),
                         'booking', (
                             SELECT
                                 json_build_object(
@@ -360,18 +351,10 @@ class ApiSpecialSqlEvents():
                             WHERE _event_agents.event_id = event.id
                         ), '[]'::JSON),
                         'requester', COALESCE((
-                            SELECT
-                                json_build_object(
-                                    'id', _requester.id,
-                                    'first_name', _users.first_name,
-                                    'last_name', _users.last_name,
-                                    'user_id', _users.id
-                                )
-                            FROM "core_backend_requester" _requester
-                                INNER JOIN "core_backend_user" _users
-                                    ON _users.id = _requester.user_id
-                            WHERE _requester.id = event.requester_id
-                        ), '[]'::JSON)
+                            json_build_object(
+                                'id', event.requester_id
+                            )
+                        ), '{}'::JSON)
                     )::jsonb ||
                     (
                         SELECT
