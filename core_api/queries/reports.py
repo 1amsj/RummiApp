@@ -23,10 +23,8 @@ class ApiSpecialSqlReports():
         parent_ct_id,
         start_at,
         end_at,
-        status_included,
-        status_excluded,
-        pending_items_included,
-        pending_items_excluded,
+        items_included,
+        items_excluded,
         recipient_id,
         agent_id
     ):
@@ -46,54 +44,6 @@ class ApiSpecialSqlReports():
             where_conditions += ' AND event.end_at <= %s'
             params.append(end_at)
             
-        if len(status_included) > 0:
-            where_conditions += ' AND booking.status IN %s'
-            params.append(tuple(status_included))
-            
-        if len(status_excluded) > 0:
-            where_conditions += ' AND booking.status NOT IN %s'
-            params.append(tuple(status_excluded))
-            
-        if 'case' in pending_items_included:
-            where_conditions += ' AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
-            params.append(parent_ct_id)
-            params.append('claim_number')
-            
-        if 'case' in pending_items_excluded:
-            where_conditions += ' AND EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
-            params.append(parent_ct_id)
-            params.append('claim_number')
-
-        if 'marked_as_invoiced' in pending_items_included:
-            where_conditions += ' AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
-            params.append(parent_ct_id)
-            params.append('marked_as_invoiced')
-            
-        if 'marked_as_invoiced' in pending_items_excluded:
-            where_conditions += ' AND EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
-            params.append(parent_ct_id)
-            params.append('marked_as_invoiced')
-            
-        if 'payer' in pending_items_included:
-            where_conditions += ' AND (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
-            params.append(parent_ct_id)
-            params.append('payer_company_type')
-            params.append('clinic')
-            params.append('patient')
-            
-        if 'payer' in pending_items_excluded:
-            where_conditions += ' AND (event.payer_id IS NOT NULL AND event.payer_company_id IS NOT NULL) OR EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (extra.data::text LIKE %s OR extra.data::text LIKE %s) )'
-            params.append(parent_ct_id)
-            params.append('payer_company_type')
-            params.append('clinic')
-            params.append('patient')
-
-        if 'interpreter' in pending_items_included:
-            where_conditions += ' AND provider.id IS NULL'
-
-        if 'interpreter' in pending_items_excluded:
-            where_conditions += ' AND provider.id IS NOT NULL'
-            
         if recipient_id is not None and agent_id is None:
             where_conditions += ' AND recipient.id = %s'
             params.append(recipient_id)
@@ -106,6 +56,99 @@ class ApiSpecialSqlReports():
             where_conditions += ' AND (recipient.id = %s OR agent.id = %s)'
             params.append(recipient_id)
             params.append(agent_id)
+            
+        if len(items_included) > 0:
+            where_conditions += ' AND ('
+            
+            for index, item in enumerate(items_included):
+                if index > 0:
+                    where_conditions += ' OR'
+
+                if item == 'pending':
+                    where_conditions += ' booking.status = %s'
+                    params.append('pending')
+                
+                if item == 'booked':
+                    where_conditions += ' booking.status = %s'
+                    params.append('booked')
+                    
+                if item == 'authorized':
+                    where_conditions += ' booking.status = %s'
+                    params.append('authorized')
+                    
+                if item == 'override':
+                    where_conditions += ' booking.status = %s'
+                    params.append('override')
+                    
+                if item == 'delivered':
+                    where_conditions += ' booking.status = %s'
+                    params.append('delivered')
+                
+                if item == 'case':
+                    where_conditions += ' NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+                    params.append(parent_ct_id)
+                    params.append('claim_number')
+                    
+                if item == 'payer':
+                    where_conditions += ' (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s OR REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s) )'
+                    params.append(parent_ct_id)
+                    params.append('payer_company_type')
+                    params.append('clinic')
+                    params.append('patient')
+                    
+                if item == 'interpreter':
+                    where_conditions += ' provider.id IS NULL'
+           
+            where_conditions += ' )'
+            
+        if len(items_excluded) > 0:
+            where_conditions += ' AND NOT ('
+            
+            for index, item in enumerate(items_excluded):
+                if index > 0:
+                    where_conditions += ' OR'
+
+                if item == 'pending':
+                    where_conditions += ' booking.status = %s'
+                    params.append('pending')
+                
+                if item == 'booked':
+                    where_conditions += ' booking.status = %s'
+                    params.append('booked')
+                    
+                if item == 'authorized':
+                    where_conditions += ' booking.status = %s'
+                    params.append('authorized')
+                    
+                if item == 'override':
+                    where_conditions += ' booking.status = %s'
+                    params.append('override')
+                    
+                if item == 'delivered':
+                    where_conditions += ' booking.status = %s'
+                    params.append('delivered')
+                
+                if item == 'case':
+                    where_conditions += ' NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+                    params.append(parent_ct_id)
+                    params.append('claim_number')
+                    
+                if item == 'payer':
+                    where_conditions += ' (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s OR REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s) )'
+                    params.append(parent_ct_id)
+                    params.append('payer_company_type')
+                    params.append('clinic')
+                    params.append('patient')
+                    
+                if item == 'interpreter':
+                    where_conditions += ' provider.id IS NULL'
+                    
+                if item == 'marked_as_invoiced':
+                    where_conditions += ' EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
+                    params.append(parent_ct_id)
+                    params.append('marked_as_invoiced')
+            
+            where_conditions += ' )'
 
         if limit is not None and limit > 0 and offset is not None and offset >= 0:
             limit_statement = 'LIMIT %s OFFSET %s'
@@ -122,10 +165,8 @@ class ApiSpecialSqlReports():
         offset,
         start_at,
         end_at,
-        status_included,
-        status_excluded,
-        pending_items_included,
-        pending_items_excluded,
+        items_included,
+        items_excluded,
         recipient_id,
         agent_id,
         field_to_sort,
@@ -139,10 +180,8 @@ class ApiSpecialSqlReports():
             parent_ct_id,
             start_at,
             end_at,
-            status_included,
-            status_excluded,
-            pending_items_included,
-            pending_items_excluded,
+            items_included,
+            items_excluded,
             recipient_id,
             agent_id
         )
@@ -333,10 +372,8 @@ class ApiSpecialSqlReports():
         id,
         start_at,
         end_at,
-        status_included,
-        status_excluded,
-        pending_items_included,
-        pending_items_excluded,
+        items_included,
+        items_excluded,
         recipient_id,
         agent_id
     ):
@@ -348,10 +385,8 @@ class ApiSpecialSqlReports():
             parent_ct_id,
             start_at,
             end_at,
-            status_included,
-            status_excluded,
-            pending_items_included,
-            pending_items_excluded,
+            items_included,
+            items_excluded,
             recipient_id,
             agent_id
         )
