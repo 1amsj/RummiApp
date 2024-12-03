@@ -554,14 +554,14 @@ class ApiSpecialSqlCompanies():
                                                     SELECT
                                                         json_agg(
                                                             json_build_object(
-                                                                'id', _category.id,
-                                                                'description', _category.description,
-                                                                'name', _category.name
+                                                                'id', _categories.id,
+                                                                'description', _categories.description,
+                                                                'name', _categories.name
                                                             )
                                                         )
                                                     FROM "core_backend_serviceroot_categories" _serviceroot_categories
-                                                        INNER JOIN "core_backend_category" _category
-                                                            ON _category.id = _serviceroot_categories.category_id
+                                                        INNER JOIN "core_backend_category" _categories
+                                                            ON _categories.id = _serviceroot_categories.category_id
                                                     WHERE _serviceroot_categories.serviceroot_id = _serviceroot.id
                                                 ), '[]'::JSON)
                                             )
