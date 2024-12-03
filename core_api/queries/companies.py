@@ -1,3 +1,6 @@
+from core_api.queries.rates import ApiSpecialSqlRates
+
+
 class ApiSpecialSqlCompanies():
     
     @staticmethod
@@ -187,7 +190,7 @@ class ApiSpecialSqlCompanies():
 
     @staticmethod
     def get_company_with_roles_sql(cursor, id, name, type, send_method, on_hold, limit, offset):
-        parent_companies_ct_id = ApiSpecialSqlCompanies.get_companies_sql_ct_id(cursor)
+        parent_rate_ct_id = ApiSpecialSqlRates.get_rate_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlCompanies.get_company_sql_where_clause(id, name, type, send_method, on_hold, limit, offset)
 
         query = """--sql
@@ -558,7 +561,7 @@ class ApiSpecialSqlCompanies():
                                 SELECT
                                     json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                                 FROM "core_backend_extra" extra
-                                WHERE extra.parent_ct_id = %s AND extra.parent_id= company.id
+                                WHERE extra.parent_ct_id = %s AND extra.parent_id= _company_rate.id
                             )::jsonb)
                         FROM "core_backend_rate" _company_rate
                         WHERE _company_rate.company_id = company.id
@@ -581,7 +584,7 @@ class ApiSpecialSqlCompanies():
                 ORDER BY company.name, company.id
                 %s
             ) _query_result
-        """ % (parent_companies_ct_id, where_conditions, limit_statement)
+        """ % (parent_rate_ct_id, where_conditions, limit_statement)
 
         cursor.execute(query, params)
         result = cursor.fetchone()
