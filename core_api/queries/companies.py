@@ -546,16 +546,28 @@ class ApiSpecialSqlCompanies():
                                     'bill_no_show_fee', _company_rate.bill_no_show_fee,
                                     'root', COALESCE((
                                         SELECT 
-                                            json_agg(
-                                                json_build_object(
-                                                    'id', _serviceroot.id,
-                                                    'description', _serviceroot.description,
-                                                    'name', _serviceroot.name
-                                                )
+                                            json_build_object(
+                                                'id', _serviceroot.id,
+                                                'description', _serviceroot.description,
+                                                'name', _serviceroot.name,
+                                                'categories', COALESCE((
+                                                    SELECT
+                                                        json_agg(
+                                                            json_build_object(
+                                                                'id', _category.id,
+                                                                'description', _category.description,
+                                                                'name', _category.name
+                                                            )
+                                                        )
+                                                    FROM "core_backend_serviceroot_categories" _serviceroot_categories
+                                                        INNER JOIN "core_backend_category" _category
+                                                            ON _category.id = _serviceroot_categories.category_id
+                                                    WHERE _serviceroot_categories.serviceroot_id = _serviceroot.id
+                                                ), '[]'::JSON)
                                             )
                                         FROM "core_backend_serviceroot" _serviceroot
                                         WHERE _serviceroot.id = _company_rate.root_id
-                                    ), '[]'::JSON)
+                                    ), '{}'::JSON)
                                 )::jsonb ||
                             (
                                 SELECT
