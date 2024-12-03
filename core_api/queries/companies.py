@@ -535,40 +535,39 @@ class ApiSpecialSqlCompanies():
                     ) AS parent_company,
                     COALESCE((
                         SELECT
-                            json_agg(
-                                json_build_object(
-                                    'id', _company_rate.id,
-                                    'bill_amount', _company_rate.bill_amount,
-                                    'bill_rate', _company_rate.bill_rate,
-                                    'bill_rate_type', _company_rate.bill_rate_type,
-                                    'bill_rate_minutes_threshold', _company_rate.bill_rate_minutes_threshold,
-                                    'bill_min_payment', _company_rate.bill_min_payment,
-                                    'bill_no_show_fee', _company_rate.bill_no_show_fee,
-                                    'root', COALESCE((
-                                        SELECT 
-                                            json_build_object(
-                                                'id', _serviceroot.id,
-                                                'description', _serviceroot.description,
-                                                'name', _serviceroot.name,
-                                                'categories', COALESCE((
-                                                    SELECT
-                                                        json_agg(
-                                                            json_build_object(
-                                                                'id', _categories.id,
-                                                                'description', _categories.description,
-                                                                'name', _categories.name
-                                                            )
+                            json_agg(json_build_object(
+                                'id', _company_rate.id,
+                                'bill_amount', _company_rate.bill_amount,
+                                'bill_rate', _company_rate.bill_rate,
+                                'bill_rate_type', _company_rate.bill_rate_type,
+                                'bill_rate_minutes_threshold', _company_rate.bill_rate_minutes_threshold,
+                                'bill_min_payment', _company_rate.bill_min_payment,
+                                'bill_no_show_fee', _company_rate.bill_no_show_fee,
+                                'root', COALESCE((
+                                    SELECT 
+                                        json_build_object(
+                                            'id', _serviceroot.id,
+                                            'description', _serviceroot.description,
+                                            'name', _serviceroot.name,
+                                            'categories', COALESCE((
+                                                SELECT
+                                                    json_agg(
+                                                        json_build_object(
+                                                            'id', _categories.id,
+                                                            'description', _categories.description,
+                                                            'name', _categories.name
                                                         )
-                                                    FROM "core_backend_serviceroot_categories" _serviceroot_categories
-                                                        INNER JOIN "core_backend_category" _categories
-                                                            ON _categories.id = _serviceroot_categories.category_id
-                                                    WHERE _serviceroot_categories.serviceroot_id = _serviceroot.id
-                                                ), '[]'::JSON)
-                                            )
-                                        FROM "core_backend_serviceroot" _serviceroot
-                                        WHERE _serviceroot.id = _company_rate.root_id
-                                    ), '{}'::JSON)
-                                )::jsonb ||
+                                                    )
+                                                FROM "core_backend_serviceroot_categories" _serviceroot_categories
+                                                    INNER JOIN "core_backend_category" _categories
+                                                        ON _categories.id = _serviceroot_categories.category_id
+                                                WHERE _serviceroot_categories.serviceroot_id = _serviceroot.id
+                                            ), '[]'::JSON)
+                                        )
+                                    FROM "core_backend_serviceroot" _serviceroot
+                                    WHERE _serviceroot.id = _company_rate.root_id
+                                ), '{}'::JSON)
+                            )::jsonb ||
                             (
                                 SELECT
                                     json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
