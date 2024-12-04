@@ -223,8 +223,7 @@ class ApiSpecialSqlCompanies():
                         ), '[]'::JSON),
                         'notes', COALESCE((
                             SELECT
-                                json_agg(
-                                    json_build_object(
+                                json_agg(json_build_object(
                                     'id', _company_note.id,
                                     'created_by', _company_note.created_by_id,
                                     'created_by_first_name', _note_created_by.first_name,
@@ -239,8 +238,7 @@ class ApiSpecialSqlCompanies():
                                     'payer', _company_note.payer_id,
                                     'provider', _company_note.provider_id,
                                     'recipient', _company_note.recipient_id
-                                    )
-                                )
+                                ))
                             FROM "core_backend_note" _company_note
                                 INNER JOIN "core_backend_user" _note_created_by
                                     ON _company_note.created_by_id = _note_created_by.id
@@ -591,12 +589,12 @@ class ApiSpecialSqlCompanies():
                             WHERE _company_relationship.company_from_id = company.id AND _company_relationship.is_deleted=FALSE
                         ), '[]'::JSON)
                     )::jsonb ||
-                    (
+                    COALESCE((
                         SELECT
                             json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id = company.id
-                    )::jsonb) AS json_data
+                    )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_company" company
                 WHERE %s
                 ORDER BY company.name, company.id
