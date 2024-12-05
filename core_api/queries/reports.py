@@ -1,162 +1,6 @@
+from core_api.queries.events import ApiSpecialSqlEvents
+
 class ApiSpecialSqlReports():
-    @staticmethod
-    def get_event_report_sql_ct_id(cursor):
-        query = """--sql
-            SELECT
-                id
-            FROM "django_content_type" content_type
-            WHERE app_label = 'core_backend' AND model = 'event'
-        """
-
-        cursor.execute(query, [id])
-        result = cursor.fetchone()
-        if result is not None:
-            return result[0]
-
-        return None
-
-    @staticmethod
-    def get_event_report_sql_where_clause(
-        id,
-        limit,
-        offset,
-        parent_ct_id,
-        start_at,
-        end_at,
-        items_included,
-        items_excluded,
-        recipient_id,
-        agent_id
-    ):
-        params = []
-        limit_statement = ''
-        where_conditions = 'event.is_deleted = FALSE'
-
-        if id is not None:
-            where_conditions += ' AND event.id = %s'
-            params.append(id)
-            
-        if start_at is not None:
-            where_conditions += ' AND event.start_at >= %s'
-            params.append(start_at)
-            
-        if end_at is not None:
-            where_conditions += ' AND event.end_at <= %s'
-            params.append(end_at)
-            
-        if recipient_id is not None and agent_id is None:
-            where_conditions += ' AND recipient.id = %s'
-            params.append(recipient_id)
-        
-        if agent_id is not None and recipient_id is None:
-            where_conditions += ' AND agent.id = %s'
-            params.append(agent_id)
-            
-        if recipient_id is not None and agent_id is not None:
-            where_conditions += ' AND (recipient.id = %s OR agent.id = %s)'
-            params.append(recipient_id)
-            params.append(agent_id)
-            
-        if len(items_included) > 0:
-            where_conditions += ' AND ('
-            
-            for index, item in enumerate(items_included):
-                if index > 0:
-                    where_conditions += ' OR'
-
-                if item == 'pending':
-                    where_conditions += ' booking.status = %s'
-                    params.append('pending')
-                
-                if item == 'booked':
-                    where_conditions += ' booking.status = %s'
-                    params.append('booked')
-                    
-                if item == 'authorized':
-                    where_conditions += ' booking.status = %s'
-                    params.append('authorized')
-                    
-                if item == 'override':
-                    where_conditions += ' booking.status = %s'
-                    params.append('override')
-                    
-                if item == 'delivered':
-                    where_conditions += ' booking.status = %s'
-                    params.append('delivered')
-                
-                if item == 'case':
-                    where_conditions += ' NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
-                    params.append(parent_ct_id)
-                    params.append('claim_number')
-                    
-                if item == 'payer':
-                    where_conditions += ' (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s OR REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s) )'
-                    params.append(parent_ct_id)
-                    params.append('payer_company_type')
-                    params.append('clinic')
-                    params.append('patient')
-                    
-                if item == 'interpreter':
-                    where_conditions += ' provider.id IS NULL'
-           
-            where_conditions += ' )'
-            
-        if len(items_excluded) > 0:
-            where_conditions += ' AND NOT ('
-            
-            for index, item in enumerate(items_excluded):
-                if index > 0:
-                    where_conditions += ' OR'
-
-                if item == 'pending':
-                    where_conditions += ' booking.status = %s'
-                    params.append('pending')
-                
-                if item == 'booked':
-                    where_conditions += ' booking.status = %s'
-                    params.append('booked')
-                    
-                if item == 'authorized':
-                    where_conditions += ' booking.status = %s'
-                    params.append('authorized')
-                    
-                if item == 'override':
-                    where_conditions += ' booking.status = %s'
-                    params.append('override')
-                    
-                if item == 'delivered':
-                    where_conditions += ' booking.status = %s'
-                    params.append('delivered')
-                
-                if item == 'case':
-                    where_conditions += ' NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
-                    params.append(parent_ct_id)
-                    params.append('claim_number')
-                    
-                if item == 'payer':
-                    where_conditions += ' (event.payer_id IS NULL OR event.payer_company_id IS NULL) AND NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND (REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s OR REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') LIKE %s) )'
-                    params.append(parent_ct_id)
-                    params.append('payer_company_type')
-                    params.append('clinic')
-                    params.append('patient')
-                    
-                if item == 'interpreter':
-                    where_conditions += ' provider.id IS NULL'
-                    
-                if item == 'marked_as_invoiced':
-                    where_conditions += ' EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
-                    params.append(parent_ct_id)
-                    params.append('marked_as_invoiced')
-            
-            where_conditions += ' )'
-
-        if limit is not None and limit > 0 and offset is not None and offset >= 0:
-            limit_statement = 'LIMIT %s OFFSET %s'
-            params.append(limit)
-            params.append(offset)
-
-        return params, where_conditions, limit_statement
-    
     @staticmethod
     def get_event_report_sql(
         cursor,
@@ -172,8 +16,8 @@ class ApiSpecialSqlReports():
         field_to_sort,
         order_to_sort
     ):
-        parent_ct_id = ApiSpecialSqlReports.get_event_report_sql_ct_id(cursor)
-        params, where_conditions, limit_statement = ApiSpecialSqlReports.get_event_report_sql_where_clause(
+        parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
+        params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(
             id,
             limit,
             offset,
@@ -188,7 +32,7 @@ class ApiSpecialSqlReports():
 
         query = """--sql
             SELECT json_agg(_query_result.json_data) AS result FROM (
-                SELECT
+                SELECT DISTINCT ON (event.id)
                     (json_build_object(
                         'first_name', _users_affiliates.first_name,
                         'last_name', _users_affiliates.last_name,
@@ -276,12 +120,12 @@ class ApiSpecialSqlReports():
                             WHERE _extra_booking.parent_id = booking.id and _extra_booking.key = 'target_language_alpha3'
                         ))
                     )::jsonb ||
-                    (
+                    COALESCE((
                         SELECT
                             json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=event.id
-                    )::jsonb) AS json_data
+                    )::jsonb, '{}'::jsonb )) AS json_data
                 FROM "core_backend_event" event
                     LEFT JOIN "core_backend_booking" booking
                         ON booking.id = event.booking_id
@@ -354,7 +198,7 @@ class ApiSpecialSqlReports():
                     LEFT JOIN "core_backend_user" _booking_user_operator
                         ON _booking_user_operator.id = _booking_operator.user_id
                 WHERE %s
-                ORDER BY %s %s NULLS LAST, event.id
+                ORDER BY event.id, %s %s NULLS LAST
                 %s
             ) _query_result
         """ % (parent_ct_id, where_conditions, field_to_sort, order_to_sort, limit_statement)
@@ -365,68 +209,3 @@ class ApiSpecialSqlReports():
             return result[0]
 
         return []
-    
-    @staticmethod
-    def get_event_report_count_sql(
-        cursor,
-        id,
-        start_at,
-        end_at,
-        items_included,
-        items_excluded,
-        recipient_id,
-        agent_id
-    ):
-        parent_ct_id = ApiSpecialSqlReports.get_event_report_sql_ct_id(cursor)
-        params, where_conditions, _ = ApiSpecialSqlReports.get_event_report_sql_where_clause(
-            id,
-            None,
-            None,
-            parent_ct_id,
-            start_at,
-            end_at,
-            items_included,
-            items_excluded,
-            recipient_id,
-            agent_id
-        )
-
-        query = """--sql
-            SELECT
-               COUNT(DISTINCT event.id)
-            FROM "core_backend_event" event
-                INNER JOIN "core_backend_booking" booking
-                    ON booking.id = event.booking_id
-                INNER JOIN "core_backend_booking_companies" booking_companies
-                    ON booking_companies.booking_id = booking.id
-                INNER JOIN "core_backend_company" company
-                    ON company.id = booking_companies.company_id
-                LEFT JOIN "core_backend_booking_services" booking_services
-                    ON booking_services.booking_id = booking.id
-                LEFT JOIN "core_backend_service" service
-                    ON service.id = booking_services.service_id
-                LEFT JOIN "core_backend_provider" provider
-                    ON provider.id = service.provider_id
-                LEFT JOIN "core_backend_user" provider_user
-                    ON provider_user.id = provider.user_id
-                INNER JOIN "core_backend_event_affiliates" event_affiliates
-                    ON event_affiliates.event_id = event.id
-                INNER JOIN "core_backend_affiliation" affiliation
-                    ON affiliation.id = event_affiliates.affiliation_id
-                INNER JOIN "core_backend_recipient" recipient
-                    ON recipient.id = affiliation.recipient_id
-                INNER JOIN "core_backend_user" recipient_user
-                    ON recipient_user.id = recipient.user_id
-                INNER JOIN "core_backend_event_agents" event_agents
-                    ON event_agents.event_id = event.id
-                INNER JOIN "core_backend_agent" agent
-                    ON agent.id = event_agents.agent_id
-            WHERE %s
-        """ % where_conditions
-
-        cursor.execute(query, params)
-        result = cursor.fetchone()
-        if len(result) == 1:
-            return result[0]
-
-        return 0
