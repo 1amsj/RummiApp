@@ -501,12 +501,12 @@ class ApiSpecialSqlBookings():
                             WHERE event.booking_id = booking.id
                         ), '[]'::JSON)
                     )::jsonb ||
-                    (
+                    COALESCE((
                         SELECT
                             json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=booking.id
-                    )::jsonb) AS json_data
+                    )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_booking" booking
                     INNER JOIN "core_backend_event" _event 
                         ON booking.id = _event.booking_id
@@ -740,12 +740,12 @@ class ApiSpecialSqlBookings():
                             WHERE event.booking_id = booking.id
                         ), '[]'::JSON)
                     )::jsonb ||
-                    (
+                    COALESCE((
                         SELECT
                             json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=booking.id
-                    )::jsonb) AS json_data
+                    )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_booking" booking
                     INNER JOIN "core_backend_event" _event 
                         ON booking.id = _event.booking_id
@@ -771,8 +771,8 @@ class ApiSpecialSqlBookings():
         return []
     
     @staticmethod
-    def get_booking_count_sql(cursor, id):
-        params, where_conditions, _ = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, None, None)
+    def get_booking_count_sql(cursor, id, parent_id):
+        params, where_conditions, _ = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, None, None, parent_id)
 
         query = """
             SELECT
