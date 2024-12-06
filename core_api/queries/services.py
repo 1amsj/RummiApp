@@ -161,12 +161,12 @@ class ApiSpecialSqlServices:
                             WHERE _provider.id = service.provider_id AND _provider.is_deleted = FALSE
                         ), '{}')
                     )::jsonb ||
-                    (
+                    COALESCE((
                         SELECT
                             json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id = service.id
-                    )::jsonb) AS json_data
+                    )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_service" service
                 WHERE %s
                 ORDER BY id desc NULLS LAST

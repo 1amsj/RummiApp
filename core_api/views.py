@@ -28,6 +28,7 @@ from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
 from core_api.queries.operators import ApiSpecialSqlOperators
+from core_api.queries.reports import ApiSpecialSqlReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
@@ -988,7 +989,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             with connection.cursor() as cursor:
                 count = ApiSpecialSqlBookings.get_booking_count_sql(
                     cursor,
-                    query_booking_id
+                    query_booking_id,
+                    query_param_parent_id
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
@@ -1138,6 +1140,7 @@ class ManageEventsMixin:
         query_param_items_included = request.GET.getlist('items_included[]', [])
         query_param_items_excluded = request.GET.getlist('items_excluded[]', [])
         query_param_recipient_id = request.GET.get('recipient_id', None)
+        query_param_report = request.GET.get('report', False)
         query_param_agent_id = request.GET.get('agent_id', None)
         query_param_field_to_sort = request.GET.get('field_to_sort', None)
         query_param_order_to_sort = request.GET.get('order_to_sort', None)
@@ -1171,21 +1174,38 @@ class ManageEventsMixin:
 
         offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
 
-        with connection.cursor() as cursor:
-            result = ApiSpecialSqlEvents.get_event_sql(
-                cursor,
-                query_event_id,
-                query_param_page_size,
-                offset,
-                query_start_at,
-                query_end_at,
-                query_param_items_included,
-                query_param_items_excluded,
-                query_param_recipient_id,
-                query_param_agent_id,
-                query_field_to_sort,
-                query_order_to_sort
-            )
+        if query_param_report:
+            with connection.cursor() as cursor:
+                result = ApiSpecialSqlReports.get_event_report_sql(
+                    cursor,
+                    query_event_id,
+                    query_param_page_size,
+                    offset,
+                    query_start_at,
+                    query_end_at,
+                    query_param_items_included,
+                    query_param_items_excluded,
+                    query_param_recipient_id,
+                    query_param_agent_id,
+                    query_field_to_sort,
+                    query_order_to_sort
+                )
+        else:
+            with connection.cursor() as cursor:
+                result = ApiSpecialSqlEvents.get_event_sql(
+                    cursor,
+                    query_event_id,
+                    query_param_page_size,
+                    offset,
+                    query_start_at,
+                    query_end_at,
+                    query_param_items_included,
+                    query_param_items_excluded,
+                    query_param_recipient_id,
+                    query_param_agent_id,
+                    query_field_to_sort,
+                    query_order_to_sort
+                )
 
         if query_param_page_size > 0:
             with connection.cursor() as cursor:
