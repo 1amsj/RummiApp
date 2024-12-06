@@ -12,6 +12,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         token['username'] = user.username
         token['email'] = user.email
+        token['first_name'] = user.first_name
         token['roles'] = {
             "operator": user.is_operator,
             "provider": user.is_provider,
