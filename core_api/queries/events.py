@@ -26,7 +26,8 @@ class ApiSpecialSqlEvents():
         items_included,
         items_excluded,
         recipient_id,
-        agent_id
+        agent_id,
+        provider_id
     ):
         params = []
         limit_statement = ''
@@ -56,6 +57,10 @@ class ApiSpecialSqlEvents():
             where_conditions += ' AND (recipient.id = %s OR agent.id = %s)'
             params.append(recipient_id)
             params.append(agent_id)
+            
+        if provider_id is not None:
+            where_conditions += ' AND provider.id = %s'
+            params.append(provider_id)
             
         if len(items_included) > 0:
             where_conditions += ' AND ('
@@ -169,6 +174,7 @@ class ApiSpecialSqlEvents():
         items_excluded,
         recipient_id,
         agent_id,
+        provider_id,
         field_to_sort,
         order_to_sort
     ):
@@ -183,7 +189,8 @@ class ApiSpecialSqlEvents():
             items_included,
             items_excluded,
             recipient_id,
-            agent_id
+            agent_id,
+            provider_id
         )
 
         query = """--sql
@@ -411,7 +418,8 @@ class ApiSpecialSqlEvents():
         items_included,
         items_excluded,
         recipient_id,
-        agent_id
+        agent_id,
+        provider_id
     ):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(
@@ -424,7 +432,8 @@ class ApiSpecialSqlEvents():
             items_included,
             items_excluded,
             recipient_id,
-            agent_id
+            agent_id,
+            provider_id
         )
 
         query = """--sql

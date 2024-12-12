@@ -1140,10 +1140,11 @@ class ManageEventsMixin:
         query_param_items_included = request.GET.getlist('items_included[]', [])
         query_param_items_excluded = request.GET.getlist('items_excluded[]', [])
         query_param_recipient_id = request.GET.get('recipient_id', None)
-        query_param_report = request.GET.get('report', False)
         query_param_agent_id = request.GET.get('agent_id', None)
+        query_param_provider_id = request.GET.get('provider_id', None)
         query_param_field_to_sort = request.GET.get('field_to_sort', None)
         query_param_order_to_sort = request.GET.get('order_to_sort', None)
+        query_param_report = request.GET.get('report', False)
         query_param_id = request.GET.get('id', None)
         
         query_event_id = event_id if event_id is not None else query_param_id
@@ -1187,6 +1188,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
+                    query_param_provider_id,
                     query_field_to_sort,
                     query_order_to_sort
                 )
@@ -1203,6 +1205,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
+                    query_param_provider_id,
                     query_field_to_sort,
                     query_order_to_sort
                 )
@@ -1217,7 +1220,8 @@ class ManageEventsMixin:
                     query_param_items_included,
                     query_param_items_excluded,
                     query_param_recipient_id,
-                    query_param_agent_id
+                    query_param_agent_id,
+                    query_param_provider_id
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
