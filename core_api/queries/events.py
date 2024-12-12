@@ -356,12 +356,12 @@ class ApiSpecialSqlEvents():
                             )
                         ), '{}'::JSON)
                     )::jsonb ||
-                    (
+                    COALESCE((
                         SELECT
                             json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=event.id
-                    )::jsonb) AS json_data
+                    )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_event" event
                     INNER JOIN "core_backend_booking" booking
                         ON booking.id = event.booking_id

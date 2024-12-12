@@ -989,7 +989,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             with connection.cursor() as cursor:
                 count = ApiSpecialSqlBookings.get_booking_count_sql(
                     cursor,
-                    query_booking_id
+                    query_booking_id,
+                    query_param_parent_id
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
