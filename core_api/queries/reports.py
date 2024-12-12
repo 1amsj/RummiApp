@@ -116,50 +116,284 @@ class ApiSpecialSqlReports():
                         'language', COALESCE((
                             _language.name
                         )),
-                        'price', COALESCE((
-                            SELECT
-                                CASE 
-                                    WHEN _reports.end_at IS NOT NULL THEN 
-                                        CASE 
-                                            WHEN 
-                                                MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
-                                                    THEN 
-                                                        CASE
-                                                            WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
-                                                                THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
-                                                            ELSE _rate.bill_min_payment
-                                                        END
-                                            ELSE
-                                                CASE
-                                                    WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
-                                                        THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
-                                                    ELSE _rate.bill_min_payment
-                                                END
-                                        END
-                                    ELSE NULL
-                                END
-                            FROM core_backend_rate _rate
-                                LEFT JOIN core_backend_serviceroot _root
-                                    ON _root.id = _rate.root_id and _root.is_deleted = False
-                                LEFT JOIN "core_backend_extra" _extra_rate
-                                    ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
-                            WHERE 
-                                CASE 
-                                    WHEN _rate.company_id = _payer_companies.id AND REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '') = _language.name THEN TRUE
-                                    WHEN _rate.company_id = _payer_companies.id AND POSITION('Common Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 AND _language.common = TRUE THEN TRUE
-                                    WHEN _rate.company_id = _payer_companies.id AND POSITION('Rare Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 AND _language.common = FALSE THEN TRUE
-                                    WHEN _rate.company_id = _payer_companies.id AND POSITION('All Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 THEN TRUE
-                                    WHEN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '') = _language.name THEN TRUE
-                                    WHEN POSITION('Common Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 AND _language.common = TRUE THEN TRUE
-                                    WHEN POSITION('Rare Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 AND _language.common = FALSE THEN TRUE
-                                    WHEN POSITION('All Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 THEN TRUE
-                                    ELSE FALSE
-                                END
-                            AND _rate.is_deleted = False
-                            AND booking.service_root_id = _rate.root_id
-                            AND (_rate.company_id = _payer_companies.id OR _rate.global_setting_id = 1)
-                            LIMIT 1
-                        ))
+                        'price', COALESCE(
+                            (
+                                SELECT
+                                    CASE 
+                                        WHEN _reports.end_at IS NOT NULL THEN 
+                                            CASE 
+                                                WHEN 
+                                                    MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                        THEN 
+                                                            CASE
+                                                                WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                    THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                                ELSE _rate.bill_min_payment
+                                                            END
+                                                ELSE
+                                                    CASE
+                                                        WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                            THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                        ELSE _rate.bill_min_payment
+                                                    END
+                                            END
+                                        ELSE NULL
+                                    END
+                                FROM core_backend_rate _rate
+                                    LEFT JOIN core_backend_serviceroot _root
+                                        ON _root.id = _rate.root_id and _root.is_deleted = False
+                                    LEFT JOIN "core_backend_extra" _extra_rate
+                                        ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                                WHERE 
+                                    _rate.company_id = _payer_companies.id
+                                    AND REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '') = _language.name
+                                    AND _rate.is_deleted = False
+                                    AND booking.service_root_id = _rate.root_id
+                                LIMIT 1
+                            ),
+                            (
+                                SELECT
+                                    CASE 
+                                        WHEN _reports.end_at IS NOT NULL THEN 
+                                            CASE 
+                                                WHEN 
+                                                    MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                        THEN 
+                                                            CASE
+                                                                WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                    THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                                ELSE _rate.bill_min_payment
+                                                            END
+                                                ELSE
+                                                    CASE
+                                                        WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                            THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                        ELSE _rate.bill_min_payment
+                                                    END
+                                            END
+                                        ELSE NULL
+                                    END
+                                FROM core_backend_rate _rate
+                                    LEFT JOIN core_backend_serviceroot _root
+                                        ON _root.id = _rate.root_id and _root.is_deleted = False
+                                    LEFT JOIN "core_backend_extra" _extra_rate
+                                        ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                                WHERE 
+                                    _rate.company_id = _payer_companies.id
+                                    AND POSITION('Common Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0
+                                    AND _language.common = TRUE
+                                    AND _rate.is_deleted = False
+                                    AND booking.service_root_id = _rate.root_id
+                                LIMIT 1    
+                            ),
+                            (
+                                SELECT
+                                    CASE 
+                                        WHEN _reports.end_at IS NOT NULL THEN 
+                                            CASE 
+                                                WHEN 
+                                                    MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                        THEN 
+                                                            CASE
+                                                                WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                    THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                                ELSE _rate.bill_min_payment
+                                                            END
+                                                ELSE
+                                                    CASE
+                                                        WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                            THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                        ELSE _rate.bill_min_payment
+                                                    END
+                                            END
+                                        ELSE NULL
+                                    END
+                                FROM core_backend_rate _rate
+                                    LEFT JOIN core_backend_serviceroot _root
+                                        ON _root.id = _rate.root_id and _root.is_deleted = False
+                                    LEFT JOIN "core_backend_extra" _extra_rate
+                                        ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                                WHERE 
+                                    _rate.company_id = _payer_companies.id
+                                    AND POSITION('Rare Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0
+                                    AND _language.common = FALSE
+                                    AND _rate.is_deleted = False
+                                    AND booking.service_root_id = _rate.root_id
+                                LIMIT 1
+                            ),
+                            (
+                                SELECT
+                                    CASE 
+                                        WHEN _reports.end_at IS NOT NULL THEN 
+                                            CASE 
+                                                WHEN 
+                                                    MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                        THEN 
+                                                            CASE
+                                                                WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                    THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                                ELSE _rate.bill_min_payment
+                                                            END
+                                                ELSE
+                                                    CASE
+                                                        WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                            THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                        ELSE _rate.bill_min_payment
+                                                    END
+                                            END
+                                        ELSE NULL
+                                    END
+                                FROM core_backend_rate _rate
+                                    LEFT JOIN core_backend_serviceroot _root
+                                        ON _root.id = _rate.root_id and _root.is_deleted = False
+                                    LEFT JOIN "core_backend_extra" _extra_rate
+                                        ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                                WHERE
+                                    _rate.company_id = _payer_companies.id
+                                    AND POSITION('All Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0
+                                    AND _rate.is_deleted = False
+                                    AND booking.service_root_id = _rate.root_id
+                                LIMIT 1
+                            ),
+                            (
+                                SELECT
+                                    CASE 
+                                        WHEN _reports.end_at IS NOT NULL THEN 
+                                            CASE 
+                                                WHEN 
+                                                    MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                        THEN 
+                                                            CASE
+                                                                WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                    THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                                ELSE _rate.bill_min_payment
+                                                            END
+                                                ELSE
+                                                    CASE
+                                                        WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                            THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                        ELSE _rate.bill_min_payment
+                                                    END
+                                            END
+                                        ELSE NULL
+                                    END
+                                FROM core_backend_rate _rate
+                                    LEFT JOIN core_backend_serviceroot _root
+                                        ON _root.id = _rate.root_id and _root.is_deleted = False
+                                    LEFT JOIN "core_backend_extra" _extra_rate
+                                        ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                                WHERE 
+                                    REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '') = _language.name
+                                    AND _rate.is_deleted = False
+                                    AND booking.service_root_id = _rate.root_id
+                                    AND _rate.global_setting_id = 1
+                                LIMIT 1
+                            ),
+                            (
+                                SELECT
+                                    CASE 
+                                        WHEN _reports.end_at IS NOT NULL THEN 
+                                            CASE 
+                                                WHEN 
+                                                    MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                        THEN 
+                                                            CASE
+                                                                WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                    THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                                ELSE _rate.bill_min_payment
+                                                            END
+                                                ELSE
+                                                    CASE
+                                                        WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                            THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                        ELSE _rate.bill_min_payment
+                                                    END
+                                            END
+                                        ELSE NULL
+                                    END
+                                FROM core_backend_rate _rate
+                                    LEFT JOIN core_backend_serviceroot _root
+                                        ON _root.id = _rate.root_id and _root.is_deleted = False
+                                    LEFT JOIN "core_backend_extra" _extra_rate
+                                        ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                                WHERE 
+                                    POSITION('Common Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0
+                                    AND _language.common = TRUE
+                                    AND _rate.is_deleted = False
+                                    AND booking.service_root_id = _rate.root_id
+                                    AND _rate.global_setting_id = 1
+                                LIMIT 1
+                            ),
+                            (
+                                SELECT
+                                    CASE 
+                                        WHEN _reports.end_at IS NOT NULL THEN 
+                                            CASE 
+                                                WHEN 
+                                                    MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                        THEN 
+                                                            CASE
+                                                                WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                    THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                                ELSE _rate.bill_min_payment
+                                                            END
+                                                ELSE
+                                                    CASE
+                                                        WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                            THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                        ELSE _rate.bill_min_payment
+                                                    END
+                                            END
+                                        ELSE NULL
+                                    END
+                                FROM core_backend_rate _rate
+                                    LEFT JOIN core_backend_serviceroot _root
+                                        ON _root.id = _rate.root_id and _root.is_deleted = False
+                                    LEFT JOIN "core_backend_extra" _extra_rate
+                                        ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                                WHERE 
+                                    POSITION('Rare Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 
+                                    AND _language.common = FALSE
+                                    AND _rate.is_deleted = FALSE
+                                    AND booking.service_root_id = _rate.root_id
+                                    AND _rate.global_setting_id = 1
+                                LIMIT 1
+                            ),
+                            (
+                                SELECT
+                                    CASE 
+                                        WHEN _reports.end_at IS NOT NULL THEN 
+                                            CASE 
+                                                WHEN 
+                                                    MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                        THEN 
+                                                            CASE
+                                                                WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                    THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                                ELSE _rate.bill_min_payment
+                                                            END
+                                                ELSE
+                                                    CASE
+                                                        WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                            THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                        ELSE _rate.bill_min_payment
+                                                    END
+                                            END
+                                        ELSE NULL
+                                    END
+                                FROM core_backend_rate _rate
+                                    LEFT JOIN core_backend_serviceroot _root
+                                        ON _root.id = _rate.root_id and _root.is_deleted = False
+                                    LEFT JOIN "core_backend_extra" _extra_rate
+                                        ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                                WHERE 
+                                    POSITION('All Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0
+                                    AND _rate.is_deleted = False
+                                    AND booking.service_root_id = _rate.root_id
+                                    AND _rate.global_setting_id = 1
+                                LIMIT 1
+                            )
+                        )
                     )::jsonb ||
                     COALESCE((
                         SELECT
