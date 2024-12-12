@@ -34,6 +34,7 @@ class ApiSpecialSqlReports():
             SELECT json_agg(_query_result.json_data) AS result FROM (
                 SELECT DISTINCT ON (event.id)
                     (json_build_object(
+                        'id', event.id,
                         'first_name', _users_affiliates.first_name,
                         'last_name', _users_affiliates.last_name,
                         'user_id', _users_affiliates.id,
@@ -70,7 +71,7 @@ class ApiSpecialSqlReports():
                         'type_of_appointment', event.description,
                         'interpreter_first_name', provider_user.first_name,
                         'interpreter_last_name', provider_user.last_name,
-                        'modality', _booking_serviceroot.description,
+                        'modality', _booking_serviceroot.name,
                         'status_report', _reports.status,
                         'operators_first_name', _booking_user_operator.first_name,
                         'operators_last_name', _booking_user_operator.last_name,
@@ -113,11 +114,56 @@ class ApiSpecialSqlReports():
                             WHERE _authorization_events.event_id = event.id
                         ), '[]'::JSON),
                         'language', COALESCE((
-                            SELECT json_agg((
-                                REPLACE(REPLACE(_extra_booking.data::text, '\"', ''), '\\', '')
-                            )) -> 0
-                            FROM "core_backend_extra" _extra_booking
-                            WHERE _extra_booking.parent_id = booking.id and _extra_booking.key = 'target_language_alpha3'
+                            _language.name
+                        )),
+                        'price', COALESCE((
+                            SELECT
+                                CASE 
+                                    WHEN _reports.end_at IS NOT NULL THEN 
+                                        CASE 
+                                            WHEN 
+                                                MOD(FLOOR(EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60), 60) >= _rate.bill_rate_minutes_threshold 
+                                                    THEN 
+                                                        CASE
+                                                            WHEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount >= _rate.bill_min_payment
+                                                                THEN (FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) + 1) * _rate.bill_amount
+                                                            ELSE _rate.bill_min_payment
+                                                        END
+                                            ELSE
+                                                CASE
+                                                    WHEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount >= _rate.bill_min_payment
+                                                        THEN FLOOR((EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60) / 60) * _rate.bill_amount
+                                                    ELSE _rate.bill_min_payment
+                                                END
+                                        END
+                                    ELSE NULL
+                                END
+                            FROM core_backend_rate _rate
+                                LEFT JOIN core_backend_serviceroot _root
+                                    ON _root.id = _rate.root_id and _root.is_deleted = False
+                                LEFT JOIN "core_backend_extra" _extra_rate
+                                    ON _extra_rate.parent_ct_id = 70 AND _extra_rate.parent_id=_rate.id
+                            WHERE 
+                                CASE 
+                                    WHEN _rate.company_id = _payer_companies.id AND REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '') = _language.name THEN TRUE
+                                    WHEN _rate.company_id = _payer_companies.id AND POSITION('Common Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 AND _language.common = TRUE THEN TRUE
+                                    WHEN _rate.company_id = _payer_companies.id AND POSITION('Rare Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 AND _language.common = FALSE THEN TRUE
+                                    WHEN _rate.company_id = _payer_companies.id AND POSITION('All Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 THEN TRUE
+                                    WHEN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '') = _language.name THEN TRUE
+                                    WHEN POSITION('Common Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 AND _language.common = TRUE THEN TRUE
+                                    WHEN POSITION('Rare Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 AND _language.common = FALSE THEN TRUE
+                                    WHEN POSITION('All Languages' IN REPLACE(REPLACE(_extra_rate.data::text, '\"', ''), '\\', '')) > 0 THEN TRUE
+                                    ELSE FALSE
+                                END
+                            AND _rate.is_deleted = False
+                            AND booking.service_root_id = _rate.root_id
+                            LIMIT 1
+                        )),
+                        'test', COALESCE((
+                            CASE 
+                                WHEN _reports.end_at IS NOT NULL THEN EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60
+                                ELSE NULL
+                            END
                         ))
                     )::jsonb ||
                     COALESCE((
@@ -197,6 +243,10 @@ class ApiSpecialSqlReports():
                         ON _booking_operator.id = _booking_operators_bridge.operator_id
                     LEFT JOIN "core_backend_user" _booking_user_operator
                         ON _booking_user_operator.id = _booking_operator.user_id
+                    LEFT JOIN "core_backend_extra" _extra_booking
+                        ON _extra_booking.parent_id = booking.id and _extra_booking.key = 'target_language_alpha3'
+                    LEFT JOIN "core_backend_language" _language
+                        ON _language.alpha3 = REPLACE(REPLACE(_extra_booking.data::text, '\"', ''), '\\', '')
                 WHERE %s
                 ORDER BY event.id, %s %s NULLS LAST
                 %s
