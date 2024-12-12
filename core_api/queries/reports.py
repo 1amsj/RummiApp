@@ -157,13 +157,8 @@ class ApiSpecialSqlReports():
                                 END
                             AND _rate.is_deleted = False
                             AND booking.service_root_id = _rate.root_id
+                            AND (_rate.company_id = _payer_companies.id OR _rate.global_setting_id = 1)
                             LIMIT 1
-                        )),
-                        'test', COALESCE((
-                            CASE 
-                                WHEN _reports.end_at IS NOT NULL THEN EXTRACT(EPOCH FROM (_reports.end_at - _reports.start_at)) / 60
-                                ELSE NULL
-                            END
                         ))
                     )::jsonb ||
                     COALESCE((
