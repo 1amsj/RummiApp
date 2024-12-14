@@ -776,7 +776,7 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     def get(cls, request, business_name=None, provider_id=None):
         testing = request.GET.get('testing', False)
         
-        if testing == True:
+        if testing == "True":
             query_param_field_to_sort = request.GET.get('field_to_sort', None)
             query_param_order_to_sort = request.GET.get('order_to_sort', None)
             query_param_id = request.GET.get('id', None)

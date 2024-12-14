@@ -147,14 +147,28 @@ class ApiSpecialSqlProviders():
                                     WHERE extra.parent_ct_id = %s AND extra.parent_id = _services.id
                                 )::jsonb, '{}'::jsonb))
                             FROM "core_backend_service" _services
-                            WHERE _services.provider_id = provider.id AND _services.is_deleted=FALSE
+                            WHERE _services.provider_id = provider.id AND _services.is_deleted = FALSE
                         )::jsonb, '[]'::jsonb)
                     )::jsonb ||
                     COALESCE((
                         SELECT
+                            jsonb_array_elements(
+                                jsonb_build_array(
+                                    jsonb_build_object(
+                                        'certificate_id', (regexp_replace(extra.data, '[^0-9]', '', 'g'))::int,
+                                        'certificate_number', (regexp_replace(extra.data, '[^0-9]', '', 'g'))::text,
+                                        'expiration_date', (regexp_replace(extra.data, '[^0-9T:-]', '', 'g'))::text
+                                    )
+                                )
+                            )
+                        FROM "core_backend_extra" extra
+                        WHERE extra.parent_ct_id = %s AND extra.parent_id = provider.id AND extra.key = 'certifications'
+                    )::jsonb, '[]'::jsonb) ||
+                    COALESCE((
+                        SELECT
                             json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
-                        WHERE extra.parent_ct_id = %s AND extra.parent_id=provider.id
+                        WHERE extra.parent_ct_id = %s AND extra.parent_id = provider.id AND extra.key != 'certifications'
                     )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_provider" provider
                     INNER JOIN "core_backend_user" provider_user 
@@ -163,7 +177,7 @@ class ApiSpecialSqlProviders():
                 ORDER BY %s %s NULLS LAST, provider.id
                 %s
             ) _query_result
-        """ % (parent_service_ct_id, parent_ct_id, where_conditions, field_to_sort, order_to_sort, limit_statement)
+        """ % (parent_service_ct_id, parent_ct_id, parent_ct_id, where_conditions, field_to_sort, order_to_sort, limit_statement)
 
         cursor.execute(query, params)
         result = cursor.fetchone()
