@@ -60,6 +60,7 @@ class ApiSpecialSqlProviders():
                 SELECT
                     (json_build_object(
                         'id', provider.id,
+                        'user_id', provider.user_id,
                         'is_deleted', provider.is_deleted,
                         'first_name', provider_user.first_name,
                         'last_name', provider_user.last_name,
@@ -154,7 +155,21 @@ class ApiSpecialSqlProviders():
                                 REPLACE(REPLACE(REPLACE(extra.data::text, '\"[', '['), ']\"', ']'), '\\', '')
                             FROM "core_backend_extra" extra
                             WHERE extra.parent_ct_id = %s AND extra.parent_id = provider.id AND extra.key = 'certifications'
-                        )::jsonb, '[]'::jsonb)
+                        )::jsonb, '[]'::jsonb),
+                        'service_areas', COALESCE((
+                            SELECT
+                                json_agg(json_build_object(
+                                    'id', _service_areas.id,
+                                    'is_deleted', _service_areas.is_deleted,
+                                    'country', _service_areas.country,
+                                    'state', _service_areas.state,
+                                    'county', _service_areas.county,
+                                    'city', _service_areas.city,
+                                    'zip', _service_areas.zip
+                                ))
+                            FROM "core_backend_servicearea" _service_areas
+                            WHERE _service_areas.provider_id = provider.id AND _service_areas.is_deleted=FALSE
+                        ), '[]'::json)
                     )::jsonb ||
                     COALESCE((
                         SELECT
