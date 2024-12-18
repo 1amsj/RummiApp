@@ -777,6 +777,8 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
         query_param_field_to_sort = request.GET.get('field_to_sort', None)
         query_param_order_to_sort = request.GET.get('order_to_sort', None)
         query_param_id = request.GET.get('id', None)
+        query_param_first_name = request.GET.get('first_name', None)
+        query_param_last_name = request.GET.get('last_name', None)
         
         query_provider_id = provider_id if provider_id is not None else query_param_id
         query_field_to_sort = 'provider_user.first_name'
@@ -800,6 +802,8 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
                 query_provider_id,
                 query_param_page_size,
                 offset,
+                query_param_first_name,
+                query_param_last_name,
                 query_field_to_sort,
                 query_order_to_sort
             )
@@ -808,7 +812,9 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
             with connection.cursor() as cursor:
                 count = ApiSpecialSqlProviders.get_provider_count_sql(
                     cursor,
-                    query_provider_id
+                    query_provider_id,
+                    query_param_first_name,
+                    query_param_last_name,
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None

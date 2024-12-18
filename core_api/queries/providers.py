@@ -22,6 +22,8 @@ class ApiSpecialSqlProviders():
         id,
         limit,
         offset,
+        first_name,
+        last_name
     ):
         params = []
         limit_statement = ''
@@ -30,6 +32,14 @@ class ApiSpecialSqlProviders():
         if id is not None:
             where_conditions += ' AND provider.id = %s'
             params.append(id)
+            
+        if first_name is not None:
+            where_conditions += ' AND POSITION(%s IN provider_user.first_name) > 0'
+            params.append(first_name)
+            
+        if last_name is not None:
+            where_conditions += ' AND POSITION(%s IN provider_user.last_name) > 0'
+            params.append(last_name)
 
         if limit is not None and limit > 0 and offset is not None and offset >= 0:
             limit_statement = 'LIMIT %s OFFSET %s'
@@ -44,6 +54,8 @@ class ApiSpecialSqlProviders():
         id,
         limit,
         offset,
+        first_name,
+        last_name,
         field_to_sort,
         order_to_sort
     ):
@@ -52,7 +64,9 @@ class ApiSpecialSqlProviders():
         params, where_conditions, limit_statement = ApiSpecialSqlProviders.get_provider_sql_where_clause(
             id,
             limit,
-            offset
+            offset,
+            first_name,
+            last_name
         )
 
         query = """--sql
@@ -178,7 +192,7 @@ class ApiSpecialSqlProviders():
                         WHERE extra.parent_ct_id = %s AND extra.parent_id = provider.id AND extra.key != 'certifications'
                     )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_provider" provider
-                    INNER JOIN "core_backend_user" provider_user 
+                    INNER JOIN "core_backend_user" provider_user
                         ON provider.user_id = provider_user.id
                 WHERE %s
                 ORDER BY %s %s NULLS LAST, provider.id
@@ -197,17 +211,23 @@ class ApiSpecialSqlProviders():
     def get_provider_count_sql(
         cursor,
         id,
+        first_name,
+        last_name
     ):
         params, where_conditions, _ = ApiSpecialSqlProviders.get_provider_sql_where_clause(
             id,
             None,
             None,
+            first_name,
+            last_name
         )
 
         query = """--sql
             SELECT
                COUNT(DISTINCT provider.id)
             FROM "core_backend_provider" provider
+                INNER JOIN "core_backend_user" provider_user
+                    ON provider.user_id = provider_user.id
             WHERE %s
         """ % where_conditions
 
