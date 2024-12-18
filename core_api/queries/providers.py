@@ -148,22 +148,14 @@ class ApiSpecialSqlProviders():
                                 )::jsonb, '{}'::jsonb))
                             FROM "core_backend_service" _services
                             WHERE _services.provider_id = provider.id AND _services.is_deleted = FALSE
+                        )::jsonb, '[]'::jsonb),
+                        'certifications', COALESCE((
+                            SELECT
+                                REPLACE(REPLACE(REPLACE(extra.data::text, '\"[', '['), ']\"', ']'), '\\', '')
+                            FROM "core_backend_extra" extra
+                            WHERE extra.parent_ct_id = %s AND extra.parent_id = provider.id AND extra.key = 'certifications'
                         )::jsonb, '[]'::jsonb)
                     )::jsonb ||
-                    COALESCE((
-                        SELECT
-                            jsonb_array_elements(
-                                jsonb_build_array(
-                                    jsonb_build_object(
-                                        'certificate_id', (regexp_replace(extra.data, '[^0-9]', '', 'g'))::int,
-                                        'certificate_number', (regexp_replace(extra.data, '[^0-9]', '', 'g'))::text,
-                                        'expiration_date', (regexp_replace(extra.data, '[^0-9T:-]', '', 'g'))::text
-                                    )
-                                )
-                            )
-                        FROM "core_backend_extra" extra
-                        WHERE extra.parent_ct_id = %s AND extra.parent_id = provider.id AND extra.key = 'certifications'
-                    )::jsonb, '[]'::jsonb) ||
                     COALESCE((
                         SELECT
                             json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
