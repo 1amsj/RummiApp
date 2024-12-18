@@ -89,6 +89,10 @@ class ApiSpecialSqlEvents():
                     where_conditions += ' booking.status = %s'
                     params.append('delivered')
                 
+                if item == 'closed':
+                    where_conditions += ' booking.status = %s'
+                    params.append('closed')
+                
                 if item == 'case':
                     where_conditions += ' NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
                     params.append(parent_ct_id)
@@ -132,6 +136,10 @@ class ApiSpecialSqlEvents():
                 if item == 'delivered':
                     where_conditions += ' booking.status = %s'
                     params.append('delivered')
+                    
+                if item == 'closed':
+                    where_conditions += ' booking.status = %s'
+                    params.append('closed')
                 
                 if item == 'case':
                     where_conditions += ' NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
