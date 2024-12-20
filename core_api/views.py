@@ -28,6 +28,7 @@ from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
 from core_api.queries.operators import ApiSpecialSqlOperators
+from core_api.queries.reports import ApiSpecialSqlReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
@@ -967,19 +968,29 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
 
         with connection.cursor() as cursor:
-            result = ApiSpecialSqlBookings.get_booking_sql(
-                cursor,
-                query_booking_id,
-                query_param_page_size,
-                offset,
-                query_param_parent_id
-            )
+            if query_param_parent_id is None:
+                result = ApiSpecialSqlBookings.get_booking_sql(
+                    cursor,
+                    query_booking_id,
+                    query_param_page_size,
+                    offset,
+                    query_param_parent_id
+                )
+            else:
+                result = ApiSpecialSqlBookings.get_bookings_sql(
+                    cursor,
+                    query_booking_id,
+                    query_param_page_size,
+                    offset,
+                    query_param_parent_id
+                )
 
         if query_param_page_size > 0:
             with connection.cursor() as cursor:
                 count = ApiSpecialSqlBookings.get_booking_count_sql(
                     cursor,
-                    query_booking_id
+                    query_booking_id,
+                    query_param_parent_id
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
@@ -1016,8 +1027,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         
         booking = Booking.objects.get(id=booking_id)
         
-
-        if event_datalist[-1].__contains__('authorizations'):
+        if event_datalist[0]['payer_company_type'] == 'noPayer':
+            booking.status = "closed"
+        
+        elif event_datalist[-1].__contains__('authorizations'):
             def representation_services(repr):
                     authorization = Authorization.objects.get(id=repr)
                     return authorization.status
@@ -1073,7 +1086,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         company_type_validation = validator_type(event_datalist)
         company_type_short_validation = validator_short_type(event_datalist)
 
-        if event_datalist[-1]['_report_datalist'][-1]['status'] == 'COMPLETED' \
+        if event_datalist[0]['payer_company_type'] == 'noPayer':
+            booking.status = "closed"
+        
+        elif event_datalist[-1]['_report_datalist'][-1]['status'] == 'COMPLETED' \
         and company_type_validation and validator_claim_number(event_datalist) is not None \
         and booking.services.exists() == True:
             booking.status = "delivered"
@@ -1126,16 +1142,32 @@ class ManageEventsMixin:
     def get(cls, request, business_name=None, event_id=None):
         query_param_start_at = request.GET.get('start_at', None)
         query_param_end_at = request.GET.get('end_at', None)
-        query_param_status_included = request.GET.get('status_included', None)
-        query_param_status_excluded = request.GET.get('status_excluded', None)
+        query_param_items_included = request.GET.getlist('items_included[]', [])
+        query_param_items_excluded = request.GET.getlist('items_excluded[]', [])
         query_param_recipient_id = request.GET.get('recipient_id', None)
         query_param_agent_id = request.GET.get('agent_id', None)
+        query_param_provider_id = request.GET.get('provider_id', None)
+        query_param_field_to_sort = request.GET.get('field_to_sort', None)
+        query_param_order_to_sort = request.GET.get('order_to_sort', None)
+        query_param_report = request.GET.get('report', False)
         query_param_id = request.GET.get('id', None)
         
         query_event_id = event_id if event_id is not None else query_param_id
         query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
         query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
-
+        query_field_to_sort = 'event.start_at'
+        query_order_to_sort = 'ASC' if query_param_order_to_sort == 'asc' else 'DESC'
+        
+        if query_param_field_to_sort is not None:
+            if query_param_field_to_sort == 'booking__services__provider__user__first_name':
+                query_field_to_sort = 'provider_user.first_name'
+            elif query_param_field_to_sort == 'booking__public_id':
+                query_field_to_sort = 'booking.public_id'
+            elif query_param_field_to_sort == 'affiliates__recipient__user__first_name':
+                query_field_to_sort = 'recipient_user.first_name'
+            elif query_param_field_to_sort == 'booking__companies__name':
+                query_field_to_sort = 'company.name'
+            
         try:
             query_param_page_size = int(request.GET.get('page_size', '-1'))
         except:
@@ -1148,19 +1180,40 @@ class ManageEventsMixin:
 
         offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
 
-        with connection.cursor() as cursor:
-            result = ApiSpecialSqlEvents.get_event_sql(
-                cursor,
-                query_event_id,
-                query_param_page_size,
-                offset,
-                query_start_at,
-                query_end_at,
-                query_param_status_included,
-                query_param_status_excluded,
-                query_param_recipient_id,
-                query_param_agent_id
-            )
+        if query_param_report:
+            with connection.cursor() as cursor:
+                result = ApiSpecialSqlReports.get_event_report_sql(
+                    cursor,
+                    query_event_id,
+                    query_param_page_size,
+                    offset,
+                    query_start_at,
+                    query_end_at,
+                    query_param_items_included,
+                    query_param_items_excluded,
+                    query_param_recipient_id,
+                    query_param_agent_id,
+                    query_param_provider_id,
+                    query_field_to_sort,
+                    query_order_to_sort
+                )
+        else:
+            with connection.cursor() as cursor:
+                result = ApiSpecialSqlEvents.get_event_sql(
+                    cursor,
+                    query_event_id,
+                    query_param_page_size,
+                    offset,
+                    query_start_at,
+                    query_end_at,
+                    query_param_items_included,
+                    query_param_items_excluded,
+                    query_param_recipient_id,
+                    query_param_agent_id,
+                    query_param_provider_id,
+                    query_field_to_sort,
+                    query_order_to_sort
+                )
 
         if query_param_page_size > 0:
             with connection.cursor() as cursor:
@@ -1169,10 +1222,11 @@ class ManageEventsMixin:
                     query_event_id,
                     query_start_at,
                     query_end_at,
-                    query_param_status_included,
-                    query_param_status_excluded,
+                    query_param_items_included,
+                    query_param_items_excluded,
                     query_param_recipient_id,
-                    query_param_agent_id
+                    query_param_agent_id,
+                    query_param_provider_id
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
@@ -1551,45 +1605,67 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
     @classmethod
     @expect_does_not_exist(Service)
     def get(cls, request, service_id=None):
-
         query_params_source = request.GET.get('source_language_alpha3')
         query_params_target = request.GET.get('target_language_alpha3')
         query_params_root = request.GET.get('root.id')
+        query_param_id = request.GET.get('id', None)
         
+        query_service_id = service_id if service_id is not None else query_param_id
+        
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
+
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
+
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+
         with connection.cursor() as cursor:
+            result = ApiSpecialSqlServices.get_service_sql(
+                cursor,
+                query_service_id,
+                query_param_page_size,
+                offset,
+                query_params_root,
+                query_params_source,
+                query_params_target
+            )
+
+        if query_param_page_size > 0:
+            with connection.cursor() as cursor:
+                count = ApiSpecialSqlServices.get_service_count_sql(
+                    cursor,
+                    query_service_id,
+                    query_param_page_size,
+                    offset,
+                    query_params_root,
+                    query_params_source,
+                    query_params_target
+                )
+
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
+
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
+
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
             
-            if service_id:
-                    service = ApiSpecialSqlServices.get_services_sql(
-                        cursor, 
-                        query_params_target, 
-                        query_params_source, 
-                        query_params_root, 
-                        service_id
-                    )
-                    
-                    services = service[0]
-                    
-            elif query_params_target is not None and query_params_source is not None:
-                with connection.cursor() as cursor:
-                    services = ApiSpecialSqlServices.get_services_sql(
-                        cursor,
-                        query_params_target, 
-                        query_params_source, 
-                        query_params_root, 
-                        service_id
-                    )
-                    
-            else:
-                with connection.cursor() as cursor:
-                    services = ApiSpecialSqlServices.get_services_sql(
-                        cursor,
-                        query_params_target, 
-                        query_params_source, 
-                        query_params_root, 
-                        service_id
-                    )
-            
-        return Response(services[0])
+        if (query_service_id is not None):
+            return Response(result[0])
+        
+        return Response(result)
 
     @staticmethod
     @transaction.atomic
@@ -1736,26 +1812,17 @@ class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSe
     # @expect_does_not_exist(Authorization)
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, authorization_id=None):
-        if authorization_id:
         
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, None))
-                result = cursor.fetchone()[0][0]
-                return Response(result)
-
         query_params = request.GET.get('event_id', None)
-        
-        if query_params is not None:
-            with connection.cursor() as cursor:
-                cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, query_params))
-                result = cursor.fetchone()[0]
-                return Response(result)
-
-    
+            
         with connection.cursor() as cursor:
-            cursor.execute(ApiSpecialSqlAuthorizations.get_authorizations_sql(authorization_id, None))
-            result = cursor.fetchone()[0]
-            return Response(result)
+            result = ApiSpecialSqlAuthorizations.get_authorizations_sql(
+                cursor, 
+                authorization_id, 
+                query_params
+            )
+            
+        return Response(result)
 
     @staticmethod
     @transaction.atomic

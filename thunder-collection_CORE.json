@@ -1,0 +1,369 @@
+{
+    "clientName": "Thunder Client",
+    "collectionName": "CORE",
+    "collectionId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+    "dateExported": "2024-12-12T23:04:17.152Z",
+    "version": "1.2",
+    "folders": [
+        {
+            "_id": "47cd616c-4fde-425e-9f9d-b95d269862b7",
+            "name": "API",
+            "containerId": "",
+            "created": "2024-12-11T19:46:30.849Z",
+            "sortNum": 10000
+        },
+        {
+            "_id": "7cadfc38-b60b-4019-a0d5-963400b55a00",
+            "name": "Bookings",
+            "containerId": "",
+            "created": "2024-11-20T15:19:48.372Z",
+            "sortNum": 20000
+        },
+        {
+            "_id": "4f233af4-e565-4cdf-88d8-f40dbfcecabf",
+            "name": "Companies",
+            "containerId": "",
+            "created": "2024-11-20T15:20:15.989Z",
+            "sortNum": 25000
+        },
+        {
+            "_id": "e6760104-73c7-4c7a-97f8-25fad537e6d6",
+            "name": "Events",
+            "containerId": "",
+            "created": "2024-11-20T15:20:08.876Z",
+            "sortNum": 30000
+        },
+        {
+            "_id": "529ab2c5-d8fb-4d5d-a1fb-55fb249bdf59",
+            "name": "Providers",
+            "containerId": "",
+            "created": "2024-12-11T19:28:37.300Z",
+            "sortNum": 50000
+        }
+    ],
+    "requests": [
+        {
+            "_id": "94522fd4-b50d-45a2-b1f0-a1c8b96c946a",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "e6760104-73c7-4c7a-97f8-25fad537e6d6",
+            "name": "Event",
+            "url": "localhost:8000/api/v1/events/4293",
+            "method": "GET",
+            "sortNum": 10000,
+            "created": "2024-09-11T18:33:03.825Z",
+            "modified": "2024-12-12T23:02:54.699Z",
+            "headers": []
+        },
+        {
+            "_id": "93f9ad8e-f357-4e5b-8441-94211d63891d",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "7cadfc38-b60b-4019-a0d5-963400b55a00",
+            "name": "Booking",
+            "url": "localhost:8000/api/v1/bookings/7132",
+            "method": "GET",
+            "sortNum": 10000,
+            "created": "2024-11-20T15:19:51.524Z",
+            "modified": "2024-12-12T23:03:06.815Z",
+            "headers": []
+        },
+        {
+            "_id": "ac975285-81f3-45ef-98a8-2404d96c6452",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "e6760104-73c7-4c7a-97f8-25fad537e6d6",
+            "name": "Events",
+            "url": "localhost:8000/api/v1/events/?provider_id=12&page=1&page_size=25",
+            "method": "GET",
+            "sortNum": 20000,
+            "created": "2024-09-12T18:54:56.668Z",
+            "modified": "2024-12-12T23:02:50.991Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "start_at",
+                    "value": "15/09/2024",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "end_at",
+                    "value": "19/09/2024",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "recipient_id",
+                    "value": "403",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "agent_id",
+                    "value": "26",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "provider_id",
+                    "value": "12",
+                    "isPath": false
+                },
+                {
+                    "name": "page",
+                    "value": "1",
+                    "isPath": false
+                },
+                {
+                    "name": "page_size",
+                    "value": "25",
+                    "isPath": false
+                },
+                {
+                    "name": "items_included[]",
+                    "value": "pending",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_included[]",
+                    "value": "booked",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_included[]",
+                    "value": "override",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_included[]",
+                    "value": "authorized",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_included[]",
+                    "value": "delivered",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_included[]",
+                    "value": "case",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_included[]",
+                    "value": "payer",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_included[]",
+                    "value": "interpreter",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_excluded[]",
+                    "value": "pending",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_excluded[]",
+                    "value": "booked",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_excluded[]",
+                    "value": "override",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_excluded[]",
+                    "value": "authorized",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_excluded[]",
+                    "value": "delivered",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_excluded[]",
+                    "value": "case",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_excluded[]",
+                    "value": "payer",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "items_excluded[]",
+                    "value": "interpreter",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "field_to_sort",
+                    "value": "start_at",
+                    "isDisabled": true,
+                    "isPath": false
+                },
+                {
+                    "name": "order_to_sort",
+                    "value": "desc",
+                    "isDisabled": true,
+                    "isPath": false
+                }
+            ]
+        },
+        {
+            "_id": "8f0202b3-4316-4d20-a86b-ee521ae60fbb",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "7cadfc38-b60b-4019-a0d5-963400b55a00",
+            "name": "Bookings",
+            "url": "localhost:8000/api/v1/bookings/interpretation/?page=1&page_size=25",
+            "method": "GET",
+            "sortNum": 20000,
+            "created": "2024-11-20T15:19:52.608Z",
+            "modified": "2024-12-12T23:03:11.383Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "page",
+                    "value": "1",
+                    "isPath": false
+                },
+                {
+                    "name": "page_size",
+                    "value": "25",
+                    "isPath": false
+                }
+            ]
+        },
+        {
+            "_id": "992bcc6a-c7f8-454d-9d54-b9f7a6eaa3ab",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "4f233af4-e565-4cdf-88d8-f40dbfcecabf",
+            "name": "CompanyWithRoles",
+            "url": "localhost:8000/api/v1/companies/106/?_include_roles=true",
+            "method": "GET",
+            "sortNum": 20000,
+            "created": "2024-11-20T15:20:19.446Z",
+            "modified": "2024-12-12T23:03:19.553Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "_include_roles",
+                    "value": "true",
+                    "isPath": false
+                }
+            ]
+        },
+        {
+            "_id": "d3600f08-66cc-442a-bfae-ea62ef595cd8",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "4f233af4-e565-4cdf-88d8-f40dbfcecabf",
+            "name": "CompaniesWithRoles",
+            "url": "localhost:8000/api/v1/companies/?_include_roles=true&page=1&page_size=25",
+            "method": "GET",
+            "sortNum": 30000,
+            "created": "2024-12-04T22:01:00.998Z",
+            "modified": "2024-12-12T23:03:23.700Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "_include_roles",
+                    "value": "true",
+                    "isPath": false
+                },
+                {
+                    "name": "page",
+                    "value": "1",
+                    "isPath": false
+                },
+                {
+                    "name": "page_size",
+                    "value": "25",
+                    "isPath": false
+                }
+            ]
+        },
+        {
+            "_id": "503fb74c-d8ce-4357-8451-de0c301af258",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "529ab2c5-d8fb-4d5d-a1fb-55fb249bdf59",
+            "name": "Provider",
+            "url": "http://localhost:8000/api/v1/providers/3?testing=True",
+            "method": "GET",
+            "sortNum": 40000,
+            "created": "2024-12-11T19:28:44.289Z",
+            "modified": "2024-12-12T23:02:46.315Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "testing",
+                    "value": "True",
+                    "isPath": false
+                }
+            ]
+        },
+        {
+            "_id": "6eeaf9cd-9e31-4af3-ad29-c99536efe83e",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "529ab2c5-d8fb-4d5d-a1fb-55fb249bdf59",
+            "name": "Providers",
+            "url": "http://localhost:8000/api/v1/providers/interpretation/?page=1&page_size=25&testing=True",
+            "method": "GET",
+            "sortNum": 50000,
+            "created": "2024-12-11T19:28:58.248Z",
+            "modified": "2024-12-12T23:02:42.014Z",
+            "headers": [],
+            "params": [
+                {
+                    "name": "page",
+                    "value": "1",
+                    "isPath": false
+                },
+                {
+                    "name": "page_size",
+                    "value": "25",
+                    "isPath": false
+                },
+                {
+                    "name": "testing",
+                    "value": "True",
+                    "isPath": false
+                }
+            ]
+        },
+        {
+            "_id": "42b95adb-39ed-415e-935f-599a30aad30f",
+            "colId": "fc4f4ac2-6bcb-4145-8b6d-a9bcc2b33e32",
+            "containerId": "47cd616c-4fde-425e-9f9d-b95d269862b7",
+            "name": "Token",
+            "url": "http://localhost:8000/api/v1/token/",
+            "method": "POST",
+            "sortNum": 60000,
+            "created": "2024-12-11T19:46:38.929Z",
+            "modified": "2024-12-12T23:03:01.984Z",
+            "headers": [],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"username\": \"\",\n  \"password\": \"\"\n}",
+                "form": []
+            }
+        }
+    ],
+    "ref": "zcM3FwbY_k9ngxSH4fjMMagPcI7fLms4h2GbCyZzqgARwIj7uixxZOUDcly5Xq5vceerJ6PLYxKPwSe-0QjwbQ"
+}
