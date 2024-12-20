@@ -255,6 +255,22 @@ class ApiSpecialSqlBookings():
                                 FROM "core_backend_booking" booking_children
                                 WHERE booking_children.parent_id = booking.id
                         ), '[]'::JSON),
+                        'notes', COALESCE((
+                            SELECT
+                                json_agg(json_build_object(
+                                    'id', note.id,
+                                    'created_at', note.created_at,
+                                    'last_updated_at', note.last_updated_at,
+                                    'created_by', user_note.id,
+                                    'created_by_first_name', user_note.first_name,
+                                    'created_by_last_name', user_note.last_name,
+                                    'text', note.text
+                                ))
+                                FROM "core_backend_note" note
+                                    LEFT JOIN "core_backend_user" user_note
+                                        ON user_note.id = note.created_by_id
+                                WHERE note.booking_id = booking.id
+                        ), '[]'::JSON),
                         'events', COALESCE((
                             SELECT
                                 json_agg(json_build_object(

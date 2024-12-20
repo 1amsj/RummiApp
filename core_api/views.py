@@ -1068,8 +1068,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         
         booking = Booking.objects.get(id=booking_id)
         
-
-        if event_datalist[-1].__contains__('authorizations'):
+        if event_datalist[0]['payer_company_type'] == 'noPayer':
+            booking.status = "closed"
+        
+        elif event_datalist[-1].__contains__('authorizations'):
             def representation_services(repr):
                     authorization = Authorization.objects.get(id=repr)
                     return authorization.status
@@ -1125,7 +1127,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         company_type_validation = validator_type(event_datalist)
         company_type_short_validation = validator_short_type(event_datalist)
 
-        if event_datalist[-1]['_report_datalist'][-1]['status'] == 'COMPLETED' \
+        if event_datalist[0]['payer_company_type'] == 'noPayer':
+            booking.status = "closed"
+        
+        elif event_datalist[-1]['_report_datalist'][-1]['status'] == 'COMPLETED' \
         and company_type_validation and validator_claim_number(event_datalist) is not None \
         and booking.services.exists() == True:
             booking.status = "delivered"
