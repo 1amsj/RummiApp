@@ -28,6 +28,7 @@ from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
 from core_api.queries.operators import ApiSpecialSqlOperators
+from core_api.queries.providers import ApiSpecialSqlProviders
 from core_api.queries.reports import ApiSpecialSqlReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
@@ -773,28 +774,68 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
     @classmethod
     @expect_does_not_exist(Provider)
     def get(cls, request, business_name=None, provider_id=None):
-        if provider_id:
-            provider = Provider.objects.all().not_deleted('user').get(id=provider_id)
-            serialized = ProviderSerializer(provider)
-            return Response(serialized.data)
+        query_param_field_to_sort = request.GET.get('field_to_sort', None)
+        query_param_order_to_sort = request.GET.get('order_to_sort', None)
+        query_param_id = request.GET.get('id', None)
+        query_param_first_name = request.GET.get('first_name', None)
+        query_param_last_name = request.GET.get('last_name', None)
+        
+        query_provider_id = provider_id if provider_id is not None else query_param_id
+        query_field_to_sort = 'provider_user.first_name'
+        query_order_to_sort = 'DESC' if query_param_order_to_sort == 'asc' else 'ASC'
+            
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
 
-        query_params = prepare_query_params(request.GET)
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
 
-        queryset = ProviderSerializer.get_default_queryset()
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+        
+        with connection.cursor() as cursor:
+            result = ApiSpecialSqlProviders.get_provider_sql(
+                cursor,
+                query_provider_id,
+                query_param_page_size,
+                offset,
+                query_param_first_name,
+                query_param_last_name,
+                query_field_to_sort,
+                query_order_to_sort
+            )
 
-        if 'page' in request.GET or 'page_size' in request.GET:
-            queryset = queryset.order_by('user__first_name')
+        if query_param_page_size > 0:
+            with connection.cursor() as cursor:
+                count = ApiSpecialSqlProviders.get_provider_count_sql(
+                    cursor,
+                    query_provider_id,
+                    query_param_first_name,
+                    query_param_last_name,
+                )
 
-            # Apply pagination
-            paginator = cls.pagination_class()
-            paginated_queryset = paginator.paginate_queryset(queryset, request)
-            serialized = ProviderSerializer(paginated_queryset, many=True)
-            return paginator.get_paginated_response(serialized.data)
-        else:
-            # No pagination parameters, return all results
-            queryset = cls.apply_filters(queryset, query_params)
-            serialized = ProviderSerializer(queryset, many=True)
-            return Response(serialized.data)
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
+
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
+
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
+            
+        if (query_provider_id is not None):
+            return Response(result[0])
+        
+        return Response(result)
 
     @staticmethod
     @transaction.atomic
