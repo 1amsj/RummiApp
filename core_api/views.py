@@ -1058,6 +1058,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request, business_name):
+        target_language_alpha3 = request.data.get('target_language_alpha3')
         group_booking = request.data.get('group_booking', None)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
         offer_datalist = request.data.pop(ApiSpecialKeys.OFFER_DATALIST, [])
@@ -1108,6 +1109,26 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             booking_id=booking_id,
         )
 
+        event = Event.objects.get(booking__id=booking_id)
+
+        language = Language.objects.get(alpha3=target_language_alpha3)
+
+        def sended_email(event, language, booking):
+            print('REQUEST',
+                  language.name, 
+                  event.agents.all()[0].user.first_name,
+                  event.affiliates.all()[0].recipient.user.first_name, 
+                  event.affiliates.all()[0].recipient.user.date_of_birth, 
+                  event.requester.all()[0].user.first_name, 
+                  event.start_at,
+                  booking.public_id,
+                  booking.service_root.all()[0].category.name,
+                  booking.service_root.all()[0].category.description,
+                  booking.companies.all()[0].name,
+                  booking.companies.all()[0].location.address
+            )
+
+        sended_email(event, language, booking)
 
         return Response({
             "booking_id": booking_id,
