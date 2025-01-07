@@ -4,6 +4,7 @@ from typing import Type, Union
 from django.db import connection, models, transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
+from django.template.loader import render_to_string
 import pytz
 from rest_framework import generics, serializers, status
 from rest_framework.authentication import BasicAuthentication
@@ -214,6 +215,37 @@ def search_bookings(request):
     queryset = queryset.values('id','events__affiliates__recipient__user__first_name', 'events__affiliates__recipient__user__last_name', 'events__affiliates__recipient__user__date_of_birth', 'events__arrive_at', 'events__id', 'public_id')
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.__dict__['instance'])
+
+def sended_email(event, language, booking):
+    print(event.requester.user.contacts.all())
+    html_content = render_to_string("create_booking_advise.html", {
+        'language': language.name,
+        'agent': f"{event.agents.all()[0].user.first_name} {event.agents.all()[0].user.last_name}",
+        'patient': f"{event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name}", 
+        'dob': event.affiliates.all()[0].recipient.user.date_of_birth, 
+        'requester': f"{event.requester.user.first_name} {event.requester.user.last_name}", 
+        'datetime': event.start_at,
+        'ref': booking.public_id,
+        'modality': f"{booking.service_root.categories.all()[0].name} {booking.service_root.categories.all()[0].description}",
+        'type': booking.service_root.categories.all()[0].description,
+        'office': booking.companies.all()[0].name,
+        'address': booking.companies.all()[0].locations.all()[0].address
+    })
+    subject = 'Interpretation for ' + f"{event.agents.all()[0].user.first_name} {event.agents.all()[0].user.last_name} " + booking.public_id
+    message = html_content
+    from_email = settings.EMAIL_HOST_USER
+    recipient = ['gabrielchacon200269@gmail.com']
+    if subject and message and from_email:
+        try:
+            msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
+            msg.attach_alternative(message, "text/html")
+            msg.send()
+        except BadHeaderError:
+            return JsonResponse({'error': 'Invalid header found.'}, status=400)
+    else:
+        # In reality we'd use a form class
+        # to get proper validation errors.
+        return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
 
 
 @api_view(['POST'])
@@ -1113,49 +1145,6 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
         language = Language.objects.get(alpha3=target_language_alpha3)
 
-        def sended_email(event, language, booking):
-            html_content = render_to_string("create_booking_advise", {
-                'language': language.name,
-                'agent': f"{event.agents.all()[0].user.first_name, event.agents.all()[0].user.last_name}",
-                'patient': f"{event.affiliates.all()[0].recipient.user.first_name, event.affiliates.all()[0].recipient.user.last_name}", 
-                'dob': event.affiliates.all()[0].recipient.user.date_of_birth, 
-                'requester': f"{event.requester.user.first_name, event.requester.user.last_name}", 
-                'datetime': event.start_at,
-                'ref': booking.public_id,
-                'modality': booking.service_root.categories.all()[0].name,
-                'type': booking.service_root.categories.all()[0].description,
-                'office': booking.companies.all()[0].name,
-                'address': booking.companies.all()[0].locations.all()[0].address
-            })
-            # print('REQUEST',
-            #       language.name, 
-            #       event.agents.all()[0].user.first_name,
-            #       event.affiliates.all()[0].recipient.user.first_name, 
-            #       event.affiliates.all()[0].recipient.user.date_of_birth, 
-            #       event.requester.user.first_name, 
-            #       event.start_at,
-            #       booking.public_id,
-            #       booking.service_root.categories.all()[0].name,
-            #       booking.service_root.categories.all()[0].description,
-            #       booking.companies.all()[0].name,
-            #       booking.companies.all()[0].locations.all()[0].address
-            # )
-            subject = 'New Booking'
-            message = html_content
-            from_email = settings.EMAIL_HOST_USER
-            recipient = 'gabrielchacon200269@gmail.com'
-            if subject and message and from_email:
-                try:
-                    msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
-                    msg.attach_alternative(message, "text/html")
-                    msg.send()
-                except BadHeaderError:
-                    return JsonResponse({'error': 'Invalid header found.'}, status=400)
-                return HttpResponse(200)
-            else:
-                # In reality we'd use a form class
-                # to get proper validation errors.
-                return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
 
         sended_email(event, language, booking)
 
