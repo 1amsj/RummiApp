@@ -219,6 +219,8 @@ def search_bookings(request):
 def send_email_bookings(event, language, booking):
     email_recipient = []
     name_of_greet = ""
+    interpreter_assigned = ""
+    interpreter = ""
 
     if(len(list(event.requester.user.contacts.all().values('email'))) <= 0 and len(list(booking.companies.all()[0].contacts.all().values('email'))) > 0):
         name_of_greet = booking.companies.all()[0].name
@@ -228,14 +230,25 @@ def send_email_bookings(event, language, booking):
         email_recipient.append(list(event.requester.user.contacts.all().values_list('email', flat=True)))
     pst_timezone = pytz.timezone('US/Pacific')
 
+    print(booking.services.all())
+
+    if(len(list(booking.services.all())) > 0):
+        interpreter_assigned = f"An interpreter as already been assigned ({booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name})."
+        interpreter = f"{booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name}"
+    else:
+        interpreter_assigned = "If there's an interpreter, There's no interpreter assigned at this time."
+        interpreter = "(No Interpreter Assigned)"
+
     html_content = render_to_string("create_booking_advise.html", {
+        'interpreter': interpreter,
+        'interpreter_assigned': interpreter_assigned, 
         'name_of_greet': name_of_greet,
         'language': language.name,
         'agent': f"{event.agents.all()[0].user.first_name} {event.agents.all()[0].user.last_name}",
         'patient': f"{event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name}", 
         'dob': event.affiliates.all()[0].recipient.user.date_of_birth, 
         'requester': f"{event.requester.user.first_name} {event.requester.user.last_name}", 
-        'datetime': event.start_at.astimezone(pytz.utc).astimezone(pst_timezone),
+        'datetime': event.start_at.astimezone(pst_timezone),
         'ref': booking.public_id,
         'modality': booking.service_root.categories.all()[0].description,
         'type': event.description,
