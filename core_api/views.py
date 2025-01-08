@@ -216,25 +216,37 @@ def search_bookings(request):
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.__dict__['instance'])
 
-def sended_email(event, language, booking):
-    print(event.requester.user.contacts.all())
+def send_email_bookings(event, language, booking):
+    email_recipient = []
+    name_of_greet = ""
+
+    if(len(list(event.requester.user.contacts.all().values('email'))) <= 0 and len(list(booking.companies.all()[0].contacts.all().values('email'))) > 0):
+        name_of_greet = booking.companies.all()[0].name
+        email_recipient.append(list(booking.companies.all()[0].contacts.all().values_list('email', flat=True)))
+    elif(len(list(event.requester.user.contacts.all().values('email'))) > 0):
+        name_of_greet = f"{event.requester.user.first_name} {event.requester.user.last_name}"
+        email_recipient.append(list(event.requester.user.contacts.all().values_list('email', flat=True)))
+    print(email_recipient[0],list(event.requester.user.contacts.all().values_list('email', flat=True)), list(booking.companies.all()[0].contacts.all().values_list('email', flat=True)))
+    pst_timezone = pytz.timezone('US/Pacific')
+
     html_content = render_to_string("create_booking_advise.html", {
+        'name_of_greet': name_of_greet,
         'language': language.name,
         'agent': f"{event.agents.all()[0].user.first_name} {event.agents.all()[0].user.last_name}",
         'patient': f"{event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name}", 
         'dob': event.affiliates.all()[0].recipient.user.date_of_birth, 
         'requester': f"{event.requester.user.first_name} {event.requester.user.last_name}", 
-        'datetime': event.start_at,
+        'datetime': event.start_at.astimezone(pst_timezone),
         'ref': booking.public_id,
         'modality': f"{booking.service_root.categories.all()[0].name} {booking.service_root.categories.all()[0].description}",
-        'type': booking.service_root.categories.all()[0].description,
+        'type': event.description,
         'office': booking.companies.all()[0].name,
         'address': booking.companies.all()[0].locations.all()[0].address
     })
-    subject = 'Interpretation for ' + f"{event.agents.all()[0].user.first_name} {event.agents.all()[0].user.last_name} " + booking.public_id
+    subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
     message = html_content
     from_email = settings.EMAIL_HOST_USER
-    recipient = ['gabrielchacon200269@gmail.com']
+    recipient = email_recipient[0]
     if subject and message and from_email:
         try:
             msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
@@ -1146,7 +1158,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         language = Language.objects.get(alpha3=target_language_alpha3)
 
 
-        sended_email(event, language, booking)
+        send_email_bookings(event, language, booking)
 
         return Response({
             "booking_id": booking_id,
