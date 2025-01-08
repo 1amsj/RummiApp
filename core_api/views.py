@@ -226,7 +226,6 @@ def send_email_bookings(event, language, booking):
     elif(len(list(event.requester.user.contacts.all().values('email'))) > 0):
         name_of_greet = f"{event.requester.user.first_name} {event.requester.user.last_name}"
         email_recipient.append(list(event.requester.user.contacts.all().values_list('email', flat=True)))
-    print(email_recipient[0],list(event.requester.user.contacts.all().values_list('email', flat=True)), list(booking.companies.all()[0].contacts.all().values_list('email', flat=True)))
     pst_timezone = pytz.timezone('US/Pacific')
 
     html_content = render_to_string("create_booking_advise.html", {
@@ -236,9 +235,9 @@ def send_email_bookings(event, language, booking):
         'patient': f"{event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name}", 
         'dob': event.affiliates.all()[0].recipient.user.date_of_birth, 
         'requester': f"{event.requester.user.first_name} {event.requester.user.last_name}", 
-        'datetime': event.start_at.astimezone(pst_timezone),
+        'datetime': event.start_at.astimezone(pytz.utc).astimezone(pst_timezone),
         'ref': booking.public_id,
-        'modality': f"{booking.service_root.categories.all()[0].name} {booking.service_root.categories.all()[0].description}",
+        'modality': booking.service_root.categories.all()[0].description,
         'type': event.description,
         'office': booking.companies.all()[0].name,
         'address': booking.companies.all()[0].locations.all()[0].address
