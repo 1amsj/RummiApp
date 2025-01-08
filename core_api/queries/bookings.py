@@ -526,12 +526,19 @@ class ApiSpecialSqlBookings():
                                         WHERE payer.id = event.payer_id
                                     ), '{}'::JSON),
                                     'payer_company', COALESCE((
-                                        SELECT row_to_json(t) from (
-                                            SELECT * FROM core_backend_payer_companies
-                                                INNER JOIN core_backend_company company ON company.id = core_backend_payer_companies.company_id
-                                                    WHERE core_backend_payer_companies.id = event.payer_company_id
-                                        ) t
-                                    ), '[]'::JSON),
+                                        SELECT
+                                            json_build_object(
+                                                'id', event.payer_company_id,
+                                                'is_deleted', _payer_companies.is_deleted,
+                                                'name', _payer_companies.name,
+                                                'on_hold', _payer_companies.on_hold,
+                                                'parent_company_id', _payer_companies.parent_company_id,
+                                                'type', _payer_companies.type,
+                                                'send_method', _payer_companies.send_method
+                                            )
+                                        FROM "core_backend_company" _payer_companies
+                                        WHERE _payer_companies.id = event.payer_company_id
+                                    ), '{}'::JSON),
                                     'reports', COALESCE((
                                         SELECT
                                             json_agg(json_build_object(
