@@ -229,8 +229,7 @@ def send_email_bookings(event, language, booking):
         name_of_greet = f"{event.requester.user.first_name} {event.requester.user.last_name}"
         email_recipient.append(list(event.requester.user.contacts.all().values_list('email', flat=True)))
     pst_timezone = pytz.timezone('US/Pacific')
-
-    print(booking.services.all())
+    start_at_pst = event.start_at.astimezone(pst_timezone).strftime('%Y-%m-%d %I:%M %p')
 
     if(len(list(booking.services.all())) > 0):
         interpreter_assigned = f"An interpreter as already been assigned ({booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name})."
@@ -248,7 +247,7 @@ def send_email_bookings(event, language, booking):
         'patient': f"{event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name}", 
         'dob': event.affiliates.all()[0].recipient.user.date_of_birth, 
         'requester': f"{event.requester.user.first_name} {event.requester.user.last_name}", 
-        'datetime': event.start_at.astimezone(pst_timezone),
+        'datetime': start_at_pst,
         'ref': booking.public_id,
         'modality': booking.service_root.categories.all()[0].description,
         'type': event.description,
