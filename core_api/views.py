@@ -272,12 +272,13 @@ def send_email_bookings(event, language, booking):
             msg.send()
 
             html_plain_text = html_plain_text.replace("'", "").replace("*", "")
+            email_patient = str(list(event.requester.user.contacts.all().values_list('email', flat=True))).replace('[', '').replace(']', '').replace("'", "")
 
             with connection.cursor() as cursor:
                 ApiSpecialSqlInsertNote.query_insert_note(
                     cursor,
                     str(booking.created_at),
-                    f"{subject}\n {event.affiliates.all()[0].recipient.user.location.address}\n {html_plain_text}",
+                    f"{subject}\n {email_patient}\n {event.affiliates.all()[0].recipient.user.location.address}\n {html_plain_text}",
                     booking.id
                 )
 
