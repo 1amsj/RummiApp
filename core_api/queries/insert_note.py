@@ -8,14 +8,12 @@ class ApiSpecialSqlInsertNote:
                 created_at,
                 text,
                 booking_id,
-                created_by_id,
                 last_updated_at
             ) VALUES (
                 'false',
                 '%s',
                 '%s',
                 '%s',
-                '4',
                 '%s'
             )""" % (
                 start_at_note,
