@@ -30,3 +30,4 @@ certifi~=2023.7.22
 idna~=3.4
 urllib3~=2.0.4
 django-silk==5.1.0
+html2text==2024.2.26

@@ -1,3 +1,4 @@
+import html2text
 from datetime import datetime
 from typing import Type, Union
 
@@ -33,6 +34,7 @@ from core_api.queries.providers import ApiSpecialSqlProviders
 from core_api.queries.reports import ApiSpecialSqlReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
+from core_api.queries.insert_note import ApiSpecialSqlInsertNote
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
@@ -235,7 +237,7 @@ def send_email_bookings(event, language, booking):
         interpreter_assigned = f"An interpreter as already been assigned ({booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name})."
         interpreter = f"{booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name}"
     else:
-        interpreter_assigned = "If there's an interpreter, There's no interpreter assigned at this time."
+        interpreter_assigned = "There's no interpreter assigned at this time."
         interpreter = "(No Interpreter Assigned)"
 
     html_content = render_to_string("create_booking_advise.html", {
@@ -258,11 +260,27 @@ def send_email_bookings(event, language, booking):
     message = html_content
     from_email = settings.EMAIL_HOST_USER
     recipient = email_recipient[0]
+    
+    plain_text = html2text.HTML2Text()
+    plain_text.ignore_links = True
+    html_plain_text = plain_text.handle(html_content)
+
     if subject and message and from_email:
         try:
             msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
             msg.attach_alternative(message, "text/html")
             msg.send()
+
+            html_plain_text = html_plain_text.replace("'", "").replace("*", "")
+
+            with connection.cursor() as cursor:
+                ApiSpecialSqlInsertNote.query_insert_note(
+                    cursor,
+                    str(booking.created_at),
+                    f"{subject}\n {event.affiliates.all()[0].recipient.user.location.address}\n {html_plain_text}",
+                    booking.id
+                )
+
         except BadHeaderError:
             return JsonResponse({'error': 'Invalid header found.'}, status=400)
     else:

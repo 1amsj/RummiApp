@@ -64,6 +64,7 @@ class ApiSpecialSqlReports():
         items_excluded,
         recipient_id,
         agent_id,
+        provider_id,
         field_to_sort,
         order_to_sort
     ):
@@ -79,7 +80,8 @@ class ApiSpecialSqlReports():
             items_included,
             items_excluded,
             recipient_id,
-            agent_id
+            agent_id,
+            provider_id
         )
 
         query = """--sql
