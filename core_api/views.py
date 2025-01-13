@@ -254,7 +254,7 @@ def send_email_bookings(event, language, booking):
         'modality': booking.service_root.categories.all()[0].description,
         'type': event.description,
         'office': booking.companies.all()[0].name,
-        'address': booking.companies.all()[0].locations.all()[0].address
+        'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
     subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
     message = html_content
@@ -278,7 +278,7 @@ def send_email_bookings(event, language, booking):
                 ApiSpecialSqlInsertNote.query_insert_note(
                     cursor,
                     datetime.now(),
-                    f"{subject}\n {email_patient}\n {str(list(event.affiliates.values_list('recipient__user__location__address'))).replace('[', '').replace(']', '').replace("'", "")}\n {html_plain_text}",
+                    f"{subject}\n {email_patient}\n {str(list(event.affiliates.values_list('recipient__user__location__address', flat=True))).replace('[', '').replace(']', '').replace("'", "")}\n {html_plain_text}",
                     booking.id
                 )
 
