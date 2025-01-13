@@ -1,9 +1,11 @@
+import html2text
 from datetime import datetime
 from typing import Type, Union
 
 from django.db import connection, models, transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
+from django.template.loader import render_to_string
 import pytz
 from rest_framework import generics, serializers, status
 from rest_framework.authentication import BasicAuthentication
@@ -32,6 +34,7 @@ from core_api.queries.providers import ApiSpecialSqlProviders
 from core_api.queries.reports import ApiSpecialSqlReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
+from core_api.queries.insert_note import ApiSpecialSqlInsertNote
 from core_api.serializers import CustomTokenObtainPairSerializer, RegisterSerializer
 from core_api.services import prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
@@ -214,6 +217,78 @@ def search_bookings(request):
     queryset = queryset.values('id','events__affiliates__recipient__user__first_name', 'events__affiliates__recipient__user__last_name', 'events__affiliates__recipient__user__date_of_birth', 'events__arrive_at', 'events__id', 'public_id')
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.__dict__['instance'])
+
+def send_email_bookings(event, language, booking):
+    email_recipient = []
+    name_of_greet = ""
+    interpreter_assigned = ""
+    interpreter = ""
+
+    if(len(list(event.requester.user.contacts.all().values('email'))) <= 0 and len(list(booking.companies.all()[0].contacts.all().values('email'))) > 0):
+        name_of_greet = booking.companies.all()[0].name
+        email_recipient.append(list(booking.companies.all()[0].contacts.all().values_list('email', flat=True)))
+    elif(len(list(event.requester.user.contacts.all().values('email'))) > 0):
+        name_of_greet = f"{event.requester.user.first_name} {event.requester.user.last_name}"
+        email_recipient.append(list(event.requester.user.contacts.all().values_list('email', flat=True)))
+    pst_timezone = pytz.timezone('US/Pacific')
+    start_at_pst = event.start_at.astimezone(pst_timezone).strftime('%Y-%m-%d %I:%M %p')
+
+    if(len(list(booking.services.all())) > 0):
+        interpreter_assigned = f"An interpreter as already been assigned ({booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name})."
+        interpreter = f"{booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name}"
+    else:
+        interpreter_assigned = "There's no interpreter assigned at this time."
+        interpreter = "(No Interpreter Assigned)"
+
+    html_content = render_to_string("create_booking_advise.html", {
+        'interpreter': interpreter,
+        'interpreter_assigned': interpreter_assigned, 
+        'name_of_greet': name_of_greet,
+        'language': language.name,
+        'agent': f"{event.agents.all()[0].user.first_name} {event.agents.all()[0].user.last_name}",
+        'patient': f"{event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name}", 
+        'dob': event.affiliates.all()[0].recipient.user.date_of_birth, 
+        'requester': f"{event.requester.user.first_name} {event.requester.user.last_name}", 
+        'datetime': start_at_pst,
+        'ref': booking.public_id,
+        'modality': booking.service_root.categories.all()[0].description,
+        'type': event.description,
+        'office': booking.companies.all()[0].name,
+        'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
+    })
+    subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
+    message = html_content
+    from_email = settings.EMAIL_HOST_USER
+    recipient = email_recipient[0]
+    
+    plain_text = html2text.HTML2Text()
+    plain_text.ignore_links = True
+    html_plain_text = plain_text.handle(html_content)
+
+    if subject and message and from_email:
+        try:
+            msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
+            msg.attach_alternative(message, "text/html")
+            msg.send()
+
+            html_plain_text = html_plain_text.replace("'", "").replace("*", "")
+            email_patient = str(list(event.requester.user.contacts.all().values_list('email', flat=True))).replace('[', '').replace(']', '').replace("'", "")
+            user_address = str(list(event.affiliates.values_list('recipient__user__location__address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
+
+            with connection.cursor() as cursor:
+                ApiSpecialSqlInsertNote.query_insert_note(
+                    cursor,
+                    datetime.now(),
+                    f"{subject}\n {email_patient}\n {user_address}\n {html_plain_text}",
+                    booking.id
+                )
+
+        except BadHeaderError:
+            return JsonResponse({'error': 'Invalid header found.'}, status=400)
+    else:
+        # In reality we'd use a form class
+        # to get proper validation errors.
+        return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
 
 
 @api_view(['POST'])
@@ -1058,6 +1133,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request, business_name):
+        target_language_alpha3 = request.data.get('target_language_alpha3')
         group_booking = request.data.get('group_booking', None)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
         offer_datalist = request.data.pop(ApiSpecialKeys.OFFER_DATALIST, [])
@@ -1108,6 +1184,12 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             booking_id=booking_id,
         )
 
+        event = Event.objects.get(booking__id=booking_id)
+
+        language = Language.objects.get(alpha3=target_language_alpha3)
+
+
+        send_email_bookings(event, language, booking)
 
         return Response({
             "booking_id": booking_id,
