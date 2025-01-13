@@ -277,7 +277,7 @@ def send_email_bookings(event, language, booking):
             with connection.cursor() as cursor:
                 ApiSpecialSqlInsertNote.query_insert_note(
                     cursor,
-                    str(booking.created_at),
+                    datetime.now(),
                     f"{subject}\n {email_patient}\n {event.affiliates.all()[0].recipient.user.location.address}\n {html_plain_text}",
                     booking.id
                 )

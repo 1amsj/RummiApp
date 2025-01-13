@@ -1,6 +1,6 @@
 class ApiSpecialSqlInsertNote:
     @staticmethod
-    def query_insert_note(cursor, start_at_note, body_note, booking_id_note):
+    def query_insert_note(cursor, created_note_now, body_note, booking_id_note):
         
         queryInsertSql = """--sql
             INSERT INTO core_backend_note(
@@ -16,10 +16,10 @@ class ApiSpecialSqlInsertNote:
                 '%s',
                 '%s'
             )""" % (
-                start_at_note,
+                created_note_now,
                 body_note,
                 booking_id_note,
-                start_at_note
+                created_note_now
             )
     
         cursor.execute(queryInsertSql)
