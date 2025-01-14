@@ -256,7 +256,7 @@ def send_email_bookings(event, language, booking):
         'office': booking.companies.all()[0].name,
         'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
-    if(len(email_recipient) >= 0):
+    if(len(email_recipient) > 0):
         subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
         message = html_content
         from_email = settings.EMAIL_HOST_USER
