@@ -265,7 +265,7 @@ def send_email_bookings(event, language, booking):
     plain_text.ignore_links = True
     html_plain_text = plain_text.handle(html_content)
 
-    if(recipient == "mzamaniego@boomeranghc.com"):
+    if (recipient == "mzamaniego@boomeranghc.com"):
         if subject and message and from_email:
             try:
                 msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
