@@ -256,8 +256,10 @@ def send_email_bookings(event, language, booking):
         'office': booking.companies.all()[0].name,
         'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
-    if(len(email_recipient) == 0 or len(email_recipient) < 0):
+
+    if(len(email_recipient) == 0):
         email_recipient = [['diego@corechs.com']]
+
     subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
     message = html_content
     from_email = settings.EMAIL_HOST_USER
@@ -286,13 +288,15 @@ def send_email_bookings(event, language, booking):
                         booking.id
                     )
 
+                return 1
+
             except BadHeaderError:
-                pass
+                return 2
                 #return JsonResponse({'error': 'Invalid header found.'}, status=400)
         else:
             # In reality we'd use a form class
             # to get proper validation errors.
-            pass
+            return 3
             #return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
 
 
@@ -1194,12 +1198,13 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         language = Language.objects.get(alpha3=target_language_alpha3)
 
 
-        send_email_bookings(event, language, booking)
+        email_status = send_email_bookings(event, language, booking)
 
         return Response({
             "booking_id": booking_id,
             "event_ids": event_ids,
             "offer_ids": offer_ids,
+            "email_status": email_status
         }, status=status.HTTP_201_CREATED)
 
     @staticmethod
