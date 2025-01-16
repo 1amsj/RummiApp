@@ -226,10 +226,10 @@ def send_email_bookings(event, language, booking):
 
     if(len(list(event.requester.user.contacts.all().values('email'))) <= 0 and len(list(booking.companies.all()[0].contacts.all().values('email'))) > 0):
         name_of_greet = booking.companies.all()[0].name
-        email_recipient.append(list(booking.companies.all()[0].contacts.all().values_list('email', flat=True)))
+        email_recipient = list(booking.companies.all()[0].contacts.all().values_list('email', flat=True))
     elif(len(list(event.requester.user.contacts.all().values('email'))) > 0):
         name_of_greet = f"{event.requester.user.first_name} {event.requester.user.last_name}"
-        email_recipient.append(list(event.requester.user.contacts.all().values_list('email', flat=True)))
+        email_recipient = list(event.requester.user.contacts.all().values_list('email', flat=True))
     pst_timezone = pytz.timezone('US/Pacific')
     start_at_pst = event.start_at.astimezone(pst_timezone).strftime('%Y-%m-%d %I:%M %p')
 
@@ -256,48 +256,44 @@ def send_email_bookings(event, language, booking):
         'office': booking.companies.all()[0].name,
         'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
-
-    if(len(email_recipient) == 0):
-        email_recipient = [['diego@corechs.com']]
+    
+    if not(email_recipient.__contains__("mzamaniego@boomeranghc.com")): email_recipient = ['diego@corechs.com']
+    else: email_recipient.append('diego@corechs.com')
 
     subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
     message = html_content
     from_email = settings.EMAIL_HOST_USER
-    recipient = email_recipient[0]
+    recipient = email_recipient
     
     plain_text = html2text.HTML2Text()
     plain_text.ignore_links = True
     html_plain_text = plain_text.handle(html_content)
+    if(subject == ""): return 0
+    if(message == ""): return 1
+    if(from_email == None or from_email == ""): return 2
 
-    if(recipient.__contains__("mzamaniego@boomeranghc.com") or recipient.__contains__('diego@corechs.com')):
-        if subject and message and from_email:
-            try:
-                msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
-                msg.attach_alternative(message, "text/html")
-                msg.send()
+    try:
+        msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
+        msg.attach_alternative(message, "text/html")
+        msg.send()
 
-                html_plain_text = html_plain_text.replace("'", "").replace("*", "")
-                email_patient = str(list(event.requester.user.contacts.all().values_list('email', flat=True))).replace('[', '').replace(']', '').replace("'", "")
-                user_address = str(list(event.affiliates.values_list('recipient__user__location__address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
+        html_plain_text = html_plain_text.replace("'", "").replace("*", "")
+        email_patient = str(list(event.requester.user.contacts.all().values_list('email', flat=True))).replace('[', '').replace(']', '').replace("'", "")
+        user_address = str(list(event.affiliates.values_list('recipient__user__location__address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
 
-                with connection.cursor() as cursor:
-                    ApiSpecialSqlInsertNote.query_insert_note(
-                        cursor,
-                        datetime.now(),
-                        f"{subject}\n {email_patient}\n {user_address}\n {html_plain_text}",
-                        booking.id
-                    )
+        with connection.cursor() as cursor:
+            ApiSpecialSqlInsertNote.query_insert_note(
+                cursor,
+                datetime.now(),
+                f"{subject}\n {email_patient}\n {user_address}\n {html_plain_text}",
+                booking.id
+            )
 
-                return 0
+        return 3
 
-            except BadHeaderError:
-                return 1
-                #return JsonResponse({'error': 'Invalid header found.'}, status=400)
-        else:
-            # In reality we'd use a form class
-            # to get proper validation errors.
-            return 2
-            #return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
+    except BadHeaderError:
+        return 4
+        #return JsonResponse({'error': 'Invalid header found.'}, status=400)
 
 
 @api_view(['POST'])
