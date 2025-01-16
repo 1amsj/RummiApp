@@ -291,7 +291,7 @@ def send_email_bookings(event, language, booking):
                 return 0
 
             except BadHeaderError:
-                return 2
+                return 1
                 #return JsonResponse({'error': 'Invalid header found.'}, status=400)
         else:
             # In reality we'd use a form class
