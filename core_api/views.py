@@ -288,7 +288,7 @@ def send_email_bookings(event, language, booking):
                         booking.id
                     )
 
-                return 1
+                return 0
 
             except BadHeaderError:
                 return 2
