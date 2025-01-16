@@ -256,41 +256,48 @@ def send_email_bookings(event, language, booking):
         'office': booking.companies.all()[0].name,
         'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
-    if(len(email_recipient) > 0):
-        subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
-        message = html_content
-        from_email = settings.EMAIL_HOST_USER
-        recipient = email_recipient[0]
-        
-        plain_text = html2text.HTML2Text()
-        plain_text.ignore_links = True
-        html_plain_text = plain_text.handle(html_content)
 
-        if(recipient == "mzamaniego@boomeranghc.com"):
-            if subject and message and from_email:
-                try:
-                    msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
-                    msg.attach_alternative(message, "text/html")
-                    msg.send()
+    if(len(email_recipient) == 0):
+        email_recipient = [['diego@corechs.com']]
 
-                    html_plain_text = html_plain_text.replace("'", "").replace("*", "")
-                    email_patient = str(list(event.requester.user.contacts.all().values_list('email', flat=True))).replace('[', '').replace(']', '').replace("'", "")
-                    user_address = str(list(event.affiliates.values_list('recipient__user__location__address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
+    subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
+    message = html_content
+    from_email = settings.EMAIL_HOST_USER
+    recipient = email_recipient[0]
+    
+    plain_text = html2text.HTML2Text()
+    plain_text.ignore_links = True
+    html_plain_text = plain_text.handle(html_content)
 
-                    with connection.cursor() as cursor:
-                        ApiSpecialSqlInsertNote.query_insert_note(
-                            cursor,
-                            datetime.now(),
-                            f"{subject}\n {email_patient}\n {user_address}\n {html_plain_text}",
-                            booking.id
-                        )
+    if(recipient.__contains__("mzamaniego@boomeranghc.com") or recipient.__contains__('diego@corechs.com')):
+        if subject and message and from_email:
+            try:
+                msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
+                msg.attach_alternative(message, "text/html")
+                msg.send()
 
-                except BadHeaderError:
-                    return JsonResponse({'error': 'Invalid header found.'}, status=400)
-            else:
-                # In reality we'd use a form class
-                # to get proper validation errors.
-                return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
+                html_plain_text = html_plain_text.replace("'", "").replace("*", "")
+                email_patient = str(list(event.requester.user.contacts.all().values_list('email', flat=True))).replace('[', '').replace(']', '').replace("'", "")
+                user_address = str(list(event.affiliates.values_list('recipient__user__location__address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
+
+                with connection.cursor() as cursor:
+                    ApiSpecialSqlInsertNote.query_insert_note(
+                        cursor,
+                        datetime.now(),
+                        f"{subject}\n {email_patient}\n {user_address}\n {html_plain_text}",
+                        booking.id
+                    )
+
+                return 0
+
+            except BadHeaderError:
+                return 1
+                #return JsonResponse({'error': 'Invalid header found.'}, status=400)
+        else:
+            # In reality we'd use a form class
+            # to get proper validation errors.
+            return 2
+            #return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
 
 
 @api_view(['POST'])
@@ -1191,12 +1198,13 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         language = Language.objects.get(alpha3=target_language_alpha3)
 
 
-        send_email_bookings(event, language, booking)
+        email_status = send_email_bookings(event, language, booking)
 
         return Response({
             "booking_id": booking_id,
             "event_ids": event_ids,
             "offer_ids": offer_ids,
+            "email_status": email_status
         }, status=status.HTTP_201_CREATED)
 
     @staticmethod
