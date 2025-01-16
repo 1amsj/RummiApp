@@ -296,7 +296,7 @@ def send_email_bookings(event, language, booking):
         else:
             # In reality we'd use a form class
             # to get proper validation errors.
-            return 3
+            return 2
             #return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
 
 
