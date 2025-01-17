@@ -268,9 +268,9 @@ def send_email_bookings(event, language, booking):
     plain_text = html2text.HTML2Text()
     plain_text.ignore_links = True
     html_plain_text = plain_text.handle(html_content)
-    if(subject == ""): return 0
-    if(message == ""): return 1
-    if(from_email == None or from_email == ""): return 2
+    if(subject == ""): return 1
+    if(message == ""): return 2
+    if(from_email == None or from_email == ""): return 3
 
     try:
         msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
@@ -289,7 +289,7 @@ def send_email_bookings(event, language, booking):
                 booking.id
             )
 
-        return 3
+        return 0
 
     except BadHeaderError:
         return 4
