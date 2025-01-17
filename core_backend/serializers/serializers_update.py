@@ -66,6 +66,7 @@ class BookingUpdateSerializer(BookingCreateSerializer):
 
         manage_extra_attrs(business, instance, extras)
 
+        return instance
 
 class CategoryUpdateSerializer(CategoryCreateSerializer):
     def update(self, instance: Category, validated_data=None):

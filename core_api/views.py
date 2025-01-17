@@ -218,7 +218,7 @@ def search_bookings(request):
     serialized = BookingSerializer(queryset, many=True)
     return Response(serialized.__dict__['instance'])
 
-def send_email_bookings(event, language, booking):
+def send_email_bookings(event, language, booking, is_updating):
     email_recipient = []
     bcclist = []
     name_of_greet = ""
@@ -229,17 +229,23 @@ def send_email_bookings(event, language, booking):
         name_of_greet = booking.companies.all()[0].name
         email_recipient = list(booking.companies.all()[0].contacts.all().values_list('email', flat=True))
     elif(len(list(event.requester.user.contacts.all().values('email'))) > 0):
-        name_of_greet = f"{event.requester.user.first_name} {event.requester.user.last_name}"
+        name_of_greet = f" {event.requester.user.first_name} {event.requester.user.last_name}"
         email_recipient = list(event.requester.user.contacts.all().values_list('email', flat=True))
     pst_timezone = pytz.timezone('US/Pacific')
     start_at_pst = event.start_at.astimezone(pst_timezone).strftime('%Y-%m-%d %I:%M %p')
 
-    if(len(list(booking.services.all())) > 0):
-        interpreter_assigned = f"An interpreter as already been assigned ({booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name})."
+    if(len(list(booking.services.all())) > 0 and not is_updating):
+        interpreter_assigned = f"An interpreter has already been assigned ({booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name})."
+        interpreter = f"{booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name}"
+    elif(len(list(booking.services.all())) > 0 and is_updating):
+        interpreter_assigned = f"An interpreter has been assigned ({booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name})."
         interpreter = f"{booking.services.all()[0].provider.user.first_name} {booking.services.all()[0].provider.user.last_name}"
     else:
         interpreter_assigned = "There's no interpreter assigned at this time."
         interpreter = "(No Interpreter Assigned)"
+
+    if(not is_updating): message_ref = f"We have booked your request for interpretation services with the "
+    else: message_ref = f"We remind you that this booking has the "
 
     html_content = render_to_string("create_booking_advise.html", {
         'interpreter': interpreter,
@@ -251,14 +257,16 @@ def send_email_bookings(event, language, booking):
         'dob': event.affiliates.all()[0].recipient.user.date_of_birth, 
         'requester': f"{event.requester.user.first_name} {event.requester.user.last_name}", 
         'datetime': start_at_pst,
-        'ref': booking.public_id,
+        'message_ref': message_ref,
+        'ref':  booking.public_id,
         'modality': booking.service_root.categories.all()[0].description,
         'type': event.description,
         'office': booking.companies.all()[0].name,
         'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
+    # mzamaniego@boomeranghc.com
     
-    if not(email_recipient.__contains__("gabrielchacon200269@gmail.com")): bcclist.append('diego@corechs.com')
+    if not(email_recipient.__contains__("gabrielchacon200269@gmail.com")): email_recipient = ['diego@corechs.com']
     else: bcclist.append('diego@corechs.com')
 
     subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
@@ -1195,7 +1203,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         language = Language.objects.get(alpha3=target_language_alpha3)
 
 
-        email_status = send_email_bookings(event, language, booking)
+        email_status = send_email_bookings(event, language, booking, False)
 
         return Response({
             "booking_id": booking_id,
@@ -1208,6 +1216,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Booking)
     def put(request, booking_id=None):
+        target_language_alpha3 = request.data.get('target_language_alpha3')
         group_booking = request.data.get('group_booking', None)
         booking = Booking.objects.get(id=booking_id)
         business = request.data.pop(ApiSpecialKeys.BUSINESS)
@@ -1215,6 +1224,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         requester = request.data.pop('requester', None)
         company_type_validation = validator_type(event_datalist)
         company_type_short_validation = validator_short_type(event_datalist)
+
+        serializer = BookingUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        booking = serializer.update(booking, business)
 
         if event_datalist[0]['payer_company_type'] == 'noPayer':
             booking.status = "closed"
@@ -1248,12 +1261,18 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             
         booking.save()
 
+        event = Event.objects.get(booking__id=booking_id)
+
+        language = Language.objects.get(alpha3=target_language_alpha3)
+
         handle_events_bulk(event_datalist, business, requester, group_booking, booking_id)
 
-        serializer = BookingUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.update(booking, business)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if(len(list(booking.services.all())) > 0):
+            email_status = send_email_bookings(event, language, booking, True)
+        else:
+            email_status = 4
+
+        return Response({email_status}, status=status.HTTP_204_NO_CONTENT)
 
     @staticmethod
     @transaction.atomic
