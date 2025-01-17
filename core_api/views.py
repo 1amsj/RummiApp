@@ -1224,6 +1224,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         company_type_validation = validator_type(event_datalist)
         company_type_short_validation = validator_short_type(event_datalist)
 
+        initial_provider = ""
+        if(len(list(booking.services.all())) > 0):
+            initial_provider = booking.services.all()[0].provider.id
+
         serializer = BookingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         booking = serializer.update(booking, business)
@@ -1266,7 +1270,11 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
         handle_events_bulk(event_datalist, business, requester, group_booking, booking_id)
 
+        actual_provider = ""
         if(len(list(booking.services.all())) > 0):
+            actual_provider = booking.services.all()[0].provider.id
+
+        if(actual_provider != initial_provider):
             email_status = send_email_bookings(event, language, booking, True)
         else:
             email_status = 4
