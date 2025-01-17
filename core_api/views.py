@@ -220,6 +220,7 @@ def search_bookings(request):
 
 def send_email_bookings(event, language, booking):
     email_recipient = []
+    bcclist = []
     name_of_greet = ""
     interpreter_assigned = ""
     interpreter = ""
@@ -257,8 +258,8 @@ def send_email_bookings(event, language, booking):
         'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
     
-    if not(email_recipient.__contains__("mzamaniego@boomeranghc.com")): email_recipient = ['diego@corechs.com']
-    else: email_recipient.append('diego@corechs.com')
+    if not(email_recipient.__contains__("gabrielchacon200269@gmail.com")): bcclist.append('diego@corechs.com')
+    else: bcclist.append('diego@corechs.com')
 
     subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
     message = html_content
@@ -273,7 +274,7 @@ def send_email_bookings(event, language, booking):
     if(from_email == None or from_email == ""): return 3
 
     try:
-        msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
+        msg = EmailMultiAlternatives(subject, message, from_email, to=recipient, bcc=bcclist)
         msg.attach_alternative(message, "text/html")
         msg.send()
 
