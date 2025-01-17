@@ -264,9 +264,8 @@ def send_email_bookings(event, language, booking, is_updating):
         'office': booking.companies.all()[0].name,
         'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
-    # mzamaniego@boomeranghc.com
     
-    if not(email_recipient.__contains__("gabrielchacon200269@gmail.com")): email_recipient = ['diego@corechs.com']
+    if not(email_recipient.__contains__("mzamaniego@boomeranghc.com")): email_recipient = ['diego@corechs.com']
     else: bcclist.append('diego@corechs.com')
 
     subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
