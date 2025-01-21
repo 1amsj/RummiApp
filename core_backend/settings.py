@@ -144,6 +144,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EmailHostUser')
 EMAIL_HOST_PASSWORD = os.environ.get('EmailHostPassword')
+EMAIL_RECOVER_LINK = os.environ.get('EmailRecoverLink')
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases

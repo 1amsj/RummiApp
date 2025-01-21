@@ -1,6 +1,7 @@
 import html2text
 from datetime import datetime
 from typing import Type, Union
+import base64
 
 from django.db import connection, models, transaction
 from django.db.models import Q, QuerySet
@@ -52,9 +53,9 @@ from core_backend.models import Admin, Affiliation, Agent, Authorization, Bookin
 from core_backend.notification_builders import build_from_template
 from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
-    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, CompanyRelationshipSerializer, CompanyRelationshipWithCompaniesSerializer, \
+    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, ChangePasswordSerializer, CompanyRelationshipSerializer, CompanyRelationshipWithCompaniesSerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
+    ExpenseSerializer, GetUser, GlobalSettingSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AdminCreateSerializer, AffiliationCreateSerializer, AgentCreateSerializer, \
@@ -73,6 +74,7 @@ from core_backend.settings import VERSION_FILE_DIR
 from django.core.mail import BadHeaderError, send_mail, EmailMultiAlternatives
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
+from django.contrib.auth import get_user_model
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -2206,3 +2208,49 @@ class ManageCompanyRelationships(basic_view_manager(CompanyRelationship, Company
     def delete(request, company_relationship_id=None):
         CompanyRelationship.objects.get(id=company_relationship_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+def send_email_for_recover(listEmail, listUsername, userId):
+    subject = F'Recovery Email For {listEmail[0]}'
+    message = F"""Username: {listUsername[0]}
+        This is the link for recover password 
+        {settings.EMAIL_RECOVER_LINK}/newPassword/{base64.b64encode(str(userId).encode()).decode()}/"""
+    from_email = settings.EMAIL_HOST_USER
+    recipient = listEmail
+    if subject and message and from_email:
+        try:
+            msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
+            msg.attach_alternative(message, "text/html")
+            msg.send()
+        except BadHeaderError:
+            return JsonResponse({'error': 'Invalid header found.'}, status=400)
+        return HttpResponse(200)
+    else:
+        # In reality we'd use a form class
+        # to get proper validation errors.
+        return JsonResponse({'error': 'Make sure all fields are entered and valid.'}, status=400)
+
+class ChangePassword(generics.GenericAPIView):
+    serializer_class = ChangePasswordSerializer
+
+    def patch(self, request, id):
+        new_password = request.data['new_password']
+        obj = get_user_model().objects.get(pk=id)
+        obj.set_password(new_password)
+        obj.save()
+
+        return Response({'success': 'password changed successfully'}, status=200)
+        
+class ManageUsersRecover(generics.GenericAPIView):
+    serializer_class = GetUser
+
+    def put(cls, request):
+        email = request.data['email']
+        getUsers = User.objects.filter(email=email)
+        if len(list(getUsers)) > 0:
+            listEmail = list(getUsers.values_list('email', flat=True))
+            listUsername = list(getUsers.values_list('username', flat=True))
+            userId = list(getUsers.values_list('id', flat=True))[0]
+            send_email_for_recover(listEmail, listUsername, userId)
+            return Response({'success': 'Found!'}, status=200)
+        else:
+            return Response({'error': 'Not Found'}, status=400)
