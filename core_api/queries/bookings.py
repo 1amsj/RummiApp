@@ -292,7 +292,23 @@ class ApiSpecialSqlBookings():
                                                 'last_name', recipientUser.last_name,
                                                 'date_of_birth', recipientUser.date_of_birth,
                                                 'title', recipientUser.title,
-                                                'suffix', recipientUser.suffix
+                                                'suffix', recipientUser.suffix,
+                                                'notes', COALESCE((
+                                                    SELECT
+                                                        json_agg(json_build_object(
+                                                            'id', _patient_notes.id,
+                                                            'created_at', _patient_notes.created_at,
+                                                            'last_updated_at', _patient_notes.last_updated_at,
+                                                            'created_by', _user_note.id,
+                                                            'created_by_first_name', _user_note.first_name,
+                                                            'created_by_last_name', _user_note.last_name,
+                                                            'text', _patient_notes.text
+                                                        ))
+                                                        FROM "core_backend_note" _patient_notes
+                                                            LEFT JOIN "core_backend_user" _user_note
+                                                                ON _user_note.id = _patient_notes.created_by_id
+                                                        WHERE _patient_notes.recipient_id = recipient.id
+                                                ), '[]'::JSON)
                                             ),
                                             'is_deleted', affiliation.is_deleted
                                         )) FROM core_backend_event_affiliates affiliates
