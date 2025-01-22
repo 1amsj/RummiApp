@@ -144,7 +144,7 @@ EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EmailHostUser')
 EMAIL_HOST_PASSWORD = os.environ.get('EmailHostPassword')
-EMAIL_RECOVER_LINK = os.environ.get('EmailRecoverLink')
+EMAIL_RECOVER_LINK = os.environ.get('EmailRecoverLink', 'localhost:3000')
 EMAIL_CC = os.environ.get('EmailCC')
 EMAIL_WHITELIST = os.environ.get('EmailWhitelist')
 
