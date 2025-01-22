@@ -145,6 +145,8 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EmailHostUser')
 EMAIL_HOST_PASSWORD = os.environ.get('EmailHostPassword')
 EMAIL_RECOVER_LINK = os.environ.get('EmailRecoverLink')
+EMAIL_CC = os.environ.get('EmailCC')
+EMAIL_WHITELIST = os.environ.get('EmailWhitelist')
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases

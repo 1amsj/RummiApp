@@ -267,8 +267,8 @@ def send_email_bookings(event, language, booking, is_updating):
         'address': str(list(booking.companies.all()[0].locations.values_list('address', flat=True))).replace('[', '').replace(']', '').replace("'", "")
     })
     
-    if not(email_recipient.__contains__("mzamaniego@boomeranghc.com")): email_recipient = ['diego@corechs.com']
-    else: bcclist.append('diego@corechs.com')
+    if not(email_recipient.__contains__(settings.EMAIL_WHITELIST)): email_recipient = [settings.EMAIL_CC]
+    else: bcclist.append(settings.EMAIL_CC)
 
     subject = f"Interpretation for {event.affiliates.all()[0].recipient.user.first_name} {event.affiliates.all()[0].recipient.user.last_name} - {event.description} - {booking.public_id} "
     message = html_content
@@ -2210,9 +2210,9 @@ class ManageCompanyRelationships(basic_view_manager(CompanyRelationship, Company
         return Response(status=status.HTTP_204_NO_CONTENT)
     
 def send_email_for_recover(listEmail, listUsername, userId):
-    subject = F'Recovery Email For {listEmail[0]}'
+    subject = F'Recover the password in BE of CORE for the email {listEmail[0]}'
     message = F"""Username: {listUsername[0]}
-        This is the link for recover password 
+        This is the link for recover the password 
         {settings.EMAIL_RECOVER_LINK}/newPassword/{base64.b64encode(str(userId).encode()).decode()}/"""
     from_email = settings.EMAIL_HOST_USER
     recipient = listEmail
