@@ -125,6 +125,10 @@ class ApiSpecialSqlReports():
                         'type_of_appointment', event.description,
                         'interpreter_first_name', provider_user.first_name,
                         'interpreter_last_name', provider_user.last_name,
+                        'interpreter_number', COALESCE((
+                            SELECT json_object_agg(extra_provider.key, REPLACE(REPLACE(extra_provider.data::text, '\"', ''), '\\', '')) FROM public.core_backend_extra extra_provider 
+                            WHERE POSITION('certificate_number' IN data::text) > 0 and provider.id = extra_provider.parent_id
+                        ), '{}'::JSON),
                         'modality', _booking_serviceroot.name,
                         'status_report', _reports.status,
                         'operators_first_name', _booking_user_operator.first_name,
