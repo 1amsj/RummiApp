@@ -607,7 +607,11 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
 
             response["requester_id"] = requester_id
 
+        userData = User.objects.get(id=response['user_id'])
+        listEmail = [userData.email]
+        listUsername = [userData.username]
 
+        send_email_for_recover(listEmail, listUsername, user_id)
         # Respond with complex ids object
         return Response(response, status=status.HTTP_201_CREATED)
 
