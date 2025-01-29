@@ -74,6 +74,9 @@ urlpatterns = [
 
     path('search/', views.search_bookings, name='search'),
 
+    path('change_password/<int:id>/', views.ChangePassword.as_view(), name='change_password'),
+    path('manage_user/', views.ManageUsersRecover.as_view(), name='manage_user'),
+
     path('notifications/fax/', views.handle_fax_push_notification, name='fax_push_notification'),
 
     path('', views.get_routes)

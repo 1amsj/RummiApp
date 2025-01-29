@@ -15,6 +15,11 @@ from core_backend.serializers.serializers_utils import BaseSerializer, extendabl
     generic_serializer
 from core_backend.services.core_services import fetch_updated_from_validated_data
 
+class ChangePasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(required=True)
+
+class GetUser(serializers.Serializer):
+    email = serializers.CharField(required=True)
 
 # Base serializers
 class AuthorizationBaseSerializer(BaseSerializer):
