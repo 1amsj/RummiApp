@@ -125,6 +125,26 @@ class ApiSpecialSqlReports():
                         'type_of_appointment', event.description,
                         'interpreter_first_name', provider_user.first_name,
                         'interpreter_last_name', provider_user.last_name,
+                        'interpreter_certificate_number', COALESCE((
+                            SELECT 
+                                ((data->>0)::jsonb->>0)::jsonb->>'certificate_number'
+                            FROM public.core_backend_extra extra_provider 
+                            WHERE POSITION('certificate_number' IN data::text) > 0 
+                            AND provider.id = extra_provider.parent_id 
+                            AND data::text != '"[]"'
+                            LIMIT 1
+                        ), '[]'),
+                        'interpreter_certificate', COALESCE((
+                            SELECT 
+                                _category.description
+                            FROM public.core_backend_extra extra_provider 
+                                LEFT JOIN core_backend_category _category
+                                    ON _category.id = (((data->>0)::jsonb->>0)::jsonb->>'certificate_id')::integer
+                            WHERE POSITION('certificate_number' IN data::text) > 0 
+                            AND provider.id = extra_provider.parent_id 
+                            AND data::text != '"[]"'
+                            LIMIT 1
+                        ), ''),
                         'modality', _booking_serviceroot.name,
                         'status_report', _reports.status,
                         'operators_first_name', _booking_user_operator.first_name,

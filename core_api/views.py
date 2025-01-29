@@ -1359,6 +1359,53 @@ class ManageEventsMixin:
                     query_field_to_sort,
                     query_order_to_sort
                 )
+                pst_timezone = pytz.timezone('US/Pacific')
+                # start_at_pst = event.start_at.astimezone(pst_timezone).strftime('%Y-%m-%d %I:%M %p')
+                for specific_result in result:
+                    if specific_result['date'] is not None:
+                        try:
+                            specific_result['date'] = datetime.fromisoformat(specific_result['date']).astimezone(pst_timezone).strftime('%m/%d/%Y')
+                        except: 
+                            try:
+                                specific_result['date'] = datetime.strptime(specific_result['date'], "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pst_timezone).strftime('%m/%d/%Y')
+                            except:
+                                return 0
+
+                    if specific_result['arrive_time'] is not None:
+                        try:
+                            specific_result['arrive_time'] = datetime.fromisoformat(specific_result['arrive_time']).astimezone(pst_timezone).strftime('%m/%d/%Y %I:%M %p')
+                        except: 
+                            try:
+                                specific_result['arrive_time'] = datetime.strptime(specific_result['arrive_time'], "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pst_timezone).strftime('%m/%d/%Y %I:%M %p')
+                            except:
+                                return 1
+                            
+                    if specific_result['start_time'] is not None and specific_result['end_time'] is not None:
+                        try:
+                            specific_result['start_time'] = datetime.fromisoformat(specific_result['start_time']).astimezone(pst_timezone).strftime('%m/%d/%Y %I:%M %p')
+                            specific_result['end_time'] = datetime.fromisoformat(specific_result['end_time']).astimezone(pst_timezone).strftime('%m/%d/%Y %I:%M %p')
+
+                            # Calculate the difference
+                            datetime2 = datetime.strptime(specific_result['end_time'], '%m/%d/%Y %I:%M %p')
+                            datetime1 = datetime.strptime(specific_result['start_time'], '%m/%d/%Y %I:%M %p')
+                            time_difference = datetime2 - datetime1
+
+                            # Get the difference in minutes
+                            specific_result['time_of_date']  = time_difference.total_seconds() / 60
+                        except: 
+                            try:
+                                specific_result['start_time'] = datetime.strptime(specific_result['start_time'], "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pst_timezone).strftime('%m/%d/%Y %I:%M %p')
+                                specific_result['end_time'] = datetime.strptime(specific_result['end_time'], "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pst_timezone).strftime('%m/%d/%Y %I:%M %p')
+
+                                # Calculate the difference
+                                datetime2 = datetime.strptime(specific_result['end_time'], '%m/%d/%Y %I:%M %p')
+                                datetime1 = datetime.strptime(specific_result['start_time'], '%m/%d/%Y %I:%M %p')
+                                time_difference = datetime2 - datetime1
+
+                                # Get the difference in minutes
+                                specific_result['time_of_date']  = time_difference.total_seconds() / 60
+                            except:
+                                return 2
         else:
             with connection.cursor() as cursor:
                 result = ApiSpecialSqlEvents.get_event_sql(
