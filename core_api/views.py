@@ -1309,6 +1309,12 @@ class ManageEventsMixin:
         query_param_recipient_id = request.GET.get('recipient_id', None)
         query_param_agent_id = request.GET.get('agent_id', None)
         query_param_provider_id = request.GET.get('provider_id', None)
+        query_param_start_date = request.GET.get('start_date', None)
+        query_param_end_date = request.GET.get('end_date', None)
+        query_param_provider_name = request.GET.get('provider_name', None)
+        query_param_recipient_name = request.GET.get('recipient_name', None)
+        query_param_clinic_name = request.GET.get('clinic_name', None)
+        query_param_booking_public_id = request.GET.get('booking_public_id', None)
         query_param_field_to_sort = request.GET.get('field_to_sort', None)
         query_param_order_to_sort = request.GET.get('order_to_sort', None)
         query_param_report = request.GET.get('report', False)
@@ -1356,6 +1362,12 @@ class ManageEventsMixin:
                     query_param_recipient_id,
                     query_param_agent_id,
                     query_param_provider_id,
+                    query_param_start_date,
+                    query_param_end_date,
+                    query_param_provider_name,
+                    query_param_recipient_name,
+                    query_param_clinic_name,
+                    query_param_booking_public_id,
                     query_field_to_sort,
                     query_order_to_sort
                 )
@@ -1420,6 +1432,12 @@ class ManageEventsMixin:
                     query_param_recipient_id,
                     query_param_agent_id,
                     query_param_provider_id,
+                    query_param_start_date,
+                    query_param_end_date,
+                    query_param_provider_name,
+                    query_param_recipient_name,
+                    query_param_clinic_name,
+                    query_param_booking_public_id,
                     query_field_to_sort,
                     query_order_to_sort
                 )
@@ -1435,7 +1453,13 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id
+                    query_param_provider_id,
+                    query_param_start_date,
+                    query_param_end_date,
+                    query_param_provider_name,
+                    query_param_recipient_name,
+                    query_param_clinic_name,
+                    query_param_booking_public_id
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
