@@ -27,7 +27,13 @@ class ApiSpecialSqlEvents():
         items_excluded,
         recipient_id,
         agent_id,
-        provider_id
+        provider_id,
+        start_date,
+        end_date,
+        provider_name,
+        recipient_name,
+        clinic_name,
+        booking_public_id
     ):
         params = []
         limit_statement = ''
@@ -44,6 +50,31 @@ class ApiSpecialSqlEvents():
         if end_at is not None:
             where_conditions += ' AND event.end_at <= %s'
             params.append(end_at)
+            
+        if start_date is not None:
+            where_conditions += ' AND event.start_at >= %s'
+            params.append(start_date)
+            
+        if end_date is not None:
+            where_conditions += ' AND event.start_at <= %s'
+            params.append(end_date)
+            
+        if provider_name is not None:
+            where_conditions += ' AND provider_user.first_name LIKE %s'
+            params.append('%' + provider_name + '%')
+            
+        if recipient_name is not None:
+            where_conditions += ' AND recipient_user.first_name LIKE %s'
+            params.append('%' + recipient_name + '%')
+            
+        if clinic_name is not None:
+            where_conditions += ' AND (company.type = %s AND company.name LIKE %s)'
+            params.append('clinic')
+            params.append('%' + clinic_name + '%')
+            
+        if booking_public_id is not None:
+            where_conditions += ' AND booking.public_id LIKE %s'
+            params.append('%' + booking_public_id + '%')
             
         if recipient_id is not None and agent_id is None:
             where_conditions += ' AND recipient.id = %s'
@@ -183,6 +214,12 @@ class ApiSpecialSqlEvents():
         recipient_id,
         agent_id,
         provider_id,
+        start_date,
+        end_date,
+        provider_name,
+        recipient_name,
+        clinic_name,
+        booking_public_id,
         field_to_sort,
         order_to_sort
     ):
@@ -198,7 +235,13 @@ class ApiSpecialSqlEvents():
             items_excluded,
             recipient_id,
             agent_id,
-            provider_id
+            provider_id,
+            start_date,
+            end_date,
+            provider_name,
+            recipient_name,
+            clinic_name,
+            booking_public_id
         )
 
         query = """--sql
@@ -427,7 +470,13 @@ class ApiSpecialSqlEvents():
         items_excluded,
         recipient_id,
         agent_id,
-        provider_id
+        provider_id,
+        start_date,
+        end_date,
+        provider_name,
+        recipient_name,
+        clinic_name,
+        booking_public_id
     ):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
         params, where_conditions, _ = ApiSpecialSqlEvents.get_event_sql_where_clause(
@@ -441,7 +490,13 @@ class ApiSpecialSqlEvents():
             items_excluded,
             recipient_id,
             agent_id,
-            provider_id
+            provider_id,
+            start_date,
+            end_date,
+            provider_name,
+            recipient_name,
+            clinic_name,
+            booking_public_id
         )
 
         query = """--sql
