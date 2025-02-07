@@ -133,7 +133,7 @@ class ApiSpecialSqlReports():
                             AND provider.id = extra_provider.parent_id 
                             AND data::text != '"[]"'
                             LIMIT 1
-                        ), '[]'),
+                        ), ''),
                         'interpreter_certificate', COALESCE((
                             SELECT 
                                 _category.description
