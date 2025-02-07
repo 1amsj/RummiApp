@@ -17,10 +17,10 @@ from core_backend.serializers.serializers_update import AgentUpdateSerializer, C
 
 # Creation
 @transaction.atomic
-def create_user(data):
+def create_user(data, provider_data):
     serializer = UserCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
-    user = serializer.create()
+    user = serializer.create(provider_data)
     return user.id
 
 @transaction.atomic

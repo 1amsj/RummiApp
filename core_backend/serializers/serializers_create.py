@@ -28,6 +28,62 @@ def get_or_create_operators_group():
         
     return group
 
+def get_or_create_provider_group():
+    group, created = Group.objects.get_or_create(name='Provider')
+    names_of_permissions = [
+        'Can change user', 
+        'Can view user', 
+        'Can view agent',
+        'Can add booking',
+        'Can change booking',
+        'Can view booking',
+        'Can view business',
+        'Can view category',
+        'Can add contact',
+        'Can change contact',
+        'Can view contact',
+        'Can add event',
+        'Can change event',
+        'Can view event',
+        'Can view invoice',
+        'Can add location',
+        'Can change location',
+        'Can view location',
+        'Can change provider data',
+        'Can view provider data',
+        'Can view service',
+        'Can change recipient data'
+        'Can view recipient data',
+        'Can view payer data',
+        'Can add extra data',
+        'Can change extra data',
+        'Can view extra data',
+        'Can view company',
+        'Can change affiliation',
+        'Can view affiliation',
+        'Can change service root',
+        'Can view service root',
+        'Can add note',
+        'Can change note',
+        'Can view note',
+        'Can delet note',
+        'Can view language',
+        'Can add offer',
+        'Can change offer',
+        'Can view offer',
+        'Can add report',
+        'Can change report',
+        'Can view report',
+        'Can delete report',
+        'Can view service area',
+    ]
+    
+    if created:
+        permissions = Permission.objects.filter(name__in=names_of_permissions)
+        group.permissions.set(permissions)
+        
+    return group
+
 class GlobalSettingCreateSerializer(GlobalSettingSerializer):
     def create(self, business_name, validated_data=None) -> int:
         data = validated_data or self.validated_data
@@ -512,7 +568,7 @@ class UserCreateSerializer(UserSerializer):
             raise serializers.ValidationError({"confirmation": "Password fields didn't match."})
         return attrs
 
-    def create(self, validated_data=None):
+    def create(self, provider_data, validated_data=None):
         data: dict = validated_data or self.validated_data
         password = data.pop('password', None)
         data.pop('confirmation', None)
@@ -532,8 +588,12 @@ class UserCreateSerializer(UserSerializer):
             user.location = Location.objects.create(**location_data)
             user.save()
 
-        operators_group = get_or_create_operators_group()
-        user.groups.add(operators_group)
+        if provider_data is not None:
+            provider_group = get_or_create_provider_group()
+            user.groups.add(provider_group)
+        else:
+            operators_group = get_or_create_operators_group()
+            user.groups.add(operators_group)
 
         user_sync_email_with_contact(user)
 

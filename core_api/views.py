@@ -521,8 +521,9 @@ class ManageUsers(basic_view_manager(User, UserSerializer)):
         })
 
         user_id = create_user(
-            request.data
-        ) 
+            request.data,
+            provider_data
+        )
 
         response = {"user_id": user_id}
 
