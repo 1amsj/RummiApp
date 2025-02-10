@@ -65,6 +65,12 @@ class ApiSpecialSqlReports():
         recipient_id,
         agent_id,
         provider_id,
+        start_date,
+        end_date,
+        provider_name,
+        recipient_name,
+        clinic_name,
+        booking_public_id,
         field_to_sort,
         order_to_sort
     ):
@@ -81,7 +87,13 @@ class ApiSpecialSqlReports():
             items_excluded,
             recipient_id,
             agent_id,
-            provider_id
+            provider_id,
+            start_date,
+            end_date,
+            provider_name,
+            recipient_name,
+            clinic_name,
+            booking_public_id,
         )
 
         query = """--sql
