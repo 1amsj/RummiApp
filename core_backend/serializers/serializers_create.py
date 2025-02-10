@@ -562,7 +562,7 @@ class UserCreateSerializer(UserSerializer):
             raise serializers.ValidationError({"confirmation": "Password fields didn't match."})
         return attrs
 
-    def create(self, provider_data, validated_data=None):
+    def create(self, provider_data, operator_data, validated_data=None):
         data: dict = validated_data or self.validated_data
         password = data.pop('password', None)
         data.pop('confirmation', None)
@@ -585,7 +585,7 @@ class UserCreateSerializer(UserSerializer):
         if provider_data is not None:
             provider_group = get_or_create_provider_group()
             user.groups.add(provider_group)
-        else:
+        if operator_data is not None:
             operators_group = get_or_create_operators_group()
             user.groups.add(operators_group)
 
