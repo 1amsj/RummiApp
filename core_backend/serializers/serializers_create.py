@@ -66,7 +66,6 @@ def get_or_create_provider_group():
         'Can add note',
         'Can change note',
         'Can view note',
-        'Can delet note',
         'Can view language',
         'Can add offer',
         'Can change offer',
