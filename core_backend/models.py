@@ -750,6 +750,11 @@ class Ledger(SoftDeletableModel):
 
 
 class Invoice(models.Model):
+    created_at = models.DateTimeField(auto_now=True)
+    sent_at = models.DateTimeField(default=None, blank=True)
+    sent = models.BooleanField(default=False)
+    amount = models.IntegerField(default=0)
+    taxes = models.IntegerField(default=0)
     class Meta:
         verbose_name = _('invoice')
         verbose_name_plural = _('invoices')
