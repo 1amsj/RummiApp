@@ -52,7 +52,6 @@ def get_or_create_provider_group():
         'Can change provider data',
         'Can view provider data',
         'Can view service',
-        'Can change recipient data'
         'Can view recipient data',
         'Can view payer data',
         'Can add extra data',
