@@ -59,7 +59,6 @@ def get_or_create_provider_group():
         'Can change extra data',
         'Can view extra data',
         'Can view company',
-        'Can change affiliation',
         'Can view affiliation',
         'Can view service root',
         'Can add note',
