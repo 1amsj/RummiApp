@@ -45,7 +45,6 @@ def get_or_create_provider_group():
         'Can add event',
         'Can change event',
         'Can view event',
-        'Can view invoice',
         'Can add location',
         'Can change location',
         'Can view location',
