@@ -74,7 +74,6 @@ def get_or_create_provider_group():
         'Can add report',
         'Can change report',
         'Can view report',
-        'Can delete report',
         'Can view service area',
     ]
     
