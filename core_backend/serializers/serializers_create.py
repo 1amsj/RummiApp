@@ -238,7 +238,7 @@ class EventCreateSerializer(extendable_serializer(Event)):
         model = Event
         fields = '__all__'
 
-    def create(self, business, group_booking, validated_data=None) -> int:
+    def create(self, business, group_booking, concurrent_booking, validated_data=None) -> int:
         data: dict = validated_data or self.validated_data
         affiliates = data.pop('affiliates', [])
         agents = data.pop('agents', [])
@@ -269,6 +269,16 @@ class EventCreateSerializer(extendable_serializer(Event)):
         group_bookings.append(group_booking)
         group_bookings = [value == '"True"' or value == True for value in group_bookings]      
         agentsCanOverlap = all(group_bookings)
+
+        concurrent_bookings = []
+        for event in overlapping_agents:
+            if event.booking:
+                extras = event.booking.get_extra_attrs()
+                concurrent_booking_previous = extras.get('concurrent_booking', None)
+                concurrent_bookings.append(concurrent_booking_previous)
+        concurrent_bookings.append(concurrent_booking)
+        concurrent_bookings = [value == '"True"' or value == True for value in concurrent_bookings]
+        concurrentCanOverlap = all(concurrent_bookings)
    
         
         if(extras.__contains__('claim_number')):
@@ -288,7 +298,7 @@ class EventCreateSerializer(extendable_serializer(Event)):
         if overlapping_events.exists():
             #OVERLAP
             raise Exception("Overlapping event")
-        elif overlapping_agents.exists() and not agentsCanOverlap:
+        elif overlapping_agents.exists() and not (agentsCanOverlap or concurrentCanOverlap):
             #SAME EVENT DIFFER
             raise Exception("Overlapping medical provider")
 
