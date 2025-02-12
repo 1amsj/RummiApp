@@ -201,7 +201,7 @@ class Contact(SoftDeletableModel, HistoricalModel):
         FAX = 'fax', _('fax')
 
     email = models.EmailField(_("email address"), blank=True)
-    phone = PhoneNumberField(_('phone number'), blank=True)
+    phone = PhoneNumberField(_('phone number'), blank=True, region='US')
     fax = PhoneNumberField(_('fax number'), blank=True)
     phone_context = models.CharField(_('phone context'), max_length=150, blank=True)
     email_context = models.CharField(_('email context'), max_length=150, blank=True)
@@ -750,6 +750,11 @@ class Ledger(SoftDeletableModel):
 
 
 class Invoice(models.Model):
+    created_at = models.DateTimeField(auto_now=True)
+    sent_at = models.DateTimeField(default=None, blank=True)
+    sent = models.BooleanField(default=False)
+    amount = models.IntegerField(default=0)
+    taxes = models.IntegerField(default=0)
     class Meta:
         verbose_name = _('invoice')
         verbose_name_plural = _('invoices')
