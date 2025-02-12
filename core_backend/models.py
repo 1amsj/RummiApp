@@ -201,7 +201,7 @@ class Contact(SoftDeletableModel, HistoricalModel):
         FAX = 'fax', _('fax')
 
     email = models.EmailField(_("email address"), blank=True)
-    phone = PhoneNumberField(_('phone number'), blank=True)
+    phone = PhoneNumberField(_('phone number'), blank=True, region='US')
     fax = PhoneNumberField(_('fax number'), blank=True)
     phone_context = models.CharField(_('phone context'), max_length=150, blank=True)
     email_context = models.CharField(_('email context'), max_length=150, blank=True)
