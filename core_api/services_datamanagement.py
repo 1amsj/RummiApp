@@ -199,7 +199,7 @@ def create_booking(data, business_name, user):
 
 
 @transaction.atomic
-def create_events_wrap(datalist, business, booking_id, group_booking):
+def create_events_wrap(datalist, business, booking_id, group_booking, concurrent_booking):
     # Handle events creation
     event_ids = []
     event_errors = []
@@ -208,7 +208,7 @@ def create_events_wrap(datalist, business, booking_id, group_booking):
             event_data['booking'] = booking_id
             serializer = EventCreateSerializer(data=event_data)
             serializer.is_valid(raise_exception=True)
-            event_id = serializer.create(business, group_booking)
+            event_id = serializer.create(business, group_booking, concurrent_booking)
             event_ids.append(event_id)
 
         except ValidationError as exc:
@@ -222,13 +222,13 @@ def create_events_wrap(datalist, business, booking_id, group_booking):
     return event_ids
 
 
-def create_event(data, business_name, requester_id, group_booking):
+def create_event(data, business_name, requester_id, group_booking, concurrent_booking):
     if not data.get('requester'):
         data['requester'] = requester_id
 
     serializer = EventCreateSerializer(data=data)
     serializer.is_valid(raise_exception=True)
-    return serializer.create(business_name, group_booking)
+    return serializer.create(business_name, group_booking, concurrent_booking)
 
 
 @transaction.atomic

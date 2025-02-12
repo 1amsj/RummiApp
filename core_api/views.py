@@ -1156,6 +1156,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     def post(request, business_name):
         target_language_alpha3 = request.data.get('target_language_alpha3')
         group_booking = request.data.get('group_booking', None)
+        concurrent_booking = request.data.get('concurrent_booking', None)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
         offer_datalist = request.data.pop(ApiSpecialKeys.OFFER_DATALIST, [])
         company_type_validation = validator_type(event_datalist)
@@ -1196,7 +1197,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             datalist=event_datalist,
             business=business_name,
             booking_id=booking_id,
-            group_booking=group_booking
+            group_booking=group_booking,
+            concurrent_booking = concurrent_booking
         )
 
         offer_ids = create_offers_wrap(
@@ -1496,6 +1498,7 @@ class ManageEventsMixin:
         data = request.data
         user: User = request.user
         requester_id = user.as_requester.id if user.is_requester else None
+        concurrent_booking = request.data.get('concurrent_booking', None)
         report_datalist = request.data.pop(ApiSpecialKeys.REPORT_DATALIST, None)
 
         if type(data) is list:
@@ -1511,6 +1514,7 @@ class ManageEventsMixin:
         event_id = create_event(
             data,
             business_name,
+            concurrent_booking,
             requester_id
         )
 
