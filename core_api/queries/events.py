@@ -60,11 +60,11 @@ class ApiSpecialSqlEvents():
             params.append(end_date)
             
         if provider_name is not None:
-            where_conditions += " AND (provider_user.first_name || ' ' || provider_user.last_name) LIKE %s"
+            where_conditions += " AND (provider_user.first_name || ' ' || provider_user.last_name) ILIKE %s"
             params.append('%' + provider_name + '%')
             
         if recipient_name is not None:
-            where_conditions += " AND (recipient_user.first_name || ' ' || recipient_user.last_name) LIKE %s"
+            where_conditions += " AND (recipient_user.first_name || ' ' || recipient_user.last_name) ILIKE %s"
             params.append('%' + recipient_name + '%')
             
         if clinic_name is not None:
