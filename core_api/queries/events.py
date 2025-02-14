@@ -68,12 +68,12 @@ class ApiSpecialSqlEvents():
             params.append('%' + recipient_name + '%')
             
         if clinic_name is not None:
-            where_conditions += ' AND (company.type = %s AND company.name LIKE %s)'
+            where_conditions += ' AND (company.type = %s AND company.name ILIKE %s)'
             params.append('clinic')
             params.append('%' + clinic_name + '%')
             
         if booking_public_id is not None:
-            where_conditions += ' AND booking.public_id LIKE %s'
+            where_conditions += ' AND booking.public_id ILIKE %s'
             params.append('%' + booking_public_id + '%')
             
         if recipient_id is not None and agent_id is None:
