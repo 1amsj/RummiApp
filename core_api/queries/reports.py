@@ -97,8 +97,9 @@ class ApiSpecialSqlReports():
         )
 
         query = """--sql
-            SELECT json_agg(_query_result.json_data) AS result FROM (
-                SELECT DISTINCT ON (event.id)
+        SELECT json_agg(result.json_data) AS result FROM (
+            SELECT sub.json_data FROM (
+                SELECT
                     (json_build_object(
                         'id', event.id,
                         'first_name', _users_affiliates.first_name,
@@ -137,7 +138,7 @@ class ApiSpecialSqlReports():
                         'type_of_appointment', event.description,
                         'interpreter_first_name', provider_user.first_name,
                         'interpreter_last_name', provider_user.last_name,
-                        'interpreter_certificate_number', COALESCE((
+                        'interpreter_certificate_number', COALESCE((  
                             SELECT 
                                 ((data->>0)::jsonb->>0)::jsonb->>'certificate_number'
                             FROM public.core_backend_extra extra_provider 
@@ -146,7 +147,7 @@ class ApiSpecialSqlReports():
                             AND data::text != '"[]"'
                             LIMIT 1
                         ), ''),
-                        'interpreter_certificate', COALESCE((
+                        'interpreter_certificate', COALESCE((  
                             SELECT 
                                 _category.description
                             FROM public.core_backend_extra extra_provider 
@@ -161,15 +162,13 @@ class ApiSpecialSqlReports():
                         'status_report', _reports.status,
                         'operators_first_name', _booking_user_operator.first_name,
                         'operators_last_name', _booking_user_operator.last_name,
-                        'notes', COALESCE((
+                        'notes', COALESCE((  
                             SELECT string_agg(note, ', ')
                             FROM (
                                 SELECT json_array_elements_text(
-                                    COALESCE((
+                                    COALESCE((  
                                         SELECT
-                                            json_agg((
-                                                _note.text
-                                            ))
+                                            json_agg(_note.text)
                                         FROM "core_backend_note" _note
                                         WHERE _note.booking_id = booking.id
                                     ), '[]'::JSON)
@@ -177,19 +176,15 @@ class ApiSpecialSqlReports():
                             ) AS notes_string
                         ), ''),
                         'contacts', _company_booking_contacts,
-                        'authorized', COALESCE((
-                            SELECT json_agg((
-                                True
-                            )) -> 0
+                        'authorized', COALESCE((  
+                            SELECT json_agg((True)) -> 0
                             FROM "core_backend_authorization_events" _authorization_events
                                 INNER JOIN "core_backend_authorization" _authorization
                                     ON _authorization_events.authorization_id = _authorization.id and _authorization.status = 'ACCEPTED'
                             WHERE _authorization_events.event_id = event.id
                         ), '[]'::JSON),
-                        'auth_by', COALESCE((
-                            SELECT json_agg((
-                                CONCAT(_user.first_name, ' ', _user.last_name)
-                            )) -> 0
+                        'auth_by', COALESCE((  
+                            SELECT json_agg(CONCAT(_user.first_name, ' ', _user.last_name)) -> 0
                             FROM "core_backend_authorization_events" _authorization_events
                                 INNER JOIN "core_backend_authorization" _authorization
                                     ON _authorization_events.authorization_id = _authorization.id and _authorization.status = 'ACCEPTED'
@@ -199,9 +194,7 @@ class ApiSpecialSqlReports():
                                     ON _user.id = _payer.user_id
                             WHERE _authorization_events.event_id = event.id
                         ), '[]'::JSON),
-                        'language', COALESCE((
-                            _language.name
-                        )),
+                        'language', COALESCE(_language.name),
                         'price', COALESCE(
                             (
                                 %s
@@ -282,11 +275,11 @@ class ApiSpecialSqlReports():
                         )
                     )::jsonb ||
                     COALESCE((
-                        SELECT
-                            json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                        SELECT json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
-                        WHERE extra.parent_ct_id = %s AND extra.parent_id=event.id
-                    )::jsonb, '{}'::jsonb )) AS json_data
+                        WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id
+                    )::jsonb, '{}'::jsonb)) AS json_data,
+                    ROW_NUMBER() OVER (PARTITION BY event.id ORDER BY %s %s NULLS LAST) AS rn
                 FROM "core_backend_event" event
                     LEFT JOIN "core_backend_booking" booking
                         ON booking.id = event.booking_id
@@ -363,23 +356,28 @@ class ApiSpecialSqlReports():
                     LEFT JOIN "core_backend_language" _language
                         ON _language.alpha3 = REPLACE(REPLACE(_extra_booking.data::text, '\"', ''), '\\', '')
                 WHERE %s
-                ORDER BY event.id, %s %s NULLS LAST
+                ORDER BY %s %s NULLS LAST
                 %s
-            ) _query_result
-        """ % (
-            query_price,
-            query_price,
-            query_price,
-            query_price,
-            query_price,
-            query_price,
-            query_price,
-            query_price,
-            parent_ct_id, 
-            where_conditions, 
-            field_to_sort, 
-            order_to_sort, 
-            limit_statement)
+            ) sub
+            WHERE sub.rn = 1
+        ) result
+    """ % (
+        query_price,
+        query_price,
+        query_price,
+        query_price,
+        query_price,
+        query_price,
+        query_price,
+        query_price,
+        parent_ct_id,
+        field_to_sort,
+        order_to_sort,
+        where_conditions,
+        field_to_sort,
+        order_to_sort,
+        limit_statement
+    )
 
         cursor.execute(query, params)
         result = cursor.fetchone()
