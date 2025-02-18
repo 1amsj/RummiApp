@@ -455,7 +455,7 @@ class ApiSpecialSqlEvents():
 
         cursor.execute(query, params)
         result = cursor.fetchone()
-        if len(result) == 1:
+        if len(result) == 1 and result[0] is not None:
             return result[0]
 
         return []
