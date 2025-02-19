@@ -32,6 +32,7 @@ class ApiSpecialSqlEvents():
         end_date,
         provider_name,
         recipient_name,
+        recipient_dob,
         clinic_name,
         booking_public_id
     ):
@@ -66,6 +67,10 @@ class ApiSpecialSqlEvents():
         if recipient_name is not None:
             where_conditions += " AND (recipient_user.first_name || ' ' || recipient_user.last_name) ILIKE %s"
             params.append('%' + recipient_name + '%')
+            
+        if recipient_dob is not None:
+            where_conditions += " AND recipient_user.date_of_birth = %s"
+            params.append(recipient_dob)
             
         if clinic_name is not None:
             where_conditions += ' AND (company.type = %s AND company.name ILIKE %s)'
@@ -218,6 +223,7 @@ class ApiSpecialSqlEvents():
         end_date,
         provider_name,
         recipient_name,
+        recipient_dob,
         clinic_name,
         booking_public_id,
         field_to_sort,
@@ -240,6 +246,7 @@ class ApiSpecialSqlEvents():
             end_date,
             provider_name,
             recipient_name,
+            recipient_dob,
             clinic_name,
             booking_public_id
         )
@@ -475,6 +482,7 @@ class ApiSpecialSqlEvents():
         end_date,
         provider_name,
         recipient_name,
+        recipient_dob,
         clinic_name,
         booking_public_id
     ):
@@ -495,6 +503,7 @@ class ApiSpecialSqlEvents():
             end_date,
             provider_name,
             recipient_name,
+            recipient_dob,
             clinic_name,
             booking_public_id
         )
