@@ -1318,6 +1318,7 @@ class ManageEventsMixin:
         query_param_provider_name = request.GET.get('provider_name', None)
         query_param_recipient_name = request.GET.get('recipient_name', None)
         query_param_recipient_dob = request.GET.get('recipient_dob', None)
+        query_param_date_of_injury = request.GET.get('date_of_injury', None)
         query_param_clinic_name = request.GET.get('clinic_name', None)
         query_param_booking_public_id = request.GET.get('booking_public_id', None)
         query_param_field_to_sort = request.GET.get('field_to_sort', None)
@@ -1442,6 +1443,7 @@ class ManageEventsMixin:
                     query_param_provider_name,
                     query_param_recipient_name,
                     query_param_recipient_dob,
+                    query_param_date_of_injury,
                     query_param_clinic_name,
                     query_param_booking_public_id,
                     query_field_to_sort,
@@ -1465,6 +1467,7 @@ class ManageEventsMixin:
                     query_param_provider_name,
                     query_param_recipient_name,
                     query_param_recipient_dob,
+                    query_param_date_of_injury,
                     query_param_clinic_name,
                     query_param_booking_public_id
                 )
