@@ -1,3 +1,5 @@
+from core_api.queries.content_type import ApiSpecialSqlContentTypeIds
+
 class ApiSpecialSqlEvents():
     @staticmethod
     def get_event_sql_ct_id(cursor):
@@ -224,6 +226,7 @@ class ApiSpecialSqlEvents():
         order_to_sort
     ):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
+        booking_parent_ct_id = ApiSpecialSqlContentTypeIds.get_booking_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(
             id,
             limit,
@@ -348,7 +351,16 @@ class ApiSpecialSqlEvents():
                                                 ON _users.id = _operators.user_id
                                         WHERE _booking_operators.booking_id = _booking.id
                                     ), '[]'::JSON)
-                                )
+                                )::jsonb ||
+                                COALESCE(
+                                    (
+                                        SELECT
+                                            json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                        FROM "core_backend_extra" extra
+                                        WHERE extra.parent_ct_id = %s AND extra.parent_id = _booking.id
+                                    )::jsonb,
+                                    '{}'::jsonb
+                                )::jsonb
                             FROM "core_backend_booking" _booking
                             WHERE _booking.id = event.booking_id
                         ),
@@ -451,7 +463,7 @@ class ApiSpecialSqlEvents():
                 ORDER BY %s %s NULLS LAST, event.id
                 %s
             ) _query_result
-        """ % (parent_ct_id, where_conditions, field_to_sort, order_to_sort, limit_statement)
+        """ % (booking_parent_ct_id, parent_ct_id, where_conditions, field_to_sort, order_to_sort, limit_statement)
 
         cursor.execute(query, params)
         result = cursor.fetchone()
