@@ -32,7 +32,7 @@ from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
 from core_api.queries.operators import ApiSpecialSqlOperators
 from core_api.queries.providers import ApiSpecialSqlProviders
-from core_api.queries.reports import ApiSpecialSqlReports
+from core_api.queries.event_report import ApiSpecialSqlEventReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
 from core_api.queries.insert_note import ApiSpecialSqlInsertNote
@@ -1354,7 +1354,7 @@ class ManageEventsMixin:
 
         if query_param_report:
             with connection.cursor() as cursor:
-                result = ApiSpecialSqlReports.get_event_report_sql(
+                result = ApiSpecialSqlEventReports.get_event_report_sql(
                     cursor,
                     query_event_id,
                     query_param_page_size,
