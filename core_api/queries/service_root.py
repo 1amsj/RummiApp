@@ -59,8 +59,20 @@ class ApiSpecialSqlServiceRoot:
                         'id', service_root.id,
                         'name', service_root.name,
                         'description', service_root.description,
-                        'is_deleted', service_root.is_deleted
-                        
+                        'is_deleted', service_root.is_deleted,
+                        'categories', COALESCE((
+                            SELECT
+                                json_agg(json_build_object(
+                                    'id', category.id,
+                                    'name', category.name,
+                                    'description', category.description,
+                                    'is_deleted', category.is_deleted
+                                ))
+                            FROM "core_backend_serviceroot_categories" service_root_categories
+                                INNER JOIN "core_backend_category" category
+                                    ON service_root_categories.category_id = category.id AND category.is_deleted = FALSE
+                            WHERE service_root_categories.serviceroot_id = service_root.id
+                        ), '[]'::json)
                     )) AS json_data
                 FROM "core_backend_serviceroot" service_root
                 WHERE %s
