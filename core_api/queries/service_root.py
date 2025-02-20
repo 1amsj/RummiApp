@@ -2,7 +2,7 @@ class ApiSpecialSqlServiceRoot:
     
     @staticmethod
     def get_service_root_sql_ct_id(cursor):
-        query = """
+        query = """--sql
             SELECT
                 id
             FROM "django_content_type" content_type
@@ -15,88 +15,88 @@ class ApiSpecialSqlServiceRoot:
             return result[0]
 
         return None
-    def get_service_root_sql():
-        return """
-        SELECT JSON_AGG(t) FROM (
-            SELECT serviceroot.*, 
-            COALESCE((
-                SELECT json_agg(row_to_json(_categories))
-                FROM core_backend_serviceroot_categories _root_categories
-                    INNER JOIN core_backend_category _categories
-                        ON _categories.id = _root_categories.category_id
-                WHERE _root_categories.serviceroot_id = serviceroot.id
-            ), '[]'::JSON) AS categories,
-            COALESCE((
-                SELECT JSON_AGG(t) FROM (
-                    SELECT _service.*, root_lateral.*, target_language_alpha3_lateral.*, 
-                    source_language_alpha3_lateral.*, provider_lateral.*
-                    FROM core_backend_service _service,
-                        LATERAL(
-                            SELECT JSON_AGG(t) AS root FROM (
-                                SELECT serviceroot_root.*, categories_lateral.*
-                                FROM "core_backend_serviceroot" serviceroot_root,
-                                LATERAL (
-                                    SELECT json_agg(row_to_json(_categories)) AS categories
-                                    FROM core_backend_serviceroot_categories _root_categories
-                                        INNER JOIN core_backend_category _categories
-                                            ON _categories.id = _root_categories.category_id
-                                    WHERE _root_categories.serviceroot_id = serviceroot.id
-                                ) AS categories_lateral
-                                WHERE serviceroot_root.id = serviceroot.id
-                            ) t
-                        ) AS root_lateral,
-                        LATERAL(
-                            SELECT data as target_language_alpha3 FROM core_backend_extra WHERE key = 'target_language_alpha3' and parent_id = serviceroot.id
-                        ) AS target_language_alpha3_lateral,
-                        LATERAL(
-                            SELECT data as source_language_alpha3 FROM core_backend_extra WHERE key = 'source_language_alpha3' and parent_id = serviceroot.id
-                        ) AS source_language_alpha3_lateral,
-                        LATERAL(
-                            SELECT JSON_AGG(t) AS provider FROM (
-                                SELECT provider.*, provider_lateral.* FROM core_backend_provider provider, 
-                                LATERAL (
-                                    SELECT username, email, first_name, last_name, national_id, ssn, date_of_birth, title, suffix
-                                    ,
-                                    contacts_lateral.*
-                                    , 
-                                    user_contacts_lateral.*, 
-                                    location_lateral.*, 
-                                    companies_lateral.*
-                                    FROM core_backend_user
-                                    ,
-                                    LATERAL (
-                                        SELECT ARRAY[core_backend_provider_companies.id] AS companies, provider_id FROM core_backend_provider_companies
-                                        WHERE provider_id = provider.id
-                                    ) as companies_lateral
-                                    ,
-                                    LATERAL (
-                                        SELECT JSON_AGG(t) -> 0 as user_contacts_ids FROM (
-                                            SELECT contact_id FROM core_backend_user_contacts 
-                                            WHERE core_backend_user_contacts.user_id = core_backend_user.id
-                                        ) t
-                                    ) AS user_contacts_lateral,
-                                    LATERAL (
-                                        SELECT JSON_AGG(t) as contacts FROM (
-                                            SELECT * FROM core_backend_contact WHERE core_backend_contact.id = (user_contacts_lateral.user_contacts_ids ->> 'contact_id')::integer
-                                        ) t
-                                    ) AS contacts_lateral,
-                                    LATERAL (
-                                        SELECT JSON_AGG(t) -> 0 as location FROM (
-                                            SELECT * FROM core_backend_location WHERE core_backend_location.id = core_backend_user.location_id
-                                        ) t
-                                    ) as location_lateral
-                                    WHERE core_backend_user.id = provider.user_id
-                                ) AS provider_lateral
-                                WHERE provider.id = _service.provider_id
-                            ) t
-                        ) AS provider_lateral
-                    WHERE _service.root_id = serviceroot.id
-                ) t
-            ), '[]'::JSON) AS services,
-            COALESCE((
-                SELECT array_agg(booking.id) as bookings_id FROM core_backend_booking booking WHERE booking.service_root_id = serviceroot.id
-            )) AS bookings
-            FROM "core_backend_serviceroot" serviceroot
-            WHERE serviceroot.is_deleted = false
-        ) t
-        """
+
+    @staticmethod
+    def get_service_root_sql_where_clause(
+        id,
+        limit,
+        offset
+    ):
+        params = []
+        limit_statement = ''
+        where_conditions = 'service_root.is_deleted = FALSE'
+        
+        if id is not None:
+            where_conditions += ' AND service_root.id = %s'
+            params.append(id)
+            
+        if limit is not None and limit > 0 and offset is not None and offset >= 0:
+            limit_statement = 'LIMIT %s OFFSET %s'
+            params.append(limit)
+            params.append(offset)
+
+        return params, where_conditions, limit_statement
+
+    @staticmethod
+    def get_service_root_sql(
+        cursor,
+        id,
+        limit,
+        offset,
+        field_to_sort,
+        order_to_sort
+    ):
+        params, where_conditions, limit_statement = ApiSpecialSqlServiceRoot.get_service_root_sql_where_clause(
+            id,
+            limit,
+            offset
+        )
+
+        query = """--sql
+            SELECT json_agg(_query_result.json_data) AS result FROM (
+                SELECT
+                    (json_build_object(
+                        'id', service_root.id,
+                        'name', service_root.name,
+                        'description', service_root.description,
+                        'is_deleted', service_root.is_deleted
+                        
+                    )) AS json_data
+                FROM "core_backend_serviceroot" service_root
+                WHERE %s
+                ORDER BY %s %s NULLS LAST
+                %s
+            ) AS _query_result
+        """ % (where_conditions, field_to_sort, order_to_sort, limit_statement)
+        
+        cursor.execute(query, params)
+        result = cursor.fetchone()
+        if len(result) == 1 and result[0] is not None:
+            return result[0]
+
+        return []
+    
+    @staticmethod
+    def get_service_root_count_sql(
+        cursor,
+        id
+    ):
+        params, where_conditions, _ = ApiSpecialSqlServiceRoot.get_service_root_sql_where_clause(
+            id,
+            None,
+            None
+        )
+
+        query = """--sql
+            SELECT
+               COUNT(DISTINCT service_root.id)
+            FROM "core_backend_serviceroot" service_root
+            WHERE %s
+        """ % where_conditions
+
+        cursor.execute(query, params)
+        result = cursor.fetchone()
+        if len(result) == 1:
+            return result[0]
+
+        return 0
