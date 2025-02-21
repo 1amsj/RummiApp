@@ -569,12 +569,12 @@ class ApiSpecialSqlBookings():
                                                 'end_at', _reports.end_at,
                                                 'observations', _reports.observations
                                             )::jsonb ||
-                                            (
+                                            COALESCE((
                                                 SELECT
                                                     json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                                                 FROM "core_backend_extra" extra
                                                 WHERE extra.parent_ct_id = %s AND extra.parent_id = _reports.id
-                                            )::jsonb)
+                                            )::jsonb, '{}'::jsonb))
                                         FROM "core_backend_report" _reports
                                         WHERE _reports.event_id = event.id
                                     ), '[]'::JSON),
