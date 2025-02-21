@@ -32,6 +32,8 @@ class ApiSpecialSqlEvents():
         end_date,
         provider_name,
         recipient_name,
+        recipient_dob,
+        date_of_injury,
         clinic_name,
         booking_public_id
     ):
@@ -66,6 +68,16 @@ class ApiSpecialSqlEvents():
         if recipient_name is not None:
             where_conditions += " AND (recipient_user.first_name || ' ' || recipient_user.last_name) ILIKE %s"
             params.append('%' + recipient_name + '%')
+            
+        if recipient_dob is not None:
+            where_conditions += " AND recipient_user.date_of_birth = %s"
+            params.append(recipient_dob)
+            
+        if date_of_injury is not None:
+            where_conditions += ' AND EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s AND REPLACE(REPLACE(extra.data::text, \'\"\', \'\'), \'\\\', \'\') = %s )'
+            params.append(parent_ct_id)
+            params.append('date_of_injury')
+            params.append(date_of_injury)
             
         if clinic_name is not None:
             where_conditions += ' AND (company.type = %s AND company.name ILIKE %s)'
@@ -218,6 +230,8 @@ class ApiSpecialSqlEvents():
         end_date,
         provider_name,
         recipient_name,
+        recipient_dob,
+        date_of_injury,
         clinic_name,
         booking_public_id,
         field_to_sort,
@@ -240,6 +254,8 @@ class ApiSpecialSqlEvents():
             end_date,
             provider_name,
             recipient_name,
+            recipient_dob,
+            date_of_injury,
             clinic_name,
             booking_public_id
         )
@@ -475,6 +491,8 @@ class ApiSpecialSqlEvents():
         end_date,
         provider_name,
         recipient_name,
+        recipient_dob,
+        date_of_injury,
         clinic_name,
         booking_public_id
     ):
@@ -495,6 +513,8 @@ class ApiSpecialSqlEvents():
             end_date,
             provider_name,
             recipient_name,
+            recipient_dob,
+            date_of_injury,
             clinic_name,
             booking_public_id
         )
