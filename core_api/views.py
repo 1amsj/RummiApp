@@ -32,7 +32,7 @@ from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
 from core_api.queries.operators import ApiSpecialSqlOperators
 from core_api.queries.providers import ApiSpecialSqlProviders
-from core_api.queries.reports import ApiSpecialSqlReports
+from core_api.queries.event_report import ApiSpecialSqlEventReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
 from core_api.queries.insert_note import ApiSpecialSqlInsertNote
@@ -1317,6 +1317,8 @@ class ManageEventsMixin:
         query_param_end_date = request.GET.get('end_date', None)
         query_param_provider_name = request.GET.get('provider_name', None)
         query_param_recipient_name = request.GET.get('recipient_name', None)
+        query_param_recipient_dob = request.GET.get('recipient_dob', None)
+        query_param_date_of_injury = request.GET.get('date_of_injury', None)
         query_param_clinic_name = request.GET.get('clinic_name', None)
         query_param_booking_public_id = request.GET.get('booking_public_id', None)
         query_param_field_to_sort = request.GET.get('field_to_sort', None)
@@ -1354,7 +1356,7 @@ class ManageEventsMixin:
 
         if query_param_report:
             with connection.cursor() as cursor:
-                result = ApiSpecialSqlReports.get_event_report_sql(
+                result = ApiSpecialSqlEventReports.get_event_report_sql(
                     cursor,
                     query_event_id,
                     query_param_page_size,
@@ -1440,6 +1442,8 @@ class ManageEventsMixin:
                     query_param_end_date,
                     query_param_provider_name,
                     query_param_recipient_name,
+                    query_param_recipient_dob,
+                    query_param_date_of_injury,
                     query_param_clinic_name,
                     query_param_booking_public_id,
                     query_field_to_sort,
@@ -1462,6 +1466,8 @@ class ManageEventsMixin:
                     query_param_end_date,
                     query_param_provider_name,
                     query_param_recipient_name,
+                    query_param_recipient_dob,
+                    query_param_date_of_injury,
                     query_param_clinic_name,
                     query_param_booking_public_id
                 )

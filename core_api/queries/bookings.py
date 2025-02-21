@@ -1,6 +1,7 @@
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.operators import ApiSpecialSqlOperators
+from core_api.queries.reports import ApiSpecialSqlReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
 
@@ -67,6 +68,7 @@ class ApiSpecialSqlBookings():
         parent_companies_ct_id = ApiSpecialSqlCompanies.get_companies_sql_ct_id(cursor)
         parent_operator_ct_id = ApiSpecialSqlOperators.get_operator_sql_ct_id(cursor)
         parent_service_root_ct_id = ApiSpecialSqlServiceRoot.get_service_root_sql_ct_id(cursor)
+        parent_report_ct_id = ApiSpecialSqlReports.get_report_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset, parent_id)
 
         query = """--sql
@@ -566,7 +568,13 @@ class ApiSpecialSqlBookings():
                                                 'start_at', _reports.start_at,
                                                 'end_at', _reports.end_at,
                                                 'observations', _reports.observations
-                                            ))
+                                            )::jsonb ||
+                                            COALESCE((
+                                                SELECT
+                                                    json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                                FROM "core_backend_extra" extra
+                                                WHERE extra.parent_ct_id = %s AND extra.parent_id = _reports.id
+                                            )::jsonb, '{}'::jsonb))
                                         FROM "core_backend_report" _reports
                                         WHERE _reports.event_id = event.id
                                     ), '[]'::JSON),
@@ -660,6 +668,7 @@ class ApiSpecialSqlBookings():
                 parent_companies_ct_id, 
                 parent_operator_ct_id,
                 parent_service_root_ct_id,
+                parent_report_ct_id,
                 parent_event_ct_id, 
                 parent_booking_ct_id, 
                 where_conditions, 
