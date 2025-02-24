@@ -232,6 +232,7 @@ basic_register(Event, extendable=True, admin_inlines=[stacked_inline(Authorizati
 basic_register(Expense)
 basic_register(Offer)
 basic_register(Report)
+basic_register(Invoice)
 
 basic_register(Authorization, readonly=('last_updated_at',))
 basic_register(Extra)
