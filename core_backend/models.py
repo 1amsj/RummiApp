@@ -831,9 +831,13 @@ class NotificationOption(models.Model):
     
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notification_options')
     confirmation = models.BooleanField(default=False)
-    confirmation_receiver = models.BooleanField(default=False)
+    confirmation_receiver = models.CharField(max_length=128)
+    interpreter = models.BooleanField(default=False)
+    interpreter_receiver = models.CharField(max_length=128)
     report_frecuency = ArrayField(ArrayField(models.CharField(max_length=128)))
-    status = models.CharField(max_length=32, choices=Range.choices, default=Range.SEVEN_DAYS)
+    report_range = models.CharField(max_length=32, choices=Range.choices, default=Range.SEVEN_DAYS)
+    report_receiver = models.CharField(max_length=128)
+    last_report_sent_at = models.DateTimeField(default=None, null=True, blank=True)
 
 class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Status(models.TextChoices):
