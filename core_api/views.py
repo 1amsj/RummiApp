@@ -1341,6 +1341,8 @@ class ManageEventsMixin:
                 query_field_to_sort = 'recipient_user.first_name'
             elif query_param_field_to_sort == 'booking__companies__name':
                 query_field_to_sort = 'company.name'
+            elif query_param_field_to_sort == 'payer_company__send_method':
+                query_field_to_sort = 'company.send_method'
             
         try:
             query_param_page_size = int(request.GET.get('page_size', '-1'))
@@ -1450,7 +1452,7 @@ class ManageEventsMixin:
                     query_order_to_sort
                 )
 
-        if query_param_page_size > 0:
+        if query_param_page_size > 0 and query_param_report == False:
             with connection.cursor() as cursor:
                 count = ApiSpecialSqlEvents.get_event_count_sql(
                     cursor,
