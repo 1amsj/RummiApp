@@ -2114,16 +2114,6 @@ class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSe
     @expect_key_error
     def post(request):
         data = request.data
-        events_query = data.pop(ApiSpecialKeys.EVENTS_QUERY, None)
-
-        if events_query:
-            # If events query is present, fetch from a query which events to relate to the authorization
-            #  using the same method ManageEvents uses
-            query_params = prepare_query_params(events_query)
-            queryset = EventSerializer.get_default_queryset()
-            queryset = ManageEvents.apply_filters(queryset, query_params)
-
-            data['events'] = queryset.values_list('id', flat=True)
 
         serializer = AuthorizationCreateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
