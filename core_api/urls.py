@@ -71,6 +71,7 @@ urlpatterns = [
     *path_optional('service_areas/', '<id:service_area_id>', views.ManageServiceArea.as_view(), name='manage_service_areas'),
     *path_optional('company_relationships/', '<id:company_relationship_id>', views.ManageCompanyRelationships.as_view(), name='manage_company_relationships'),
     *path_optional('service_roots/', '<id:service_root_id>', views.ManageServiceRoot.as_view(), name='manage_service_roots'),
+    *path_optional('invoices/', '<id:invoice_id>', views.ManageInvoices.as_view(), name='manage_invoices'),
 
     path('search/', views.search_bookings, name='search'),
 
