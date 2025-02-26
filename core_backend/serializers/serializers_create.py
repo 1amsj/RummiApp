@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRelationship, Event, \
-    Expense, GlobalSetting, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
+    Expense, GlobalSetting, Invoice, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, CompanyRelationshipSerializer, \
@@ -542,6 +542,12 @@ class ServiceRootCreateSerializer(generic_serializer(ServiceRoot)):
             service_root.categories.add(*categories_data)
         return service_root.id
 
+class InvoiceCreateSerializer(generic_serializer(Invoice)):
+
+    def create(self, validated_data=None) -> int:
+        data = validated_data or self.validated_data
+        invoice = Invoice.objects.create(**data)
+        return invoice.id
 
 class UserCreateSerializer(UserSerializer):
     password = serializers.CharField(write_only=True, required=False, allow_blank=True, validators=[validate_password])

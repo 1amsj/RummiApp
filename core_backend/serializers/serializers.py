@@ -995,9 +995,19 @@ class EventSerializer(EventNoBookingSerializer):
                 ),
             )
         )
+    
+class InvoiceSerializer(BaseSerializer):
+    class Meta:
+        model = Invoice
+        fields = '__all__'
 
-
-InvoiceSerializer = generic_serializer(Invoice)
+    @staticmethod
+    def get_default_queryset():
+        return (
+            Invoice.objects
+            .all()
+            .not_deleted()
+        )
 
 
 class LedgerSerializer(BaseSerializer):
@@ -1118,7 +1128,6 @@ class AuthorizationSerializer(BaseSerializer):
                 ),
             )
         )
-
 
 class NotificationSerializer(BaseSerializer):
     class Meta:
