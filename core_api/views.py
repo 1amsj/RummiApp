@@ -2222,13 +2222,6 @@ class ManageInvoices(basic_view_manager(Invoice, InvoiceSerializer)):
     #     serializer.is_valid(raise_exception=True)
     #     serializer.update(service_root)
     #     return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    # @staticmethod
-    # @transaction.atomic
-    # @expect_does_not_exist(Expense)
-    # def delete(request, service_root_id=None):
-    #     ServiceRoot.objects.get(id=service_root_id).delete()
-    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ManageLanguages(basic_view_manager(Language, LanguageSerializer)):
     @classmethod
