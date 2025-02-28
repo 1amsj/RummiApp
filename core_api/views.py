@@ -2205,30 +2205,30 @@ class ManageInvoices(basic_view_manager(Invoice, InvoiceSerializer)):
         
         return Response(result)
     
-    @staticmethod
-    def post(request):
-        data = request.data
-        serializer = ServiceRootCreateSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        service_id = serializer.create()
-        return Response(service_id, status=status.HTTP_201_CREATED)
+    # @staticmethod
+    # def post(request):
+    #     data = request.data
+    #     serializer = ServiceRootCreateSerializer(data=data)
+    #     serializer.is_valid(raise_exception=True)
+    #     service_id = serializer.create()
+    #     return Response(service_id, status=status.HTTP_201_CREATED)
     
-    @staticmethod
-    @transaction.atomic
-    @expect_does_not_exist(Expense)
-    def put(request, service_root_id=None):
-        service_root = ServiceRoot.objects.get(id=service_root_id)
-        serializer = ServiceRootUpdateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.update(service_root)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # @staticmethod
+    # @transaction.atomic
+    # @expect_does_not_exist(Expense)
+    # def put(request, service_root_id=None):
+    #     service_root = ServiceRoot.objects.get(id=service_root_id)
+    #     serializer = ServiceRootUpdateSerializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+    #     serializer.update(service_root)
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
     
-    @staticmethod
-    @transaction.atomic
-    @expect_does_not_exist(Expense)
-    def delete(request, service_root_id=None):
-        ServiceRoot.objects.get(id=service_root_id).delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    # @staticmethod
+    # @transaction.atomic
+    # @expect_does_not_exist(Expense)
+    # def delete(request, service_root_id=None):
+    #     ServiceRoot.objects.get(id=service_root_id).delete()
+    #     return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ManageLanguages(basic_view_manager(Language, LanguageSerializer)):
     @classmethod
