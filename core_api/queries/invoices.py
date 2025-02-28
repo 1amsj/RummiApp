@@ -45,7 +45,7 @@ class ApiSpecialSqlInvoices:
                         'sent_at', invoice.sent_at,
                         'sent', invoice.sent,
                         'amount', invoice.amount,
-                        'taxes', invoice.taxes,
+                        'taxes', invoice.taxes
                     )) AS json_data
                 FROM "core_backend_invoice" invoice
                 WHERE %s

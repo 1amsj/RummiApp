@@ -749,12 +749,23 @@ class Ledger(SoftDeletableModel):
         raise NotImplementedError()
 
 
-class Invoice(models.Model):
+class Invoice(ExtendableModel, HistoricalModel, SoftDeletableModel):
+
+    class Status(models.TextChoices):
+        VALID = 'VALID', _('Valid')
+        INVALID = 'INVALID', _('Invalid')
+        SENT = 'SENT', _('Sent')
+        IN_REVIEW = 'IN REVIEW', _('In Review')
+        PAID = 'PAID', _('Paid')
+
     created_at = models.DateTimeField(auto_now=True)
     sent_at = models.DateTimeField(default=None, blank=True)
     sent = models.BooleanField(default=False)
     amount = models.IntegerField(default=0)
     taxes = models.IntegerField(default=0)
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.IN_REVIEW)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, blank=True, null=True, related_name="event")
+
     class Meta:
         verbose_name = _('invoice')
         verbose_name_plural = _('invoices')
