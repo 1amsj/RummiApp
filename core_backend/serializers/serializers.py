@@ -997,6 +997,9 @@ class EventSerializer(EventNoBookingSerializer):
         )
     
 class InvoiceSerializer(BaseSerializer):
+
+    event = EventSerializer()
+
     class Meta:
         model = Invoice
         fields = '__all__'
@@ -1007,6 +1010,12 @@ class InvoiceSerializer(BaseSerializer):
             Invoice.objects
             .all()
             .not_deleted()
+            .prefetch_related(
+                Prefetch(
+                    'event',
+                    queryset=EventSerializer.get_default_queryset(),
+                ),
+            )
         )
 
 

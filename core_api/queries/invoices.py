@@ -45,9 +45,19 @@ class ApiSpecialSqlInvoices:
                         'sent_at', invoice.sent_at,
                         'sent', invoice.sent,
                         'amount', invoice.amount,
-                        'taxes', invoice.taxes
+                        'taxes', invoice.taxes,
+                        'status', invoice.status,
+                        'event', json_build_object(
+                            'id', event.id,
+                            'booking', json_build_object(
+                                'id', booking.id,
+                                'public_id', booking.public_id
+                            )    
+                        )
                     )) AS json_data
                 FROM "core_backend_invoice" invoice
+                LEFT JOIN "core_backend_event" event ON invoice.event_id = event.id
+                LEFT JOIN "core_backend_booking" booking ON event.booking_id = booking.id
                 WHERE %s
                 ORDER BY %s %s NULLS LAST
                 %s
