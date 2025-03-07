@@ -60,7 +60,7 @@ from core_backend.serializers.serializers import AffiliationSerializer, AgentWit
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AdminCreateSerializer, AffiliationCreateSerializer, AgentCreateSerializer, \
-    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, \
+    AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, InvoiceCreateSerializer, \
     LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
     OperatorCreateSerializer, \
     PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
@@ -2205,13 +2205,13 @@ class ManageInvoices(basic_view_manager(Invoice, InvoiceSerializer)):
         
         return Response(result)
     
-    # @staticmethod
-    # def post(request):
-    #     data = request.data
-    #     serializer = ServiceRootCreateSerializer(data=data)
-    #     serializer.is_valid(raise_exception=True)
-    #     service_id = serializer.create()
-    #     return Response(service_id, status=status.HTTP_201_CREATED)
+    @staticmethod
+    def post(request):
+        data = request.data
+        serializer = InvoiceCreateSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        service_id = serializer.create()
+        return Response(service_id, status=status.HTTP_201_CREATED)
     
     # @staticmethod
     # @transaction.atomic
