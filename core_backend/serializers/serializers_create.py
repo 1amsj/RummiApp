@@ -542,13 +542,6 @@ class ServiceRootCreateSerializer(generic_serializer(ServiceRoot)):
             service_root.categories.add(*categories_data)
         return service_root.id
 
-class InvoiceCreateSerializer(generic_serializer(Invoice)):
-
-    def create(self, validated_data=None) -> int:
-        data = validated_data or self.validated_data
-        invoice = Invoice.objects.create(**data)
-        return invoice.id
-
 class UserCreateSerializer(UserSerializer):
     password = serializers.CharField(write_only=True, required=False, allow_blank=True, validators=[validate_password])
     confirmation = serializers.CharField(write_only=True, required=False, allow_blank=True)
