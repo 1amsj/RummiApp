@@ -1,4 +1,5 @@
 from core_api.queries.events import ApiSpecialSqlEvents
+from core_api.queries.reports import ApiSpecialSqlReports
 
 class ApiSpecialSqlEventReports():
     @staticmethod
