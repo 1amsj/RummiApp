@@ -654,7 +654,7 @@ class Booking(ExtendableModel, HistoricalModel, SoftDeletableModel):
     service_root = models.ForeignKey(ServiceRoot, null=True, blank=True, on_delete=models.PROTECT, related_name='bookings')
     services = models.ManyToManyField(Service, related_name='bookings')
     created_at = models.DateTimeField(auto_now_add=True)
-    public_id = models.CharField(max_length=30, null=True)
+    public_id = models.CharField(max_length=30, null=True, unique=True)
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, null=True, related_name='created_bookings')
     status = models.CharField(max_length=30, null=True)
 

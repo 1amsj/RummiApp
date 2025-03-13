@@ -52,7 +52,6 @@ INSTALLED_APPS = [
     'core_api.apps.CoreApiConfig',
     'django_extensions',
     'simple_history',
-    'silk',
 ]
 
 MIDDLEWARE = [
@@ -65,7 +64,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
-    'silk.middleware.SilkyMiddleware',
 ]
 
 REST_FRAMEWORK = {

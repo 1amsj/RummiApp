@@ -59,7 +59,7 @@ class ApiSpecialSqlEventReports():
         order_to_sort
     ):
         parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
-        query_price = ApiSpecialSqlReports.get_payment_price_sql(cursor)
+        query_price = ApiSpecialSqlEventReports.get_payment_price_sql(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(
             id,
             limit,
