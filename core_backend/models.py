@@ -819,7 +819,26 @@ class Notification(HistoricalModel, SoftDeletableModel):
 
     def __str__(self):
         return F'{self.id} - template {self.template} - status {self.status} - via {self.send_method} - priority {self.priority}'
-
+    
+class NotificationOption(models.Model):
+    class Range(models.TextChoices):
+        ALL = 'ALL', _('All')
+        FOURTEEN_DAYS = 'FOURTEEN_DAYS', _('Fourteen_days')
+        SEVEN_DAYS = 'SEVEN_DAYS', _('Seven_days')
+        THREE_DAYS = 'THREE_DAYS', _('Three_days')
+        ONE_DAY = 'ONE_DAY', _('One_day')
+        TODAY = 'Today', _('Today')
+    
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notification_options')
+    confirmation = models.BooleanField(default=False)
+    confirmation_receiver = models.CharField(max_length=128)
+    interpreter_change = models.BooleanField(default=False)
+    interpreter_change_receiver = models.CharField(max_length=128)
+    report = models.BooleanField(default=False)
+    report_frecuency = ArrayField(models.CharField(max_length=128))
+    report_range = models.CharField(max_length=32, choices=Range.choices, default=Range.SEVEN_DAYS)
+    report_receiver = models.CharField(max_length=128)
+    last_report_sent_at = models.DateTimeField(default=None, null=True, blank=True)
 
 class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Status(models.TextChoices):
