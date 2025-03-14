@@ -44,3 +44,4 @@ bin/
 lib/
 share/
 .DS_Store
+.qodo
