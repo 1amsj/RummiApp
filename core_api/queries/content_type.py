@@ -75,3 +75,19 @@ class ApiSpecialSqlContentTypeIds:
         cursor.execute(query)
         result = cursor.fetchone()
         return result[0] if result is not None else None
+    
+    @staticmethod
+    def get_invoice_sql_ct_id(cursor):
+        query = """--sql
+            SELECT
+                id
+            FROM "django_content_type" content_type
+            WHERE app_label = 'core_backend' AND model = 'invoice'
+        """
+
+        cursor.execute(query, [id])
+        result = cursor.fetchone()
+        if result is not None:
+            return result[0]
+
+        return None

@@ -30,6 +30,7 @@ from core_api.queries.authorizations import ApiSpecialSqlAuthorizations
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.affiliations import ApiSpecialSqlAffiliations
+from core_api.queries.invoices import ApiSpecialSqlInvoices
 from core_api.queries.operators import ApiSpecialSqlOperators
 from core_api.queries.providers import ApiSpecialSqlProviders
 from core_api.queries.event_report import ApiSpecialSqlEventReports
@@ -47,7 +48,7 @@ from core_api.services_datamanagement import create_affiliations_wrap, create_ag
     update_recipient_wrap, update_user
 from core_backend.datastructures import QueryParams
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRelationship, Contact, Event, \
-    Expense, ExtraQuerySet, GlobalSetting, Language, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Requester, \
+    Expense, ExtraQuerySet, GlobalSetting, Invoice, Language, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Requester, \
     Service, \
     ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
@@ -55,7 +56,7 @@ from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
     AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, ChangePasswordSerializer, CompanyRelationshipSerializer, CompanyRelationshipWithCompaniesSerializer, \
     CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, GetUser, GlobalSettingSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
+    ExpenseSerializer, GetUser, GlobalSettingSerializer, InvoiceSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
     PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AdminCreateSerializer, AffiliationCreateSerializer, AgentCreateSerializer, \
@@ -1925,7 +1926,7 @@ class ManageService(basic_view_manager(Service, ServiceSerializer)):
         serializer.is_valid(raise_exception=True)
         service_id = serializer.create()
         return Response(service_id, status=status.HTTP_201_CREATED)
-
+    
 class ManageServiceArea(basic_view_manager(ServiceArea, ServiceAreaSerializer)):
     @classmethod
     @expect_does_not_exist(ServiceArea)
@@ -2136,7 +2137,73 @@ class ManageAuthorizations(basic_view_manager(Authorization, AuthorizationBaseSe
     def delete(request, authorization_id=None):
         Authorization.objects.get(id=authorization_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class ManageInvoices(basic_view_manager(Invoice, InvoiceSerializer)):
 
+    pagination_class = StandardResultsSetPagination
+    
+    @classmethod
+    def get(cls, request, business_name=None, invoice_id=None):
+        query_param_field_to_sort = request.GET.get('field_to_sort', None)
+        query_param_order_to_sort = request.GET.get('order_to_sort', None)
+        query_param_id = request.GET.get('id', None)
+        
+        query_invoice_id = invoice_id if invoice_id is not None else query_param_id
+        query_field_to_sort = 'invoice.id'
+        query_order_to_sort = 'ASC' if query_param_order_to_sort == 'asc' else 'DESC'
+        
+        if query_param_field_to_sort is not None:
+            if query_param_field_to_sort == 'created_at':
+                query_field_to_sort = 'invoice.created_at'
+            
+        try:
+            query_param_page_size = int(request.GET.get('page_size', '-1'))
+        except:
+            raise ParseError(detail='invalid "page_size" in the query parameters', code=None)
+
+        try:
+            query_param_page = int(request.GET.get('page', '1'))
+        except:
+            raise ParseError(detail='invalid "page" in the query parameters', code=None)
+
+        offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
+
+        with connection.cursor() as cursor:
+            result = ApiSpecialSqlInvoices.get_invoice_sql(
+                cursor,
+                query_invoice_id,
+                query_param_page_size,
+                offset,
+                query_field_to_sort,
+                query_order_to_sort
+            )
+
+        if query_param_page_size > 0:
+            with connection.cursor() as cursor:
+                count = ApiSpecialSqlInvoices.get_invoice_count_sql(
+                    cursor,
+                    query_invoice_id
+                )
+
+            next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
+            if next_page is not None:
+                next_page = replace_query_param(request.build_absolute_uri(), 'page', next_page)
+
+            previous_page = query_param_page - 1 if query_param_page > 1 else None
+            if previous_page is not None:
+                previous_page = replace_query_param(request.build_absolute_uri(), 'page', previous_page)
+
+            return Response({
+                'count': count,
+                'next': next_page,
+                'previous': previous_page,
+                'results': result
+            })
+            
+        if (query_invoice_id is not None):
+            return Response(result[0])
+        
+        return Response(result)
 class ManageLanguages(basic_view_manager(Language, LanguageSerializer)):
     @classmethod
     def get(cls, request, language_id=None):
