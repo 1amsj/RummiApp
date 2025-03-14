@@ -835,7 +835,7 @@ class NotificationOption(models.Model):
     interpreter_change = models.BooleanField(default=False)
     interpreter_change_receiver = models.CharField(max_length=128)
     report = models.BooleanField(default=False)
-    report_frecuency = ArrayField(ArrayField(models.CharField(max_length=128)))
+    report_frecuency = ArrayField(models.CharField(max_length=128))
     report_range = models.CharField(max_length=32, choices=Range.choices, default=Range.SEVEN_DAYS)
     report_receiver = models.CharField(max_length=128)
     last_report_sent_at = models.DateTimeField(default=None, null=True, blank=True)
