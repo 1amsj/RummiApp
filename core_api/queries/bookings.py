@@ -164,7 +164,7 @@ class ApiSpecialSqlBookings():
                         'operators', COALESCE((
                             SELECT
                                 json_agg(json_build_object(
-                                    'operator_id', _operators.id,
+                                    'id', _operators.id,
                                     'first_name', _users.first_name,
                                     'last_name', _users.last_name,
                                     'user_id', _users.id,
