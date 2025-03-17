@@ -298,14 +298,14 @@ class EventCreateSerializer(extendable_serializer(Event)):
         formatted_date_end = data['end_at'].strftime("%Y-%m-%d %H:%M")
         
         overlapping_events = Event.objects.filter(
-            start_at__lte=formatted_date_end,
-            end_at__gte=formatted_date_start,
+            start_at__lt=formatted_date_end,
+            end_at__gt=formatted_date_start,
             affiliates=affiliates[0].id
         )
         
         overlapping_agents = Event.objects.filter(
-            start_at__lte=formatted_date_end,
-            end_at__gte=formatted_date_start,
+            start_at__lt=formatted_date_end,
+            end_at__gt=formatted_date_start,
             agents=agents[0].id
         )
 
