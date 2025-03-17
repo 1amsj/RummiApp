@@ -38,7 +38,7 @@ class ApiSpecialSqlOperators():
 
       params, where_conditions, limit_statement = ApiSpecialSqlOperators.get_operator_sql_where_clause(id, limit, offset)
     
-      query = """
+      query = """---sql
         SELECT json_agg(_query_result.json_data) AS result FROM (
           SELECT (
             json_build_object(
@@ -50,6 +50,7 @@ class ApiSpecialSqlOperators():
               'title', _user.title,
               'suffix', _user.suffix,
               'date_of_birth', _user.date_of_birth,
+              'user_id', _user.id,
               'location', (
                 SELECT 
                   json_build_object(
