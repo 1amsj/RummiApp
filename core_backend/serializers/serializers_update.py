@@ -161,15 +161,15 @@ class EventUpdateSerializer(EventCreateSerializer):
         
         overlapping_events = Event.objects.filter(
             ~Q(booking_id=data['booking'].id),
-            start_at__lte=formatted_date_end,
-            end_at__gte=formatted_date_start,
+            start_at__lt=formatted_date_end,
+            end_at__gt=formatted_date_start,
             affiliates=affiliates[0].id
         )
         
         overlapping_agents = Event.objects.filter(
             ~Q(booking_id=data['booking'].id),
-            start_at__lte=formatted_date_end,
-            end_at__gte=formatted_date_start,
+            start_at__lt=formatted_date_end,
+            end_at__gt=formatted_date_start,
             agents=agents[0].id
         )
         
