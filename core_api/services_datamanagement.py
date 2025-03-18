@@ -785,7 +785,7 @@ def handle_agents_bulk(datalist: list, company_id, business_name):
             if not agent_id:
                 data['username'] = data.get('firstName', '') + '_' + data.get('lastName', '')
                 
-                user_id = create_user(data)
+                user_id = create_user(data, None, None)
 
                 agent_id = create_agent_wrap(
                     data,
