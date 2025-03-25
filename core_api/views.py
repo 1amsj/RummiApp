@@ -1212,8 +1212,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
         language = Language.objects.get(alpha3=target_language_alpha3)
 
-
-        email_status = send_email_bookings(event, language, booking, False)
+        try:
+            email_status = send_email_bookings(event, language, booking, False)
+        except:
+            email_status = 5
 
         return Response({
             "booking_id": booking_id,
