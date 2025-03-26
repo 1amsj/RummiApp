@@ -1237,7 +1237,10 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             actual_provider = booking.services.all()[0].provider.id
 
         if(actual_provider != initial_provider):
-            email_status = send_email_bookings(event, language, booking, True)
+            try:
+                email_status = send_email_bookings(event, language, booking, True)
+            except:
+                email_status = 5
         else:
             email_status = 4
 

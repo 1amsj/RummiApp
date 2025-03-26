@@ -25,7 +25,7 @@ def calculate_booking_status(params: dict) -> str:
     status = 'pending'
     
     if event_datalist[0]['payer_company_type'] == 'noPayer':
-            status = "closed"
+            status = "abandoned"
         
     elif event_datalist[-1].__contains__('authorizations'):
         auth = map(representation_services, event_datalist[-1]['authorizations'])
@@ -35,15 +35,8 @@ def calculate_booking_status(params: dict) -> str:
             status = "authorized"
         elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
             status = "override"
-        elif validator_claim_number(event_datalist) is not None and company_type_validation and services.exists() == True:
-            status = "booked"
-        else:
-            status = "pending"
 
     elif validator_claim_number(event_datalist) is not None and company_type_validation and services.exists() == True:
         status = "booked"
-
-    else:
-        status = "pending"
             
     return status
