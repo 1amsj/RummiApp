@@ -1079,12 +1079,6 @@ def validator_short_type(value):
             (value[-1]['payer_company_type'] == 'agency' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'lawfirm' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None)
 
-def validator_claim_number(value):
-    if(value[-1].__contains__('claim_number')):
-        return value[-1]['claim_number']
-    else:
-        return None
-
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))

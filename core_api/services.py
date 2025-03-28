@@ -1,4 +1,3 @@
-from core_api.views import validator_claim_number
 from core_backend.datastructures import QueryParams
 from core_backend.models import Authorization
 
@@ -16,27 +15,43 @@ def representation_services(repr):
     authorization = Authorization.objects.get(id=repr)
     return authorization.status
 
-def calculate_booking_status(params: dict) -> str:
-    event_datalist = params['event_datalist']
-    company_type_short_validation = params['company_type_short_validation']
-    company_type_validation = params['company_type_validation']
-    services = params['services']
-    
+def validator_claim_number(value):
+    if(value[-1].__contains__('claim_number')):
+        return value[-1]['claim_number']
+    else:
+        return None
+
+def calculate_booking_status(event_datalist, company_type_short_validation, company_type_validation, services) -> str:
     status = 'pending'
     
-    if event_datalist[0]['payer_company_type'] == 'noPayer':
-            status = "abandoned"
+    if validator_claim_number(event_datalist) is not None and company_type_validation and services.exists() == True:
+        status = "booked"
         
-    elif event_datalist[-1].__contains__('authorizations'):
+    if event_datalist[-1].__contains__('authorizations'):
         auth = map(representation_services, event_datalist[-1]['authorizations'])
         list_auth = list(auth)
 
-        if list_auth.__contains__('ACCEPTED') and company_type_short_validation:
-            status = "authorized"
-        elif list_auth.__contains__('OVERRIDE') and company_type_short_validation:
+        if list_auth.__contains__('OVERRIDE') and company_type_short_validation:
             status = "override"
 
-    elif validator_claim_number(event_datalist) is not None and company_type_validation and services.exists() == True:
-        status = "booked"
+        if list_auth.__contains__('ACCEPTED') and company_type_short_validation:
+            status = "authorized"
+        
+    if event_datalist[0]['payer_company_type'] == 'noPayer':
+        status = "abandoned"
+            
+    if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('RESCHEDULED'):
+        status = "rescheduled"
+    
+    if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('CANCELLED'):
+        status = "cancelled"
+        
+    if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('NO_SHOW'):
+        status = "noShow"
+
+    if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('COMPLETED') \
+        and company_type_validation and validator_claim_number(event_datalist) is not None \
+        and services.exists() == True:
+            status = "delivered"
             
     return status
