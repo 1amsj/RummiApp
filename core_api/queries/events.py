@@ -122,21 +122,57 @@ class ApiSpecialSqlEvents():
                     where_conditions += ' booking.status = %s'
                     params.append('booked')
                     
+                if item == 'override':
+                    where_conditions += ' booking.status = %s'
+                    params.append('override')
+                    
+                if item == 'referred':
+                    where_conditions += ' booking.status = %s'
+                    params.append('referred')
+                    
+                if item == 'subcontract':
+                    where_conditions += ' booking.status = %s'
+                    params.append('subcontract')
+
                 if item == 'authorized':
                     where_conditions += ' booking.status = %s'
                     params.append('authorized')
                     
-                if item == 'override':
+                if item == 'abandoned':
                     where_conditions += ' booking.status = %s'
-                    params.append('override')
+                    params.append('abandoned')
+
+                if item == 'rescheduled':
+                    where_conditions += ' booking.status = %s'
+                    params.append('rescheduled')
+
+                if item == 'cancelled':
+                    where_conditions += ' booking.status = %s'
+                    params.append('cancelled')
+
+                if item == 'noShow':
+                    where_conditions += ' booking.status = %s'
+                    params.append('noShow')
                     
                 if item == 'delivered':
                     where_conditions += ' booking.status = %s'
                     params.append('delivered')
                 
-                if item == 'closed':
+                if item == 'invoiced':
                     where_conditions += ' booking.status = %s'
-                    params.append('closed')
+                    params.append('invoiced')
+                
+                if item == 'billReview':
+                    where_conditions += ' booking.status = %s'
+                    params.append('billReview')
+                
+                if item == 'collected':
+                    where_conditions += ' booking.status = %s'
+                    params.append('collected')
+                
+                if item == 'complete':
+                    where_conditions += ' booking.status = %s'
+                    params.append('complete')
                 
                 if item == 'case':
                     where_conditions += ' NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
@@ -170,21 +206,61 @@ class ApiSpecialSqlEvents():
                     where_conditions += ' booking.status = %s'
                     params.append('booked')
                     
-                if item == 'authorized':
-                    where_conditions += ' booking.status = %s'
-                    params.append('authorized')
-                    
                 if item == 'override':
                     where_conditions += ' booking.status = %s'
                     params.append('override')
                     
+                if item == 'referred':
+                    where_conditions += ' booking.status = %s'
+                    params.append('referred')
+                    
+                if item == 'subcontract':
+                    where_conditions += ' booking.status = %s'
+                    params.append('subcontract')
+
+                if item == 'authorized':
+                    where_conditions += ' booking.status = %s'
+                    params.append('authorized')
+                    
+                if item == 'abandoned':
+                    where_conditions += ' booking.status = %s'
+                    params.append('abandoned')
+                    
+                if item == 'abandoned':
+                    where_conditions += ' booking.status = %s'
+                    params.append('abandoned')
+
+                if item == 'rescheduled':
+                    where_conditions += ' booking.status = %s'
+                    params.append('rescheduled')
+
+                if item == 'cancelled':
+                    where_conditions += ' booking.status = %s'
+                    params.append('cancelled')
+
+                if item == 'noShow':
+                    where_conditions += ' booking.status = %s'
+                    params.append('noShow')
+                    
                 if item == 'delivered':
                     where_conditions += ' booking.status = %s'
                     params.append('delivered')
-                    
-                if item == 'closed':
+                
+                if item == 'invoiced':
                     where_conditions += ' booking.status = %s'
-                    params.append('closed')
+                    params.append('invoiced')
+                
+                if item == 'billReview':
+                    where_conditions += ' booking.status = %s'
+                    params.append('billReview')
+                
+                if item == 'collected':
+                    where_conditions += ' booking.status = %s'
+                    params.append('collected')
+                
+                if item == 'complete':
+                    where_conditions += ' booking.status = %s'
+                    params.append('complete')
                 
                 if item == 'case':
                     where_conditions += ' NOT EXISTS ( SELECT 1 FROM "core_backend_extra" extra WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.key = %s )'
