@@ -1377,6 +1377,8 @@ class ManageEventsMixin:
                     query_param_recipient_name,
                     query_param_clinic_name,
                     query_param_booking_public_id,
+                    query_param_recipient_dob,
+                    query_param_date_of_injury,
                     query_field_to_sort,
                     query_order_to_sort
                 )
