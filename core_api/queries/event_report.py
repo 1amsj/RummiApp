@@ -304,14 +304,22 @@ class ApiSpecialSqlEventReports():
                         ON _recipients_affiliates.id = _affiliations.recipient_id AND _recipients_affiliates.is_deleted = False
                     LEFT JOIN "core_backend_user" _users_affiliates
                         ON _users_affiliates.id = _recipients_affiliates.user_id AND _users_affiliates.is_deleted = False
-                    LEFT JOIN "core_backend_user_contacts" _users_affiliates_user_contacts
-                        ON _users_affiliates_user_contacts.user_id = _users_affiliates.id
+                    LEFT JOIN (
+                        SELECT DISTINCT ON (user_id) user_id, contact_id
+                            FROM "core_backend_user_contacts"
+                        ORDER BY user_id, id DESC
+                    ) _latest_contact
+                        ON _latest_contact.user_id = _users_affiliates.id
                     LEFT JOIN "core_backend_contact" _contact_affiliates
-                        ON _contact_affiliates.id = _users_affiliates_user_contacts.contact_id AND _contact_affiliates.is_deleted = False
+                        ON _contact_affiliates.id = _latest_contact.contact_id AND _contact_affiliates.is_deleted = False
                     LEFT JOIN "core_backend_location" _location_affiliates
                         ON _location_affiliates.id = _users_affiliates.location_id AND _location_affiliates.is_deleted = False
-                    LEFT JOIN "core_backend_report" _reports
-                        ON _reports.event_id = event.id AND _reports.is_deleted = False
+                    LEFT JOIN (
+                        SELECT DISTINCT ON (event_id) *
+                            FROM "core_backend_report"
+                        WHERE is_deleted = False
+                        ORDER BY event_id, id DESC
+                    ) _reports ON _reports.event_id = event.id AND _reports.is_deleted = False
                     LEFT JOIN "core_backend_company" _payer_companies
                         ON _payer_companies.id = event.payer_company_id AND _payer_companies.is_deleted = False
                     LEFT JOIN "core_backend_company_locations" _payer_companies_locations_bridge
@@ -324,10 +332,16 @@ class ApiSpecialSqlEventReports():
                         ON _agents.id = _event_agents.agent_id AND _agents.is_deleted = False
                     LEFT JOIN "core_backend_user" _users_agents
                         ON _users_agents.id = _agents.user_id AND _users_agents.is_deleted = False
-                    LEFT JOIN "core_backend_company_locations" _company_booking_locations_bridge
-                        ON _company_booking_locations_bridge.company_id = company.id
-                    LEFT JOIN "core_backend_location" _company_booking_locations
-                        ON _company_booking_locations.id = _company_booking_locations_bridge.location_id AND _company_booking_locations.is_deleted = False
+                    LEFT JOIN (
+                        SELECT DISTINCT ON (_company_booking_locations_bridge.company_id)
+                            _company_booking_locations_bridge.company_id,
+                            _company_booking_locations.*
+                        FROM "core_backend_company_locations" _company_booking_locations_bridge
+                            JOIN "core_backend_location" _company_booking_locations
+                                ON _company_booking_locations.id = _company_booking_locations_bridge.location_id
+                        ORDER BY _company_booking_locations_bridge.company_id, _company_booking_locations.id
+                    ) _company_booking_locations
+                        ON _company_booking_locations.company_id = company.id
                     LEFT JOIN "core_backend_company_contacts" _company_booking_contacts_bridge
                         ON _company_booking_contacts_bridge.company_id = company.id
                     LEFT JOIN "core_backend_contact" _company_booking_contacts
