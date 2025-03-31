@@ -876,7 +876,7 @@ class Report(HistoricalModel, ExtendableModel, SoftDeletableModel):
     start_at = models.DateTimeField(_('Start Time'), null=True, blank=True)
     end_at = models.DateTimeField(_('End Time'), null=True, blank=True)
     observations = models.TextField(blank=True, default='')
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='reports')
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='reports', unique=True)
     
     class Meta:
         verbose_name = _('report')
