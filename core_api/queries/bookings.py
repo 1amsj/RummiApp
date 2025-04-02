@@ -1,6 +1,7 @@
 from core_api.queries.companies import ApiSpecialSqlCompanies
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.operators import ApiSpecialSqlOperators
+from core_api.queries.rates import ApiSpecialSqlRates
 from core_api.queries.reports import ApiSpecialSqlReports
 from core_api.queries.service_root import ApiSpecialSqlServiceRoot
 from core_api.queries.services import ApiSpecialSqlServices
@@ -69,6 +70,7 @@ class ApiSpecialSqlBookings():
         parent_operator_ct_id = ApiSpecialSqlOperators.get_operator_sql_ct_id(cursor)
         parent_service_root_ct_id = ApiSpecialSqlServiceRoot.get_service_root_sql_ct_id(cursor)
         parent_report_ct_id = ApiSpecialSqlReports.get_report_sql_ct_id(cursor)
+        parent_rate_ct_id = ApiSpecialSqlRates.get_rate_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlBookings.get_booking_sql_where_clause(id, limit, offset, parent_id)
 
         query = """--sql
@@ -552,7 +554,50 @@ class ApiSpecialSqlBookings():
                                                 'on_hold', _payer_companies.on_hold,
                                                 'parent_company_id', _payer_companies.parent_company_id,
                                                 'type', _payer_companies.type,
-                                                'send_method', _payer_companies.send_method
+                                                'send_method', _payer_companies.send_method,
+                                                'rates', COALESCE((
+                                                    SELECT
+                                                        json_agg(json_build_object(
+                                                            'id', _company_rate.id,
+                                                            'bill_amount', _company_rate.bill_amount,
+                                                            'bill_rate', _company_rate.bill_rate,
+                                                            'bill_rate_type', _company_rate.bill_rate_type,
+                                                            'bill_rate_minutes_threshold', _company_rate.bill_rate_minutes_threshold,
+                                                            'bill_min_payment', _company_rate.bill_min_payment,
+                                                            'bill_no_show_fee', _company_rate.bill_no_show_fee,
+                                                            'root', COALESCE((
+                                                                SELECT 
+                                                                    json_build_object(
+                                                                        'id', _serviceroot.id,
+                                                                        'description', _serviceroot.description,
+                                                                        'name', _serviceroot.name,
+                                                                        'categories', COALESCE((
+                                                                            SELECT
+                                                                                json_agg(json_build_object(
+                                                                                    'id', _categories.id,
+                                                                                    'description', _categories.description,
+                                                                                    'name', _categories.name
+                                                                                ))
+                                                                            FROM "core_backend_serviceroot_categories" _serviceroot_categories
+                                                                                INNER JOIN "core_backend_category" _categories
+                                                                                    ON _categories.id = _serviceroot_categories.category_id
+                                                                            WHERE _serviceroot_categories.serviceroot_id = _serviceroot.id
+                                                                        ), '[]'::JSON)
+                                                                    )
+                                                                FROM "core_backend_serviceroot" _serviceroot
+                                                                WHERE _serviceroot.id = _company_rate.root_id
+                                                            ), '{}'::JSON)
+                                                        )::jsonb ||
+                                                        (
+                                                            SELECT
+                                                                json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                                            FROM "core_backend_extra" extra
+                                                            WHERE extra.parent_ct_id = %s AND extra.parent_id= _company_rate.id
+                                                        )::jsonb)
+                                                    FROM "core_backend_rate" _company_rate
+                                                    WHERE _company_rate.company_id = _payer_companies.id
+                                                    ), '[]'::JSON
+                                                )
                                             )
                                         FROM "core_backend_company" _payer_companies
                                         WHERE _payer_companies.id = event.payer_company_id
@@ -668,6 +713,7 @@ class ApiSpecialSqlBookings():
                 parent_companies_ct_id, 
                 parent_operator_ct_id,
                 parent_service_root_ct_id,
+                parent_rate_ct_id,
                 parent_report_ct_id,
                 parent_event_ct_id, 
                 parent_booking_ct_id, 
