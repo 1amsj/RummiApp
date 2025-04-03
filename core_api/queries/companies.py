@@ -56,7 +56,7 @@ class ApiSpecialSqlCompanies():
         parent_rate_ct_id = ApiSpecialSqlRates.get_rate_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlCompanies.get_company_sql_where_clause(id, name, type, send_method, on_hold, limit, offset)
 
-        query = """
+        query = """ ---sql
             SELECT json_agg(row_to_json(_query_result)) AS result FROM (
                 SELECT
                     company.id,
