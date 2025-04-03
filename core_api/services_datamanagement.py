@@ -824,8 +824,6 @@ def handle_notification_option_bulk(datalist: list, company_id: int):
     notification_option_errors = []
     error_found = False
 
-    print('datalist', datalist)
-
     for data in datalist:
         data['company_id'] = company_id
 
