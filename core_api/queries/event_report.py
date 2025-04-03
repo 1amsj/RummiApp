@@ -1,9 +1,10 @@
+from core_api.queries.content_type import ApiSpecialSqlContentTypeIds
 from core_api.queries.events import ApiSpecialSqlEvents
 
 class ApiSpecialSqlEventReports():
     @staticmethod
     def get_payment_price_sql(cursor):
-        parent_ct_rate_id = ApiSpecialSqlEventReports.get_rate_sql_ct_id(cursor)
+        parent_ct_rate_id = ApiSpecialSqlContentTypeIds.get_rate_sql_ct_id(cursor)
 
         query = """
             SELECT
@@ -29,9 +30,9 @@ class ApiSpecialSqlEventReports():
                 END
             FROM core_backend_rate _rate
                 LEFT JOIN core_backend_serviceroot _root
-                    ON _root.id = _rate.root_id and _root.is_deleted = False
+                    ON _root.id = _rate.root_id AND _root.is_deleted = False
                 LEFT JOIN "core_backend_extra" _extra_rate
-                    ON _extra_rate.parent_ct_id = %s AND _extra_rate.parent_id=_rate.id
+                    ON _extra_rate.parent_ct_id = %s AND _extra_rate.parent_id=_rate.id AND _extra_rate.is_deleted = False
         """ % parent_ct_rate_id
 
         return query
@@ -55,10 +56,13 @@ class ApiSpecialSqlEventReports():
         recipient_name,
         clinic_name,
         booking_public_id,
+        recipient_dob,
+        date_of_injury,
         field_to_sort,
         order_to_sort
     ):
-        parent_ct_id = ApiSpecialSqlEvents.get_event_sql_ct_id(cursor)
+        parent_ct_id = ApiSpecialSqlContentTypeIds.get_event_sql_ct_id(cursor)
+        booking_parent_ct_id = ApiSpecialSqlContentTypeIds.get_booking_sql_ct_id(cursor)
         query_price = ApiSpecialSqlEventReports.get_payment_price_sql(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlEvents.get_event_sql_where_clause(
             id,
@@ -76,8 +80,10 @@ class ApiSpecialSqlEventReports():
             end_date,
             provider_name,
             recipient_name,
+            recipient_dob,
+            date_of_injury,
             clinic_name,
-            booking_public_id,
+            booking_public_id
         )
 
         query = """--sql
@@ -258,92 +264,104 @@ class ApiSpecialSqlEventReports():
                             )
                         )
                     )::jsonb ||
-                    COALESCE((
+                    COALESCE((  
                         SELECT json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
                         FROM "core_backend_extra" extra
-                        WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id
-                    )::jsonb, '{}'::jsonb)) AS json_data,
-                    ROW_NUMBER() OVER (PARTITION BY event.id ORDER BY %s %s NULLS LAST) AS rn
+                        WHERE extra.parent_ct_id = %s AND extra.parent_id = event.id AND extra.is_deleted = False
+                    )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_event" event
                     LEFT JOIN "core_backend_booking" booking
-                        ON booking.id = event.booking_id
+                        ON booking.id = event.booking_id AND booking.is_deleted = False
                     LEFT JOIN "core_backend_booking_companies" booking_companies
                         ON booking_companies.booking_id = booking.id
                     LEFT JOIN "core_backend_company" company
-                        ON company.id = booking_companies.company_id
+                        ON company.id = booking_companies.company_id AND company.is_deleted = False
                     LEFT JOIN "core_backend_booking_services" booking_services
                         ON booking_services.booking_id = booking.id
                     LEFT JOIN "core_backend_service" service
-                        ON service.id = booking_services.service_id
+                        ON service.id = booking_services.service_id AND service.is_deleted = False
                     LEFT JOIN "core_backend_provider" provider
-                        ON provider.id = service.provider_id
+                        ON provider.id = service.provider_id AND provider.is_deleted = False
                     LEFT JOIN "core_backend_user" provider_user
-                        ON provider_user.id = provider.user_id
+                        ON provider_user.id = provider.user_id AND provider_user.is_deleted = False
                     LEFT JOIN "core_backend_event_affiliates" event_affiliates
                         ON event_affiliates.event_id = event.id
                     LEFT JOIN "core_backend_affiliation" affiliation
-                        ON affiliation.id = event_affiliates.affiliation_id
+                        ON affiliation.id = event_affiliates.affiliation_id AND affiliation.is_deleted = False
                     LEFT JOIN "core_backend_recipient" recipient
-                        ON recipient.id = affiliation.recipient_id
+                        ON recipient.id = affiliation.recipient_id AND recipient.is_deleted = False
                     LEFT JOIN "core_backend_user" recipient_user
-                        ON recipient_user.id = recipient.user_id
+                        ON recipient_user.id = recipient.user_id AND recipient_user.is_deleted = False
                     LEFT JOIN "core_backend_event_agents" event_agents
                         ON event_agents.event_id = event.id
                     LEFT JOIN "core_backend_agent" agent
-                        ON agent.id = event_agents.agent_id
+                        ON agent.id = event_agents.agent_id AND agent.is_deleted = False
                     LEFT JOIN "core_backend_event_affiliates" _event_affiliates
                         ON _event_affiliates.event_id = event.id
                     LEFT JOIN "core_backend_affiliation" _affiliations
-                        ON _affiliations.id = _event_affiliates.affiliation_id
+                        ON _affiliations.id = _event_affiliates.affiliation_id AND _affiliations.is_deleted = False
                     LEFT JOIN "core_backend_recipient" _recipients_affiliates
-                        ON _recipients_affiliates.id = _affiliations.recipient_id
+                        ON _recipients_affiliates.id = _affiliations.recipient_id AND _recipients_affiliates.is_deleted = False
                     LEFT JOIN "core_backend_user" _users_affiliates
-                        ON _users_affiliates.id = _recipients_affiliates.user_id
-                    LEFT JOIN "core_backend_user_contacts" _users_affiliates_user_contacts
-                        ON _users_affiliates_user_contacts.user_id = _users_affiliates.id
+                        ON _users_affiliates.id = _recipients_affiliates.user_id AND _users_affiliates.is_deleted = False
+                    LEFT JOIN (
+                        SELECT DISTINCT ON (user_id) user_id, contact_id
+                            FROM "core_backend_user_contacts"
+                        ORDER BY user_id, id DESC
+                    ) _latest_contact
+                        ON _latest_contact.user_id = _users_affiliates.id
                     LEFT JOIN "core_backend_contact" _contact_affiliates
-                        ON _contact_affiliates.id = _users_affiliates_user_contacts.contact_id
+                        ON _contact_affiliates.id = _latest_contact.contact_id AND _contact_affiliates.is_deleted = False
                     LEFT JOIN "core_backend_location" _location_affiliates
-                        ON _location_affiliates.id = _users_affiliates.location_id
-                    LEFT JOIN "core_backend_report" _reports
-                        ON _reports.event_id = event.id
+                        ON _location_affiliates.id = _users_affiliates.location_id AND _location_affiliates.is_deleted = False
+                    LEFT JOIN (
+                        SELECT DISTINCT ON (event_id) *
+                            FROM "core_backend_report"
+                        WHERE is_deleted = False
+                        ORDER BY event_id, id DESC
+                    ) _reports ON _reports.event_id = event.id AND _reports.is_deleted = False
                     LEFT JOIN "core_backend_company" _payer_companies
-                        ON _payer_companies.id = event.payer_company_id
+                        ON _payer_companies.id = event.payer_company_id AND _payer_companies.is_deleted = False
                     LEFT JOIN "core_backend_company_locations" _payer_companies_locations_bridge
                         ON _payer_companies_locations_bridge.company_id = _payer_companies.id
                     LEFT JOIN "core_backend_location" _payer_companies_locations
-                        ON _payer_companies_locations.id = _payer_companies_locations_bridge.location_id
+                        ON _payer_companies_locations.id = _payer_companies_locations_bridge.location_id AND _payer_companies_locations.is_deleted = False
                     LEFT JOIN "core_backend_event_agents" _event_agents
                         ON _event_agents.event_id = event.id
                     LEFT JOIN "core_backend_agent" _agents
-                        ON _agents.id = _event_agents.agent_id
+                        ON _agents.id = _event_agents.agent_id AND _agents.is_deleted = False
                     LEFT JOIN "core_backend_user" _users_agents
-                        ON _users_agents.id = _agents.user_id
-                    LEFT JOIN "core_backend_company_locations" _company_booking_locations_bridge
-                        ON _company_booking_locations_bridge.company_id = company.id
-                    LEFT JOIN "core_backend_location" _company_booking_locations
-                        ON _company_booking_locations.id = _company_booking_locations_bridge.location_id
+                        ON _users_agents.id = _agents.user_id AND _users_agents.is_deleted = False
+                    LEFT JOIN (
+                        SELECT DISTINCT ON (_company_booking_locations_bridge.company_id)
+                            _company_booking_locations_bridge.company_id,
+                            _company_booking_locations.*
+                        FROM "core_backend_company_locations" _company_booking_locations_bridge
+                            JOIN "core_backend_location" _company_booking_locations
+                                ON _company_booking_locations.id = _company_booking_locations_bridge.location_id
+                        ORDER BY _company_booking_locations_bridge.company_id, _company_booking_locations.id
+                    ) _company_booking_locations
+                        ON _company_booking_locations.company_id = company.id
                     LEFT JOIN "core_backend_company_contacts" _company_booking_contacts_bridge
                         ON _company_booking_contacts_bridge.company_id = company.id
                     LEFT JOIN "core_backend_contact" _company_booking_contacts
-                        ON _company_booking_contacts.id = _company_booking_contacts_bridge.contact_id
+                        ON _company_booking_contacts.id = _company_booking_contacts_bridge.contact_id AND _company_booking_contacts.is_deleted = False
                     LEFT JOIN "core_backend_serviceroot" _booking_serviceroot
-                        ON _booking_serviceroot.id = booking.service_root_id
+                        ON _booking_serviceroot.id = booking.service_root_id AND _booking_serviceroot.is_deleted = False
                     LEFT JOIN "core_backend_booking_operators" _booking_operators_bridge
                         ON _booking_operators_bridge.booking_id = booking.id
                     LEFT JOIN "core_backend_operator" _booking_operator
-                        ON _booking_operator.id = _booking_operators_bridge.operator_id
+                        ON _booking_operator.id = _booking_operators_bridge.operator_id AND _booking_operator.is_deleted = False
                     LEFT JOIN "core_backend_user" _booking_user_operator
-                        ON _booking_user_operator.id = _booking_operator.user_id
+                        ON _booking_user_operator.id = _booking_operator.user_id AND _booking_user_operator.is_deleted = False
                     LEFT JOIN "core_backend_extra" _extra_booking
-                        ON _extra_booking.parent_id = booking.id and _extra_booking.key = 'target_language_alpha3'
+                        ON _extra_booking.parent_id = booking.id AND _extra_booking.key = 'target_language_alpha3' AND _extra_booking.is_deleted = False AND _extra_booking.parent_ct_id = %s
                     LEFT JOIN "core_backend_language" _language
-                        ON _language.alpha3 = REPLACE(REPLACE(_extra_booking.data::text, '\"', ''), '\\', '')
-                WHERE %s
+                        ON _language.alpha3 = REPLACE(REPLACE(_extra_booking.data::text, '\"', ''), '\\', '') AND _language.is_deleted = False
+                WHERE (event.is_deleted = False) AND %s
                 ORDER BY %s %s NULLS LAST
                 %s
             ) sub
-            WHERE sub.rn = 1
         ) result
     """ % (
         query_price,
@@ -355,8 +373,7 @@ class ApiSpecialSqlEventReports():
         query_price,
         query_price,
         parent_ct_id,
-        field_to_sort,
-        order_to_sort,
+        booking_parent_ct_id,
         where_conditions,
         field_to_sort,
         order_to_sort,
