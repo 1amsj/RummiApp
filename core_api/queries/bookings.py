@@ -564,7 +564,7 @@ class ApiSpecialSqlBookings():
                                                             'root', COALESCE((
                                                                 SELECT 
                                                                     json_build_object(
-                                                                        'id', _serviceroot.id,
+                                                                        'id', _serviceroot.id
                                                                     )
                                                                 FROM "core_backend_serviceroot" _serviceroot
                                                                 WHERE _serviceroot.id = _company_rate.root_id
