@@ -172,7 +172,7 @@ class ApiSpecialSqlCompanies():
                                         SELECT json_build_object(
                                             'id', _serviceroot.id,
                                             'description', _serviceroot.description,
-                                            'name', _serviceroot.name,
+                                            'name', _serviceroot.name
                                         )
                                         FROM "core_backend_serviceroot" _serviceroot
                                         WHERE _serviceroot.id = _company_rate.root_id
