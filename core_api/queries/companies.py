@@ -53,9 +53,10 @@ class ApiSpecialSqlCompanies():
 
     @staticmethod
     def get_company_sql(cursor, id, name, type, send_method, on_hold, limit, offset):
+        parent_rate_ct_id = ApiSpecialSqlRates.get_rate_sql_ct_id(cursor)
         params, where_conditions, limit_statement = ApiSpecialSqlCompanies.get_company_sql_where_clause(id, name, type, send_method, on_hold, limit, offset)
 
-        query = """
+        query = """ ---sql
             SELECT json_agg(row_to_json(_query_result)) AS result FROM (
                 SELECT
                     company.id,
@@ -158,7 +159,31 @@ class ApiSpecialSqlCompanies():
                     ) AS parent_company,
                     COALESCE((
                         SELECT
-                            json_agg(row_to_json(_company_rate))
+                            json_agg(
+                                json_build_object(
+                                    'id', _company_rate.id,
+                                    'bill_amount', _company_rate.bill_amount,
+                                    'bill_rate', _company_rate.bill_rate,
+                                    'bill_rate_type', _company_rate.bill_rate_type,
+                                    'bill_rate_minutes_threshold', _company_rate.bill_rate_minutes_threshold,
+                                    'bill_min_payment', _company_rate.bill_min_payment,
+                                    'bill_no_show_fee', _company_rate.bill_no_show_fee,
+                                    'root', COALESCE((
+                                        SELECT json_build_object(
+                                            'id', _serviceroot.id,
+                                            'description', _serviceroot.description,
+                                            'name', _serviceroot.name
+                                        )
+                                        FROM "core_backend_serviceroot" _serviceroot
+                                        WHERE _serviceroot.id = _company_rate.root_id
+                                    ), '{}'::JSON)
+                                )::jsonb ||
+                                (
+                                    SELECT json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                    FROM "core_backend_extra" extra
+                                    WHERE extra.parent_ct_id = %s AND extra.parent_id= _company_rate.id
+                                )::jsonb
+                            )
                         FROM "core_backend_rate" _company_rate
                         WHERE _company_rate.company_id = company.id AND _company_rate.is_deleted=FALSE
                     ), '[]'::JSON) AS rates,
@@ -179,7 +204,7 @@ class ApiSpecialSqlCompanies():
                 ORDER BY company.name, company.id
                 %s
             ) _query_result
-        """ % (where_conditions, limit_statement)
+        """ % (parent_rate_ct_id, where_conditions, limit_statement)
 
         cursor.execute(query, params)
         result = cursor.fetchone()
