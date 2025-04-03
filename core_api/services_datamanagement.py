@@ -3,8 +3,9 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Agent, Booking, CompanyRelationship, Event, Rate, Report, Service, ServiceArea
+from core_backend.models import Agent, Booking, CompanyRelationship, Event, NotificationOption, Rate, Report, Service, ServiceArea
 from core_backend.models import User
+from core_backend.serializers.serializers import NotificationOptionSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, CompanyCreateSerializer, CompanyRelationshipCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
@@ -813,6 +814,51 @@ def handle_agents_bulk(datalist: list, company_id, business_name):
         raise ValidationError(agents_errors)
     
     return agents_ids
+
+@transaction.atomic
+def handle_notification_option_bulk(datalist: list, company_id: int):
+    """
+    Create, update or delete the notification options in bulk, depending on whether the payload includes an ID or not.
+    """
+    notification_option_ids = []
+    notification_option_errors = []
+    error_found = False
+
+    print('datalist', datalist)
+
+    for data in datalist:
+        data['company_id'] = company_id
+
+        notification_option_id = data.pop('id', None)
+        deleted_flag = data.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+        if not notification_option_id and deleted_flag:
+            raise BadRequestException('Notification Option flagged as deleted but no ID provided')
+
+        try:
+            if not notification_option_id:
+                # Create a new notification option
+                NotificationOptionSerializer.create(data, data)
+            elif not deleted_flag:
+                # Update existing notification option
+                notification_option = NotificationOption.objects.get(id=notification_option_id)
+                NotificationOptionSerializer.update(notification_option, notification_option, data)
+            else:
+                # Delete the notification option
+                NotificationOption.objects.get(id=notification_option_id).delete()
+
+            # Keep track of errors and IDs for proper indexing
+            notification_option_errors.append({})
+            notification_option_ids.append(notification_option_id)
+
+        except ValidationError as exc:
+            error_found = True
+            notification_option_errors.append(exc.detail)
+
+    if error_found:
+        raise ValidationError(notification_option_errors)
+
+    return notification_option_ids
 
 @transaction.atomic
 def handle_company_relationships_bulk(datalist: list, company_id):

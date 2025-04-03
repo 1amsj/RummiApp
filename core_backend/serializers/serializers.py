@@ -4,7 +4,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Company, CompanyRelationship, Contact, Event, GlobalSetting, \
-    Invoice, Language, Ledger, Location, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
+    Invoice, Language, Ledger, Location, Notification, NotificationOption, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
 from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
@@ -1150,3 +1150,16 @@ class NotificationSerializer(BaseSerializer):
             .all()
             .not_deleted()
         )
+
+class NotificationOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationOption
+        fields = '__all__'
+    
+    def create(self, validated_data):
+        return NotificationOption.objects.create(**validated_data)
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance

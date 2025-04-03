@@ -55,7 +55,7 @@ class ApiSpecialSqlCompanies():
     def get_company_sql(cursor, id, name, type, send_method, on_hold, limit, offset):
         params, where_conditions, limit_statement = ApiSpecialSqlCompanies.get_company_sql_where_clause(id, name, type, send_method, on_hold, limit, offset)
 
-        query = """
+        query = """---sql
             SELECT json_agg(row_to_json(_query_result)) AS result FROM (
                 SELECT
                     company.id,
@@ -75,6 +75,12 @@ class ApiSpecialSqlCompanies():
                                 ON _locations.id = _company_locations.location_id
                         WHERE _company_locations.company_id = company.id AND _locations.is_deleted=FALSE
                     ), '[]'::JSON) AS locations,
+                    COALESCE((
+                        SELECT
+                            json_agg(row_to_json(_notificationoption))
+                        FROM "core_backend_notificationoption" _notificationoption
+                        WHERE _notificationoption.company_id = company.id
+                    ), '[]'::JSON) AS contact_options,
                     COALESCE((
                         SELECT
                             json_agg(
@@ -220,6 +226,12 @@ class ApiSpecialSqlCompanies():
                                 INNER JOIN "core_backend_location" _locations
                                     ON _locations.id = _company_locations.location_id
                             WHERE _company_locations.company_id = company.id AND _locations.is_deleted=FALSE
+                        ), '[]'::JSON),
+                        'contact_options', COALESCE((
+                            SELECT
+                                json_agg(row_to_json(_notificationoption))
+                            FROM "core_backend_notificationoption" _notificationoption
+                            WHERE _notificationoption.company_id = company.id
                         ), '[]'::JSON),
                         'notes', COALESCE((
                             SELECT
