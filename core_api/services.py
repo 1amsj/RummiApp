@@ -11,12 +11,12 @@ def prepare_query_params(params: dict) -> QueryParams:
         ret_params[k] = v
     return ret_params
 
-def representation_services(repr):
-    authorization = Authorization.objects.get(id=repr)
+def representation_services(auth_id):
+    authorization = Authorization.objects.get(id=auth_id)
     return authorization.status
 
 def validator_claim_number(value):
-    if(value[-1].__contains__('claim_number')):
+    if 'claim_number' in value[-1]:
         return value[-1]['claim_number']
     else:
         return None
@@ -24,7 +24,7 @@ def validator_claim_number(value):
 def calculate_booking_status(event_datalist, company_type_short_validation, company_type_validation, services) -> str:
     status = 'pending'
     
-    if validator_claim_number(event_datalist) is not None and company_type_validation and services.exists() == True:
+    if validator_claim_number(event_datalist) is not None and company_type_validation and services.exists():
         status = "booked"
         
     if event_datalist[-1].__contains__('authorizations'):
