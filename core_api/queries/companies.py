@@ -173,18 +173,6 @@ class ApiSpecialSqlCompanies():
                                             'id', _serviceroot.id,
                                             'description', _serviceroot.description,
                                             'name', _serviceroot.name,
-                                            'categories', COALESCE((
-                                                SELECT
-                                                    json_agg(json_build_object(
-                                                        'id', _categories.id,
-                                                        'description', _categories.description,
-                                                        'name', _categories.name
-                                                    ))
-                                                FROM "core_backend_serviceroot_categories" _serviceroot_categories
-                                                INNER JOIN "core_backend_category" _categories
-                                                    ON _categories.id = _serviceroot_categories.category_id
-                                                WHERE _serviceroot_categories.serviceroot_id = _serviceroot.id
-                                            ), '[]'::JSON)
                                         )
                                         FROM "core_backend_serviceroot" _serviceroot
                                         WHERE _serviceroot.id = _company_rate.root_id
