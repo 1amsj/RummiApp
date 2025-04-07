@@ -1233,7 +1233,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         if(actual_provider != initial_provider):
             try:
                 email_status = send_email_bookings(event, language, booking, True)
-            except:
+            except Exception:
                 email_status = 5
         else:
             email_status = 4
