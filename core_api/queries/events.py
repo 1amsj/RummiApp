@@ -392,7 +392,8 @@ class ApiSpecialSqlEvents():
                                                 'id', _recipients.id,
                                                 'first_name', _users.first_name,
                                                 'last_name', _users.last_name,
-                                                'user_id', _users.id
+                                                'user_id', _users.id,
+                                                'date_of_birth', _users.date_of_birth 
                                             )
                                         FROM "core_backend_recipient" _recipients
                                             INNER JOIN "core_backend_user" _users
