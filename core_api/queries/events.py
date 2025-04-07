@@ -225,10 +225,6 @@ class ApiSpecialSqlEvents():
                 if item == 'abandoned':
                     where_conditions += ' booking.status = %s'
                     params.append('abandoned')
-                    
-                if item == 'abandoned':
-                    where_conditions += ' booking.status = %s'
-                    params.append('abandoned')
 
                 if item == 'rescheduled':
                     where_conditions += ' booking.status = %s'
