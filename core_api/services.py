@@ -39,6 +39,9 @@ def calculate_booking_status(event_datalist, company_type_short_validation, comp
         
     if event_datalist[0]['payer_company_type'] == 'noPayer':
         status = "abandoned"
+        
+    if not event_datalist[-1].__contains__('_report_datalist'):
+        return status
             
     if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('RESCHEDULED'):
         status = "rescheduled"
