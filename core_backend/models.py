@@ -833,23 +833,35 @@ class Notification(HistoricalModel, SoftDeletableModel):
     
 class NotificationOption(models.Model):
     class Range(models.TextChoices):
-        ALL = 'ALL', _('All')
-        FOURTEEN_DAYS = 'FOURTEEN_DAYS', _('Fourteen_days')
-        SEVEN_DAYS = 'SEVEN_DAYS', _('Seven_days')
-        THREE_DAYS = 'THREE_DAYS', _('Three_days')
-        ONE_DAY = 'ONE_DAY', _('One_day')
-        TODAY = 'Today', _('Today')
+        ALL = _('All')
+        FOURTEEN_DAYS = _('Fourteen days')
+        SEVEN_DAYS = _('Seven days')
+        THREE_DAYS = _('Three days')
+        ONE_DAY = _('One day')
+        TODAY = _('Today')
     
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='notification_options')
     confirmation = models.BooleanField(default=False)
-    confirmation_receiver = models.CharField(max_length=128)
+    confirmation_receiver = models.CharField(max_length=128, null=True, blank=True)
     interpreter_change = models.BooleanField(default=False)
-    interpreter_change_receiver = models.CharField(max_length=128)
+    interpreter_change_receiver = models.CharField(max_length=128, null=True, blank=True)
     report = models.BooleanField(default=False)
-    report_frecuency = ArrayField(models.CharField(max_length=128))
-    report_range = models.CharField(max_length=32, choices=Range.choices, default=Range.SEVEN_DAYS)
-    report_receiver = models.CharField(max_length=128)
+    report_frequency = ArrayField(models.CharField(max_length=128), null=True, blank=True)
+    report_range = models.CharField(max_length=32, choices=Range.choices, default=Range.SEVEN_DAYS, null=True, blank=True)
+    report_receiver = models.CharField(max_length=128, null=True, blank=True)
     last_report_sent_at = models.DateTimeField(default=None, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.confirmation:
+            self.confirmation_receiver = None
+        if not self.interpreter_change:
+            self.interpreter_change_receiver = None
+        if not self.report:
+            self.report_frequency = None
+            self.report_range = None
+            self.report_receiver = None
+            self.last_report_sent_at = None
+        super().save(*args, **kwargs)
 
 class Offer(HistoricalModel, ExtendableModel, SoftDeletableModel):
     class Status(models.TextChoices):

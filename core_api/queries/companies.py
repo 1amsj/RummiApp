@@ -77,10 +77,10 @@ class ApiSpecialSqlCompanies():
                     ), '[]'::JSON) AS locations,
                     COALESCE((
                         SELECT
-                            json_agg(row_to_json(_notificationoption))
+                            row_to_json(_notificationoption)
                         FROM "core_backend_notificationoption" _notificationoption
                         WHERE _notificationoption.company_id = company.id
-                    ), '[]'::JSON) AS contact_options,
+                    ), '{}'::JSON) AS contact_options,
                     COALESCE((
                         SELECT
                             json_agg(
@@ -229,10 +229,10 @@ class ApiSpecialSqlCompanies():
                         ), '[]'::JSON),
                         'contact_options', COALESCE((
                             SELECT
-                                json_agg(row_to_json(_notificationoption))
+                                row_to_json(_notificationoption)
                             FROM "core_backend_notificationoption" _notificationoption
                             WHERE _notificationoption.company_id = company.id
-                        ), '[]'::JSON),
+                        ), '{}'::JSON),
                         'notes', COALESCE((
                             SELECT
                                 json_agg(json_build_object(
