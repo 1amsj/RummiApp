@@ -1792,7 +1792,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
-        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, [])
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, None)
 
         company_id = create_company(request.data, business_name)
 
