@@ -282,6 +282,7 @@ class ApiSpecialSqlEvents():
                             SELECT 
                                 json_build_object(
                                     'id', event.payer_company_id,
+                                    'name', _company.name,
                                     'send_method', _company.send_method
                                 )
                             FROM "core_backend_company" _company
