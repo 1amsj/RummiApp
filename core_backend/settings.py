@@ -255,3 +255,7 @@ CONCORD_NOTIFY_AUTH_PASSWORD = os.environ.get('CONCORD_NOTIFY_AUTH_PASSWORD', No
 # https://django-phonenumber-field.readthedocs.io/en/latest/reference.html
 
 PHONENUMBER_DEFAULT_REGION = 'US'
+
+CELERY_TIMEZONE = "Australia/Tasmania"
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
