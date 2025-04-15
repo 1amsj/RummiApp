@@ -156,7 +156,7 @@ DATABASES = {
         'USER': os.environ.get('DB_USER', 'core_user'),
         'PASSWORD': os.environ.get('DB_PASSWORD', 'core_password'),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+        'PORT': os.environ.get('DB_PORT', '5433'),
         'OPTIONS': {
             'options': '-c client_encoding=utf8',
         },
