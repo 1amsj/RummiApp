@@ -15,6 +15,7 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 import corsheaders.defaults
+from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PARENT_DIR = BASE_DIR.parent
@@ -29,7 +30,8 @@ INFO_FILE_DIR = os.path.join(BASE_DIR, 'logs', 'info.log')
 SECRET_KEY = 'django-insecure-v282f8w2sgzs)g3rr+u=3ws9*)z!!rweg_bs&ivpwccn%4=44k'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+#DEBUG = True
+DEBUG = config("DEBUG", cast=bool, default=False)
 
 ALLOWED_HOSTS = ['*']
 
@@ -52,6 +54,8 @@ INSTALLED_APPS = [
     'core_api.apps.CoreApiConfig',
     'django_extensions',
     'simple_history',
+    'django_celery_beat',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -259,3 +263,10 @@ PHONENUMBER_DEFAULT_REGION = 'US'
 CELERY_TIMEZONE = "Australia/Tasmania"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
+
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_BROKER_URL = config('CELERY_BROKER_REDIS_URL', default='redis://localhost:6380')
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
+CELERY_BROKER_REDIS_URL="redis://localhost:6380"
+DEBUG=True
+CELERY_BROKER_CONNECTION_RETRY_ON_STATARTUP = True

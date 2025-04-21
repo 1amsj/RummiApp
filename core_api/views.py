@@ -2,6 +2,7 @@ import html2text
 from datetime import datetime
 from typing import Type, Union
 import base64
+from django_celery_beat.models import PeriodicTask, IntervalSchedule
 
 from django.db import connection, models, transaction
 from django.db.models import Q, QuerySet
@@ -76,6 +77,7 @@ from django.core.mail import BadHeaderError, send_mail, EmailMultiAlternatives
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from .tasks import *
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -2398,3 +2400,16 @@ class ManageUsersRecover(generics.GenericAPIView):
             return Response({'success': 'Found!'}, status=200)
         else:
             return Response({'error': 'Not Found'}, status=400)
+
+def is_sended(request):
+    interval, _ = IntervalSchedule.objects.get_or_create(
+        every=60,
+        period=IntervalSchedule.SECONDS
+    )
+
+    PeriodicTask.objects.create(
+        interval=interval,
+        name="my-schedule",
+        task="core_api.tasks.send_print_tasked",
+        #args=json.dummp("")
+    )

@@ -80,5 +80,6 @@ urlpatterns = [
 
     path('notifications/fax/', views.handle_fax_push_notification, name='fax_push_notification'),
 
-    path('', views.get_routes)
+    path('', views.get_routes),
+    path("schedule/", views.is_sended, name="schedule")
 ]
