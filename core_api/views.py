@@ -42,7 +42,7 @@ from core_api.services import calculate_booking_status, prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_relationships_bulk, handle_events_bulk, handle_rates_bulk, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_relationships_bulk, handle_events_bulk, handle_notification_option, handle_rates_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
@@ -1742,6 +1742,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, None)
 
         company_id = create_company(request.data, business_name)
 
@@ -1751,6 +1752,11 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             agents_ids = handle_agents_bulk(agents_data, company_id, business_name)
 
             response["agents_ids"] = agents_ids
+
+        if (notification_options.__len__() > 0):
+            notification_option_ids = handle_notification_option(notification_options, company_id)
+
+            response["notification_option_ids"] = notification_option_ids
 
         if (company_rates_datalist.__len__() > 0):
             company_rates_ids = handle_rates_bulk(company_rates_datalist, business_name, company_id)
@@ -1773,6 +1779,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, [])
 
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
@@ -1781,6 +1788,9 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         if (agents_data.__len__() > 0):
             handle_agents_bulk(agents_data, company_id, business_name)
+        
+        if (notification_options.__len__() > 0):
+            handle_notification_option(notification_options, company_id)
 
         if (company_rates_datalist.__len__() > 0):
             handle_rates_bulk(company_rates_datalist, business_name, company_id)
