@@ -1806,6 +1806,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(Event)
+    
     def delete(request, company_id=None):
         company = Company.objects.get(id=company_id)
         company.is_deleted = True
