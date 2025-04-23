@@ -1744,9 +1744,15 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
         company_id = create_company(request.data, business_name)
+        parent_company_id = request.data.get('parent_company')
+        if parent_company_id and int(parent_company_id) == int(request.data.get('id', 0)):
+            return Response(
+                 {"error": "A company cannot have itself as its parent company."},
+        status=status.HTTP_400_BAD_REQUEST
+        )
 
         response = {"company_id": company_id}
-
+    
         if (agents_data.__len__() > 0):
             agents_ids = handle_agents_bulk(agents_data, company_id, business_name)
 
@@ -1773,7 +1779,14 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
-
+     
+        parent_company_id = request.data.get('parent_company')
+        if parent_company_id and int(parent_company_id) == int(company_id):
+         return Response(
+            {"error": "A company cannot have itself as its parent company."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+     
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
