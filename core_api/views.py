@@ -1277,6 +1277,16 @@ class ManageEventsMixin:
         query_param_report = request.GET.get('report', False)
         query_param_id = request.GET.get('id', None)
         
+        user = request.user
+        
+        if not user.is_operator and not user.is_provider and not user.is_admin:
+            return Response({'error': 'Forbidden'}, status=403)
+        
+        query_provider_id = query_param_provider_id
+
+        if query_provider_id is None and not user.is_operator and not user.is_admin:
+            query_provider_id = user.as_provider.id
+        
         query_event_id = event_id if event_id is not None else query_param_id
         query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
         query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
@@ -1320,7 +1330,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
@@ -1392,7 +1402,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
@@ -1416,7 +1426,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
