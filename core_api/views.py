@@ -1278,16 +1278,13 @@ class ManageEventsMixin:
         user = request.user
         
         if not user.is_operator and not user.is_provider and not user.is_admin:
-            
             return Response({'error': 'Forbidden'}, status=403)
         
-        if query_param_provider_id is not None:
-            query_provider_id = query_param_provider_id
-        elif user.is_provider and not user.is_operator:
+        query_provider_id = query_param_provider_id
+
+        if query_provider_id is None and not user.is_operator and not user.is_admin:
             query_provider_id = user.as_provider.id
-        else:
-            query_provider_id = None
-            
+        
         query_event_id = event_id if event_id is not None else query_param_id
         query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
         query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
