@@ -1277,6 +1277,10 @@ class ManageEventsMixin:
         
         user = request.user
         
+        if not user.is_operator and not user.is_provider and not user.is_admin:
+            
+            return Response({'error': 'Forbidden'}, status=403)
+        
         if query_param_provider_id is not None:
             query_provider_id = query_param_provider_id
         elif user.is_provider and not user.is_operator:
