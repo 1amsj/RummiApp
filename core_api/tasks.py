@@ -15,17 +15,20 @@ def send_print_tasked():
     send_email_info = ''
     
     for notificationOptions in listNotificationOption:
-        for notificationOptionTime in notificationOptions[1]:
+        try:
+            for notificationOptionTime in notificationOptions[1]:
 
-            rangeOfTime = ApiSpecialSqlNotificationOption.get_range(notificationOptions[2])
-            TimeOfSent = ApiSpecialSqlNotificationOption.format_time_string(notificationOptionTime)
-            booking_info = ApiSpecialSqlNotificationOption.get_booking_info(cursor, notificationOptions[0], rangeOfTime)
-            send_email_info = ApiSpecialSqlNotificationOption.get_info_for_email(booking_info, notificationOptions[3])
-            #print(TimeOfSent, formatted_time)
-            if(TimeOfSent == formatted_time):
+                rangeOfTime = ApiSpecialSqlNotificationOption.get_range(notificationOptions[2])
+                TimeOfSent = ApiSpecialSqlNotificationOption.format_time_string(notificationOptionTime)
+                booking_info = ApiSpecialSqlNotificationOption.get_booking_info(cursor, notificationOptions[0], rangeOfTime)
                 send_email_info = ApiSpecialSqlNotificationOption.get_info_for_email(booking_info, notificationOptions[3])
-                send_email_function = ApiSpecialSqlNotificationOption.send_email_book_info(send_email_info)
-                print(send_email_function)
+                #print(TimeOfSent, formatted_time)
+                if(TimeOfSent == formatted_time):
+                    send_email_info = ApiSpecialSqlNotificationOption.get_info_for_email(booking_info, notificationOptions[3])
+                    send_email_function = ApiSpecialSqlNotificationOption.send_email_book_info(send_email_info)
+                    print(send_email_function)
+        except:
+            print("Err Or Not Have Report")
 
             #Saved = f"ID: {notificationOptions[0]} TIME: {TimeOfSent} NOW: {formatted_time} RANGE {notificationOptions[2]} RANGETIME: {rangeOfTime} PUBLIC IDS: {booking_info}"
     
