@@ -1773,7 +1773,12 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
-
+        parent_company_id = request.data.get('parent_company')
+        if parent_company_id and int(parent_company_id) == int(company_id):
+         return Response(
+            {"error": "A company cannot have itself as its parent company."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
