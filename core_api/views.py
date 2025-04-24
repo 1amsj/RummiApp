@@ -2,7 +2,7 @@ import html2text
 from datetime import datetime
 from typing import Type, Union
 import base64
-from django_celery_beat.models import PeriodicTask, IntervalSchedule
+from django_celery_beat.models import PeriodicTask, CrontabSchedule
 
 from django.db import connection, models, transaction
 from django.db.models import Q, QuerySet
@@ -2402,13 +2402,14 @@ class ManageUsersRecover(generics.GenericAPIView):
             return Response({'error': 'Not Found'}, status=400)
 
 def is_sended(request):
-    interval, _ = IntervalSchedule.objects.get_or_create(
-        every=60,
-        period=IntervalSchedule.SECONDS
+    crontab, _ = CrontabSchedule.objects.get_or_create(
+        minute='0',
+        hour='7,9,14,16',
+        day_of_week='1,2,3,4,5'
     )
 
     PeriodicTask.objects.create(
-        interval=interval,
+        crontab=crontab,
         name="my-schedule",
         task="core_api.tasks.send_print_tasked",
         #args=json.dummp("")

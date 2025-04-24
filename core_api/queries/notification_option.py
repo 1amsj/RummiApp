@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta
 from django.core.mail import BadHeaderError, EmailMultiAlternatives
-from django.conf import settings
+from core_backend import settings
 
 class ApiSpecialSqlNotificationOption:
 
     @staticmethod
-    def get_notification_option_sql_ct_id(cursor):
+    def get_notification_option_sql(cursor):
         query = """--sql
             SELECT
-                company_id, report_frequency, report_range
+                company_id, report_frequency, report_range, report_receiver
             FROM "core_backend_notificationoption" _notificationoption
         """
 
@@ -20,9 +20,9 @@ class ApiSpecialSqlNotificationOption:
         return None
 
     @staticmethod
-    def get_public_id(cursor, company_id, range_of_time):
+    def get_booking_info(cursor, company_id, range_of_time):
         query = """SELECT 
-                    _booking.public_id, _contact.email, _contact_r.email
+                    _booking.public_id, _contact_c.email, _contact_r.email
                 FROM core_backend_booking _booking 
                     INNER JOIN core_backend_booking_companies _booking_companies 
                         ON _booking_companies.booking_id = _booking.id 
@@ -30,8 +30,8 @@ class ApiSpecialSqlNotificationOption:
                         ON _event.booking_id = _booking.id
                     LEFT JOIN core_backend_company_contacts _company_contacts
                         ON _company_contacts.company_id = _booking_companies.company_id
-                    LEFT JOIN core_backend_contact _contact
-                        ON _contact.id = _company_contacts.contact_id
+                    LEFT JOIN core_backend_contact _contact_c
+                        ON _contact_c.id = _company_contacts.contact_id
                     LEFT JOIN core_backend_requester _requester
                         ON _requester.id = _event.requester_id
                     LEFT JOIN core_backend_user _user
@@ -40,8 +40,8 @@ class ApiSpecialSqlNotificationOption:
                         ON _user_contacts.user_id = _user.id
                     LEFT JOIN core_backend_contact _contact_r
                         ON _contact_r.id = _user_contacts.contact_id
-                WHERE _booking_companies.company_id = %s;
-            """ % (company_id)#, range_of_time)
+                WHERE _booking_companies.company_id = %s %s;
+            """ % (company_id, range_of_time)
 
         cursor.execute(query)
         result = cursor.fetchall()
@@ -67,17 +67,12 @@ class ApiSpecialSqlNotificationOption:
 
     @staticmethod
     def get_range(rangeOfTime):
-        numberRange = 0
-        if numberRange == "Fourteen days": 
-            numberRange = 14
-        elif numberRange == "Seven days": 
-            numberRange = 7
-        elif numberRange == "Three days": 
-            numberRange = 3
-        elif numberRange == "One days": 
-            numberRange = 1
-        elif numberRange == "Today": 
-            numberRange == 1
+        numberRange = -1
+        if rangeOfTime == "Fourteen days": numberRange = 14
+        elif rangeOfTime == "Seven days": numberRange = 7
+        elif rangeOfTime == "Three days": numberRange = 3
+        elif rangeOfTime == "One days": numberRange = 1
+        elif rangeOfTime == "Today": numberRange = 0
             
 
         # Define the current date (e.g., "today")
@@ -89,31 +84,46 @@ class ApiSpecialSqlNotificationOption:
         date_range = ""
 
         # Format the dates
-        if numberRange != 0:
+        if numberRange >= 0:
             date_range = f"AND start_at BETWEEN '{start_date.strftime('%Y-%m-%d')} 00:00:00-04' AND '{end_date.strftime('%Y-%m-%d')} 24:00:00-04'"
 
         return date_range
 
-    def send_email(booking_info):
+    def get_info_for_email(booking_info, email_info):
         info = ""
-        email = ""
+        email = []
         if booking_info is not None:
-            email = booking_info[0][1]
-            for book_info in booking_info:
-                info = f"{info}\n{book_info[0]}\n"
+            
+            #if email_info == "CLINIC":
+            email.append(booking_info[0][1])
+            #elif email_info == "REQUESTER":
+            #    for info_email in booking_info:
+            #        email.append(info_email[1])
+            #else:
+            #    email.append(email_info)
 
-        subject = "Bookings Info"
-        message = "HELLO"#info
-        from_email = settings.EMAIL_HOST_USER
-        recipient = ['gabrielchacon200269@gmail.com']#[email]
-        if message != '' and recipient != ['']:
+            for book_info in booking_info:
+                info += f"{book_info[0]}\n"
+                
+        if info != '' and len(email) > 0:
+            return [info, email]
+        else:
+            # In reality we'd use a form class
+            # to get proper validation errors.
+            return ''
+
+    def send_email_book_info(send_email_info):
+        if send_email_info != '':
+            subject = "Bookings Info"
+            message = send_email_info[0]
+            from_email = settings.EMAIL_HOST_USER
+            recipient = send_email_info[1]
             try:
                 msg = EmailMultiAlternatives(subject, message, from_email, to=recipient)
                 msg.attach_alternative(message, "text/html")
                 msg.send()
-                print("sended",recipient,message,from_email,subject)
-            except:
-                return settings.EMAIL_HOST_USER
+            except BadHeaderError:
+                return BadHeaderError
             return 1
         else:
             # In reality we'd use a form class

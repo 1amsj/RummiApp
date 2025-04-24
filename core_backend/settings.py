@@ -149,6 +149,8 @@ EMAIL_HOST_PASSWORD = os.environ.get('EmailHostPassword')
 EMAIL_RECOVER_LINK = os.environ.get('EmailRecoverLink', 'localhost:3000')
 EMAIL_CC = os.environ.get('EmailCC')
 EMAIL_WHITELIST = os.environ.get('EmailWhitelist')
+AWS_ACCESS_KEY = os.environ.get('aws_access_key')
+AWS_SECRET_KEY = os.environ.get('aws_secret_key')
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -239,6 +241,11 @@ LOGGING = {
     },
 }
 
+broker_url = f"sqs://{AWS_ACCESS_KEY}:{AWS_SECRET_KEY}@"
+broker_url.format(
+    aws_access_key=AWS_ACCESS_KEY, aws_secret_key=AWS_SECRET_KEY,
+)
+
 BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
 
 # Concord
@@ -260,12 +267,13 @@ CONCORD_NOTIFY_AUTH_PASSWORD = os.environ.get('CONCORD_NOTIFY_AUTH_PASSWORD', No
 
 PHONENUMBER_DEFAULT_REGION = 'US'
 
-CELERY_TIMEZONE = "Australia/Tasmania"
+CELERY_TIMEZONE = 'US/Pacific'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 
 CELERY_RESULT_BACKEND = "django-db"
-CELERY_BROKER_URL = config('CELERY_BROKER_REDIS_URL', default='redis://localhost:6380')
+#CELERY_BROKER_URL = config('CELERY_BROKER_REDIS_URL', default='redis://localhost:6380')
+CELERY_BROKER_URL = broker_url
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
 CELERY_BROKER_REDIS_URL="redis://localhost:6380"
 DEBUG=True

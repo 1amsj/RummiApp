@@ -11,16 +11,23 @@ def send_print_tasked():
     now = datetime.now().astimezone(pst_timezone)
     formatted_time = now.strftime("%A %I %p")
 
-    listNotificationOption = ApiSpecialSqlNotificationOption.get_notification_option_sql_ct_id(cursor)
+    listNotificationOption = ApiSpecialSqlNotificationOption.get_notification_option_sql(cursor)
+    send_email_info = ''
     
     for notificationOptions in listNotificationOption:
         for notificationOptionTime in notificationOptions[1]:
 
             rangeOfTime = ApiSpecialSqlNotificationOption.get_range(notificationOptions[2])
             TimeOfSent = ApiSpecialSqlNotificationOption.format_time_string(notificationOptionTime)
-            booking_info = ApiSpecialSqlNotificationOption.get_public_id(cursor, notificationOptions[0], rangeOfTime)
-            send_email_function = ApiSpecialSqlNotificationOption.send_email(booking_info)
+            booking_info = ApiSpecialSqlNotificationOption.get_booking_info(cursor, notificationOptions[0], rangeOfTime)
+            send_email_info = ApiSpecialSqlNotificationOption.get_info_for_email(booking_info, notificationOptions[3])
+            #print(TimeOfSent, formatted_time)
+            if(TimeOfSent == formatted_time):
+                send_email_info = ApiSpecialSqlNotificationOption.get_info_for_email(booking_info, notificationOptions[3])
+                send_email_function = ApiSpecialSqlNotificationOption.send_email_book_info(send_email_info)
+                print(send_email_function)
 
             #Saved = f"ID: {notificationOptions[0]} TIME: {TimeOfSent} NOW: {formatted_time} RANGE {notificationOptions[2]} RANGETIME: {rangeOfTime} PUBLIC IDS: {booking_info}"
-            Saved = send_email_function
-            print(Saved)
+    
+    #send_email_function = ApiSpecialSqlNotificationOption.send_email_book_info(send_email_info)
+    #print(send_email_function, formatted_time)
