@@ -1744,12 +1744,6 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
 
         company_id = create_company(request.data, business_name)
-        parent_company_id = request.data.get('parent_company')
-        if parent_company_id and int(parent_company_id) == int(request.data.get('id', 0)):
-            return Response(
-                 {"error": "A company cannot have itself as its parent company."},
-        status=status.HTTP_400_BAD_REQUEST
-        )
 
         response = {"company_id": company_id}
     
