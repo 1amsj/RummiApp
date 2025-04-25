@@ -1,9 +1,9 @@
 from rest_framework import serializers
 
 from core_backend.models import Admin, Agent, Authorization, Booking, Category, Company, CompanyRelationship, Event, Expense, GlobalSetting, Language, \
-    Location, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
+    Location, NotificationOption, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AuthorizationBaseSerializer, CompanyRelationshipSerializer, CompanyWithParentSerializer, \
-    ContactSerializer, LocationSerializer, NoteSerializer
+    ContactSerializer, LocationSerializer, NoteSerializer, NotificationOptionSerializer
 from core_backend.serializers.serializers_create import BookingCreateSerializer, CategoryCreateSerializer, CompanyRelationshipCreateSerializer, \
     EventCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, LanguageCreateSerializer, OfferCreateSerializer, RateCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
@@ -15,6 +15,7 @@ from core_backend.services.core_services import manage_extra_attrs, sync_m2m, up
 from core_backend.services.core_services import user_sync_email_with_contact
 from django.contrib.postgres.search import SearchVector
 from django.db.models import Q
+from core_backend.models import Notification
 
 class AuthorizationUpdateSerializer(AuthorizationBaseSerializer):
     def update(self, instance: Authorization, validated_data=None):
@@ -449,4 +450,10 @@ class CompanyRelationshipUpdateSerializer(CompanyRelationshipCreateSerializer):
             setattr(instance, k, v)
         
         instance.save()
-        
+
+class NotificationOptionUpdateSerializer(NotificationOptionSerializer):
+    def update(self, instance: NotificationOption, validated_data=None):
+        data: dict = validated_data or self.validated_data
+        for (k, v) in data.items():
+            setattr(instance, k, v)
+        instance.save()

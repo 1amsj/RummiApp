@@ -3,16 +3,17 @@ from rest_framework.exceptions import ValidationError
 
 from core_api.constants import ApiSpecialKeys
 from core_api.exceptions import BadRequestException, BusinessNotProvidedException
-from core_backend.models import Agent, Booking, CompanyRelationship, Event, Rate, Report, Service, ServiceArea
+from core_backend.models import Agent, Booking, CompanyRelationship, Event, NotificationOption, Rate, Report, Service, ServiceArea
 from core_backend.models import User
+from core_backend.serializers.serializers import NotificationOptionSerializer
 from core_backend.serializers.serializers_create import AffiliationCreateSerializer, AgentCreateSerializer, \
     BookingCreateSerializer, CompanyCreateSerializer, CompanyRelationshipCreateSerializer, \
     EventCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, PayerCreateSerializer, \
     ProviderCreateSerializer, RateCreateSerializer, RecipientCreateSerializer, ReportCreateSerializer, RequesterCreateSerializer, \
-    ServiceCreateSerializer, ServiceAreaCreateSerializer, UserCreateSerializer
+    ServiceCreateSerializer, ServiceAreaCreateSerializer, UserCreateSerializer, NotificationOptionCreateSerializer
 from core_backend.serializers.serializers_update import AgentUpdateSerializer, CompanyRelationshipUpdateSerializer, EventUpdateSerializer, ProviderUpdateSerializer, RateUpdateSerializer, \
     RecipientUpdateSerializer, ReportUpdateSerializer, \
-    ServiceUpdateSerializer, ServiceAreaUpdateSerializer, UserUpdateSerializer
+    ServiceUpdateSerializer, ServiceAreaUpdateSerializer, UserUpdateSerializer, NotificationOptionUpdateSerializer
 
 
 # Creation
@@ -813,6 +814,47 @@ def handle_agents_bulk(datalist: list, company_id, business_name):
         raise ValidationError(agents_errors)
     
     return agents_ids
+
+@transaction.atomic
+def handle_notification_option(datalist: dict, company_id: int):
+    """
+    Create, update or delete the notification options in bulk, depending on whether the payload includes an ID or not.
+    """
+    if datalist is None:
+        datalist = {}
+
+    datalist['company'] = company_id
+    datalist['last_report_sent_at'] = None
+
+    if not datalist.get('report_range'):
+        datalist['report_range'] = NotificationOption.Range.SEVEN_DAYS
+
+    notification_option_id = datalist.pop('id', None)
+    deleted_flag = datalist.pop(ApiSpecialKeys.DELETED_FLAG, False)
+
+    if not notification_option_id and deleted_flag:
+        raise BadRequestException('Notification Option flagged as deleted but no ID provided')
+
+    try:
+        if not notification_option_id:
+            # Create a new notification option
+            serializer = NotificationOptionCreateSerializer(data=datalist)
+            serializer.is_valid(raise_exception=True)
+            serializer.create()
+
+        elif not deleted_flag:
+            # Update existing notification option
+            notification_option = NotificationOption.objects.get(id=notification_option_id)
+            serializer = NotificationOptionUpdateSerializer(data=datalist)
+            serializer.is_valid(raise_exception=True)
+            serializer.update(notification_option)
+
+        else:
+            # Delete the notification option
+            NotificationOption.objects.get(id=notification_option_id).delete()
+
+    except ValidationError as exc:
+        raise ValidationError(exc.detail)
 
 @transaction.atomic
 def handle_company_relationships_bulk(datalist: list, company_id):

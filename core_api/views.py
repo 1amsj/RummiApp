@@ -42,7 +42,7 @@ from core_api.services import calculate_booking_status, prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_relationships_bulk, handle_events_bulk, handle_rates_bulk, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_relationships_bulk, handle_events_bulk, handle_notification_option, handle_rates_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
@@ -1275,6 +1275,16 @@ class ManageEventsMixin:
         query_param_report = request.GET.get('report', False)
         query_param_id = request.GET.get('id', None)
         
+        user = request.user
+        
+        if not user.is_operator and not user.is_provider and not user.is_admin:
+            return Response({'error': 'Forbidden'}, status=403)
+        
+        query_provider_id = query_param_provider_id
+
+        if query_provider_id is None and not user.is_operator and not user.is_admin:
+            query_provider_id = user.as_provider.id
+        
         query_event_id = event_id if event_id is not None else query_param_id
         query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
         query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
@@ -1318,7 +1328,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
@@ -1390,7 +1400,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
@@ -1414,7 +1424,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
@@ -1742,6 +1752,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, None)
 
         company_id = create_company(request.data, business_name)
 
@@ -1751,6 +1762,11 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             agents_ids = handle_agents_bulk(agents_data, company_id, business_name)
 
             response["agents_ids"] = agents_ids
+
+        if (notification_options.__len__() > 0):
+            notification_option_ids = handle_notification_option(notification_options, company_id)
+
+            response["notification_option_ids"] = notification_option_ids
 
         if (company_rates_datalist.__len__() > 0):
             company_rates_ids = handle_rates_bulk(company_rates_datalist, business_name, company_id)
@@ -1773,12 +1789,15 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, [])
         parent_company_id = request.data.get('parent_company')
+        
         if parent_company_id and int(parent_company_id) == int(company_id):
          return Response(
             {"error": "A company cannot have itself as its parent company."},
             status=status.HTTP_400_BAD_REQUEST
         )
+      
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -1786,6 +1805,9 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         if (agents_data.__len__() > 0):
             handle_agents_bulk(agents_data, company_id, business_name)
+        
+        if (notification_options.__len__() > 0):
+            handle_notification_option(notification_options, company_id)
 
         if (company_rates_datalist.__len__() > 0):
             handle_rates_bulk(company_rates_datalist, business_name, company_id)

@@ -3,12 +3,12 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Category, Company, CompanyRelationship, Event, \
-    Expense, GlobalSetting, Invoice, Language, Location, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
+    Expense, GlobalSetting, Invoice, Language, Location, Note, Notification, NotificationOption, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot, User
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
-    ContactSerializer, ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, \
+    ContactSerializer, ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, NotificationOptionSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, RateSerializer, ServiceNoProviderSerializer, \
     UserSerializer
 from core_backend.serializers.serializers_fields import BusinessField
@@ -400,6 +400,15 @@ class NotificationCreateSerializer(NotificationSerializer):
         data: dict = validated_data or self.validated_data
         notification = Notification.objects.create(**data, data=render_data)
         return notification.id
+
+class NotificationOptionCreateSerializer(NotificationOptionSerializer):
+    def create(self, validated_data=None):
+        data: dict = validated_data or self.validated_data
+
+        # Ensure only a single object is created and returned
+        created_option = NotificationOption.objects.create(**data)
+
+        return created_option
 
 
 class OperatorCreateSerializer(OperatorSerializer):
