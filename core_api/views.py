@@ -1790,7 +1790,14 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
         notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, [])
-
+        parent_company_id = request.data.get('parent_company')
+        
+        if parent_company_id and int(parent_company_id) == int(company_id):
+         return Response(
+            {"error": "A company cannot have itself as its parent company."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+      
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -1813,6 +1820,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(Event)
+    
     def delete(request, company_id=None):
         company = Company.objects.get(id=company_id)
         company.is_deleted = True
