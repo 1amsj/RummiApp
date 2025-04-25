@@ -1779,6 +1779,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             {"error": "A company cannot have itself as its parent company."},
             status=status.HTTP_400_BAD_REQUEST
         )
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, [])
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
