@@ -58,10 +58,8 @@ class ApiSpecialSqlNotificationOption:
         am_pm = parts[2]
 
         hour_part = time_part.split(':')[0] if ':' in time_part else time_part
-        #minute_part = time_part.split(':')[1] if ':' in time_part else '00'
 
         formatted_hour = f"{int(hour_part):02}"
-        #formatted_minute = f"{int(minute_part):02}"
 
         return f"{day} {formatted_hour} {am_pm.upper()}"
 
@@ -74,11 +72,8 @@ class ApiSpecialSqlNotificationOption:
         elif rangeOfTime == "One days": numberRange = 1
         elif rangeOfTime == "Today": numberRange = 0
             
-
-        # Define the current date (e.g., "today")
-        today = datetime.now().strftime('%Y-%m-%d')  # Replace with today's date dynamically using datetime.now()
-
-        # Calculate the range for "Fourteen days"
+        today = datetime.now().strftime('%Y-%m-%d')
+        
         start_date = datetime.strptime(today, '%Y-%m-%d')
         end_date = start_date + timedelta(days=numberRange)
         date_range = ""
@@ -94,13 +89,13 @@ class ApiSpecialSqlNotificationOption:
         email = []
         if booking_info is not None:
             
-            #if email_info == "CLINIC":
-            email.append(booking_info[0][1])
-            #elif email_info == "REQUESTER":
-            #    for info_email in booking_info:
-            #        email.append(info_email[1])
-            #else:
-            #    email.append(email_info)
+            if email_info == "Clinic":
+                email.append(booking_info[0][1])
+            elif email_info == "Requester":
+                for info_email in booking_info:
+                    email.append(info_email[1])
+            else:
+                email.append(email_info)
 
             for book_info in booking_info:
                 info += f"{book_info[0]}\n"
@@ -108,8 +103,6 @@ class ApiSpecialSqlNotificationOption:
         if info != '' and len(email) > 0:
             return [info, email]
         else:
-            # In reality we'd use a form class
-            # to get proper validation errors.
             return ''
 
     def send_email_book_info(send_email_info):
@@ -126,6 +119,4 @@ class ApiSpecialSqlNotificationOption:
                 return BadHeaderError
             return 1
         else:
-            # In reality we'd use a form class
-            # to get proper validation errors.
             return 0

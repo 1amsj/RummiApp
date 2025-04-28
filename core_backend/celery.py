@@ -2,6 +2,7 @@
 import os
 from celery import Celery
 from decouple import config
+from celery.schedules import crontab 
 
 # set the default Django settings module for the 'celery' program.
 # this is also used in manage.py
@@ -18,17 +19,10 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
 
-#app.conf.beat_schedule = {
-#    'add-every-30-seconds': {
-#        'task': 'tasks.send_print_tasked',
-#        'schedule': 30.0,
-#        'args': (16, 16)
-#    },
-#}
-#app.conf.timezone = 'UTC'
-
-# We used CELERY_BROKER_URL in settings.py instead of:
-# app.conf.broker_url = ''
-
-# We used CELERY_BEAT_SCHEDULER in settings.py instead of:
-# app.conf.beat_scheduler = ''django_celery_beat.schedulers.DatabaseScheduler'
+app.conf.beat_schedule = {
+    'clinic_emails_per_day': {
+        'task': 'core_api.tasks.send_clinic_email',
+        'schedule': crontab(hour='7,9,14,16', minute=0, day_of_week='1,2,3,4,5'),
+    },
+}
+app.conf.timezone = 'US/Pacific'
