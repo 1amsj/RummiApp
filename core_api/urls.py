@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from . import converters, views
-from core_api_filter.views import ManageEventsFilters
+
 
 register_converter(converters.NumericIdConverter, 'id')
 
@@ -64,7 +64,6 @@ urlpatterns = [
     *path_optional('categories/', '<id:category_id>', views.ManageCategories.as_view(), name='manage_categories'),
     *path_optionals_xor('companies/', ['<id:company_id>', '<str:business_name>'], views.ManageCompany.as_view(), name='manage_companies'),
     *path_optionals_xor('events/', ['<id:event_id>', '<str:business_name>'], views.ManageEvents.as_view(), name='manage_events'),
-    *path_optionals_xor('events/light', ['<id:event_id>', '<str:business_name>'], views.ManageEventsLight.as_view(), name='manage_events_light'),
     *path_optional('expenses/', '<id:expense_id>', views.ManageExpenses.as_view(), name='manage_expenses'),
     *path_optional('languages/', '<id:language_id>', views.ManageLanguages.as_view(), name='manage_languages'),
     *path_optional('services/', '<str:business_name>', views.ManageService.as_view(), name='manage_services'),
