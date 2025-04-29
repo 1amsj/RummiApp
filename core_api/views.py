@@ -1249,7 +1249,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class ManageEventsMixin:
+class ManageEvents(basic_view_manager(Event, EventSerializer)):
 
     @classmethod
     @expect_does_not_exist(Event)
@@ -1539,20 +1539,6 @@ class ManageEventsMixin:
     def delete(request, event_id=None):
         Event.objects.get(id=event_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class ManageEventsLight(ManageEventsMixin, basic_view_manager(Event, EventLightSerializer)):
-    serializer_class = EventLightSerializer
-    no_booking_serializer_class = EventNoBookingSerializer
-    patch_serializer_class = EventPatchSerializer
-    pagination_class = StandardResultsSetPagination
-
-
-class ManageEvents(ManageEventsMixin, basic_view_manager(Event, EventSerializer)):
-    serializer_class = EventSerializer
-    no_booking_serializer_class = EventNoBookingSerializer
-    patch_serializer_class = EventPatchSerializer
-    pagination_class = StandardResultsSetPagination
 
 class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
     @classmethod
