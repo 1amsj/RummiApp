@@ -69,7 +69,7 @@ class ApiSpecialSqlNotificationOption:
         if rangeOfTime == "Fourteen days": numberRange = 14
         elif rangeOfTime == "Seven days": numberRange = 7
         elif rangeOfTime == "Three days": numberRange = 3
-        elif rangeOfTime == "One days": numberRange = 1
+        elif rangeOfTime == "One day": numberRange = 1
         elif rangeOfTime == "Today": numberRange = 0
             
         today = datetime.now().strftime('%Y-%m-%d')

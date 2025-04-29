@@ -3,6 +3,7 @@ from django.db import connection
 from core_api.queries.notification_option import ApiSpecialSqlNotificationOption
 from datetime import datetime
 import pytz
+import traceback
 
 @shared_task
 def send_clinic_email():
@@ -27,5 +28,6 @@ def send_clinic_email():
                     send_email_info = ApiSpecialSqlNotificationOption.get_info_for_email(booking_info, notificationOptions[3])
                     send_email_function = ApiSpecialSqlNotificationOption.send_email_book_info(send_email_info)
                     print(send_email_function)
-        except:
-            print("Err Or Not Have Report")
+        except Exception as err:
+            print(f"An error occurred: {e}")
+            traceback.print_exc()
