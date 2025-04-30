@@ -1249,7 +1249,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class ManageEventsMixin:
+class ManageEvents(basic_view_manager(Event, EventSerializer)):
 
     @classmethod
     @expect_does_not_exist(Event)
@@ -1540,20 +1540,6 @@ class ManageEventsMixin:
         Event.objects.get(id=event_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
-class ManageEventsLight(ManageEventsMixin, basic_view_manager(Event, EventLightSerializer)):
-    serializer_class = EventLightSerializer
-    no_booking_serializer_class = EventNoBookingSerializer
-    patch_serializer_class = EventPatchSerializer
-    pagination_class = StandardResultsSetPagination
-
-
-class ManageEvents(ManageEventsMixin, basic_view_manager(Event, EventSerializer)):
-    serializer_class = EventSerializer
-    no_booking_serializer_class = EventNoBookingSerializer
-    patch_serializer_class = EventPatchSerializer
-    pagination_class = StandardResultsSetPagination
-
 class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
     @classmethod
     @expect_does_not_exist(Expense)
@@ -1789,8 +1775,15 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
-        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, None)
-
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, [])
+        parent_company_id = request.data.get('parent_company')
+        
+        if parent_company_id and int(parent_company_id) == int(company_id):
+         return Response(
+            {"error": "A company cannot have itself as its parent company."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+      
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -1813,6 +1806,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
     @staticmethod
     @transaction.atomic
     @expect_does_not_exist(Event)
+    
     def delete(request, company_id=None):
         company = Company.objects.get(id=company_id)
         company.is_deleted = True
