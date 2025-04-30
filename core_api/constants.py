@@ -34,7 +34,7 @@ class ApiSpecialKeys(str, Enum):
     COMPANY_RATES_DATALIST = '_company_rates_datalist'
     COMPANY_RELATIONSHIPS_DATA = '_preferred_agency_data'
     EVENT_DATALIST = '_event_datalist'
-    NOTIFICATION_OPTIONS = '_contacts_options_data'
+    NOTIFICATION_OPTIONS = '_notification_options_data'
     OFFER_DATALIST = '_offer_datalist'
     OPERATOR_DATA = '_operator_data'
     PAYER_DATA = '_payer_data'
