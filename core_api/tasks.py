@@ -29,5 +29,5 @@ def send_clinic_email():
                     send_email_function = ApiSpecialSqlNotificationOption.send_email_book_info(send_email_info)
                     print(send_email_function)
         except Exception as err:
-            print(f"An error occurred: {e}")
+            print(f"An error occurred: {err}")
             traceback.print_exc()
