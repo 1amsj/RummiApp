@@ -425,7 +425,7 @@ class ApiSpecialSqlEvents():
                                                     FROM "core_backend_company_locations" _company_locations
                                                         INNER JOIN "core_backend_location" _locations
                                                             ON _locations.id = _company_locations.location_id
-                                                    WHERE _company_locations.company_id = company.id AND _locations.is_deleted=FALSE
+                                                    WHERE _company_locations.company_id = _companies.id AND _locations.is_deleted=FALSE
                                                 ), '[]'::JSON)
                                             ))
                                         FROM "core_backend_booking_companies" _booking_companies
