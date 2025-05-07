@@ -418,7 +418,15 @@ class ApiSpecialSqlEvents():
                                                 'id', _companies.id,
                                                 'name', _companies.name,
                                                 'is_deleted', _companies.is_deleted,
-                                                'type', _companies.type
+                                                'type', _companies.type,
+                                                'locations', COALESCE((
+                                                    SELECT
+                                                        json_agg(row_to_json(_locations))
+                                                    FROM "core_backend_company_locations" _company_locations
+                                                        INNER JOIN "core_backend_location" _locations
+                                                            ON _locations.id = _company_locations.location_id
+                                                    WHERE _company_locations.company_id = _companies.id AND _locations.is_deleted=FALSE
+                                                ), '[]'::JSON)
                                             ))
                                         FROM "core_backend_booking_companies" _booking_companies
                                             INNER JOIN "core_backend_company" _companies
