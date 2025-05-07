@@ -22,7 +22,7 @@ class ApiSpecialSqlNotificationOption:
     @staticmethod
     def get_booking_info(cursor, company_id, range_of_time):
         query = """SELECT 
-                    _booking.public_id, _contact_c.email, _contact_r.email
+                    _booking.public_id, _contact_clinic.email, _contact_requester.email
                 FROM core_backend_booking _booking 
                     INNER JOIN core_backend_booking_companies _booking_companies 
                         ON _booking_companies.booking_id = _booking.id 
@@ -30,16 +30,16 @@ class ApiSpecialSqlNotificationOption:
                         ON _event.booking_id = _booking.id
                     LEFT JOIN core_backend_company_contacts _company_contacts
                         ON _company_contacts.company_id = _booking_companies.company_id
-                    LEFT JOIN core_backend_contact _contact_c
-                        ON _contact_c.id = _company_contacts.contact_id
+                    LEFT JOIN core_backend_contact _contact_clinic
+                        ON _contact_clinic.id = _company_contacts.contact_id
                     LEFT JOIN core_backend_requester _requester
                         ON _requester.id = _event.requester_id
                     LEFT JOIN core_backend_user _user
                         ON _user.id = _requester.user_id
                     LEFT JOIN core_backend_user_contacts _user_contacts
                         ON _user_contacts.user_id = _user.id
-                    LEFT JOIN core_backend_contact _contact_r
-                        ON _contact_r.id = _user_contacts.contact_id
+                    LEFT JOIN core_backend_contact _contact_requester
+                        ON _contact_requester.id = _user_contacts.contact_id
                 WHERE _booking_companies.company_id = %s %s;
             """ % (company_id, range_of_time)
 
