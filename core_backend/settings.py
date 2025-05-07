@@ -15,6 +15,7 @@ from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 import corsheaders.defaults
+from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PARENT_DIR = BASE_DIR.parent
@@ -29,7 +30,8 @@ INFO_FILE_DIR = os.path.join(BASE_DIR, 'logs', 'info.log')
 SECRET_KEY = 'django-insecure-v282f8w2sgzs)g3rr+u=3ws9*)z!!rweg_bs&ivpwccn%4=44k'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+#DEBUG = True
+DEBUG = config("DEBUG", cast=bool, default=False)
 
 ALLOWED_HOSTS = ['*']
 
@@ -52,6 +54,8 @@ INSTALLED_APPS = [
     'core_api.apps.CoreApiConfig',
     'django_extensions',
     'simple_history',
+    'django_celery_beat',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -145,6 +149,8 @@ EMAIL_HOST_PASSWORD = os.environ.get('EmailHostPassword')
 EMAIL_RECOVER_LINK = os.environ.get('EmailRecoverLink', 'localhost:3000')
 EMAIL_CC = os.environ.get('EmailCC')
 EMAIL_WHITELIST = os.environ.get('EmailWhitelist')
+AWS_ACCESS_KEY = os.environ.get('aws_access_key')
+AWS_SECRET_KEY = os.environ.get('aws_secret_key')
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
@@ -235,6 +241,8 @@ LOGGING = {
     },
 }
 
+broker_url = f"sqs://{AWS_ACCESS_KEY}:{AWS_SECRET_KEY}@"
+
 BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
 
 # Concord
@@ -255,3 +263,11 @@ CONCORD_NOTIFY_AUTH_PASSWORD = os.environ.get('CONCORD_NOTIFY_AUTH_PASSWORD', No
 # https://django-phonenumber-field.readthedocs.io/en/latest/reference.html
 
 PHONENUMBER_DEFAULT_REGION = 'US'
+
+CELERY_TIMEZONE = 'US/Pacific'
+CELERY_TASK_TRACK_STARTED = True
+
+CELERY_RESULT_BACKEND = "django-db"
+CELERY_BROKER_URL = broker_url
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers.DatabaseScheduler'
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True

@@ -76,6 +76,7 @@ from django.core.mail import BadHeaderError, send_mail, EmailMultiAlternatives
 from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from .tasks import *
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -1738,7 +1739,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
-        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, None)
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS_DATA, None)
 
         company_id = create_company(request.data, business_name)
 
@@ -1775,7 +1776,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
-        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, [])
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, None)
         parent_company_id = request.data.get('parent_company')
         
         if parent_company_id and int(parent_company_id) == int(company_id):
