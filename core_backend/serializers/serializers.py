@@ -7,7 +7,7 @@ from core_backend.models import Admin, Affiliation, Agent, Authorization, Bookin
     Invoice, Language, Ledger, Location, Notification, NotificationOption, Offer, Operator, Payer, Provider, Rate, Recipient, Report, Requester, \
     Service, ServiceArea, ServiceRoot
 from core_backend.serializers.serializer_user import UserSerializer, user_subtype_serializer
-from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, ExpenseSerializer, \
+from core_backend.serializers.serializers_plain import CategorySerializer, ContactSerializer, \
     ExtraAttrSerializer, \
     LocationSerializer, \
     NoteSerializer
@@ -771,7 +771,6 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
     children = ChildrenBooking(many=True, default=[])
     companies = CompanyWithParentSerializer(many=True)
     events_count = serializers.IntegerField(source='events.count', read_only=True)
-    expenses = ExpenseSerializer(many=True)
     operators = OperatorNoCompaniesSerializer(many=True)
     parent = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all().not_deleted('business'), allow_null=True)
     services = ServiceNoRootSerializer(many=True)
@@ -805,10 +804,6 @@ class BookingNoEventsSerializer(extendable_serializer(Booking)):
                 Prefetch(
                     'offers',
                     queryset=OfferSerializer.get_default_queryset(),
-                ),
-                Prefetch(
-                    'expenses',
-                    queryset=ExpenseSerializer.get_default_queryset(),
                 ),
                 Prefetch(
                     'extra',
@@ -868,8 +863,6 @@ class BookingNoEventsHistorySerializer(BookingNoEventsSerializer):
             history_item['notes'] = NoteSerializer(value.notes.all(), many=True).data
             
             history_item['offers']=OfferSerializer(value.offers.all(), many=True).data,
-            
-            history_item['expenses'] = ExpenseSerializer(value.expenses.all(), many=True).data
             
             history_item['extra'] = ExtraAttrSerializer(value.extra.all(), many=True).data
             

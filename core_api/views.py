@@ -1251,6 +1251,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ManageEvents(basic_view_manager(Event, EventSerializer)):
+    serializer_class = EventSerializer
+    patch_serializer_class = EventPatchSerializer
 
     @classmethod
     @expect_does_not_exist(Event)
@@ -1546,7 +1548,7 @@ class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
     @expect_does_not_exist(Expense)
     def get(cls, request, business_name=None, expense_id=None):
         if expense_id:
-            expense = Expense.objects.all().not_deleted('booking').get(id=expense_id)
+            expense = Expense.objects.filter(id=expense_id, is_deleted=False).first()
             serialized = ExpenseSerializer(expense)
             return Response(serialized.data)
         try:
