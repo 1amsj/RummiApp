@@ -1,13 +1,21 @@
 import html2text
+import base64
+import pytz
+
 from datetime import datetime
 from typing import Type, Union
-import base64
+
+from .tasks import *
 
 from django.db import connection, models, transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 from django.template.loader import render_to_string
-import pytz
+from django.core.mail import BadHeaderError, send_mail, EmailMultiAlternatives
+from django.http import HttpResponse, JsonResponse
+from django.conf import settings
+from django.contrib.auth import get_user_model
+
 from rest_framework import generics, serializers, status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -18,8 +26,6 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.utils.urls import replace_query_param
-# from django.views.decorators.cache import cache_page
-# from django.utils.decorators import method_decorator
 
 from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist, expect_key_error
@@ -46,37 +52,30 @@ from core_api.services_datamanagement import create_affiliations_wrap, create_ag
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
+
 from core_backend.datastructures import QueryParams
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRelationship, Contact, Event, \
     Expense, ExtraQuerySet, GlobalSetting, Invoice, Language, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Requester, \
-    Service, \
-    ServiceArea, ServiceRoot, User
+    Service, ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
-from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
-    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, ChangePasswordSerializer, CompanyRelationshipSerializer, CompanyRelationshipWithCompaniesSerializer, \
-    CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, GetUser, GlobalSettingSerializer, InvoiceSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
-    PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
+    BookingSerializer, CategorySerializer, ChangePasswordSerializer, CompanyRelationshipSerializer, CompanyRelationshipWithCompaniesSerializer, \
+    CompanyWithParentSerializer, EventSerializer, GetUser, GlobalSettingSerializer, InvoiceSerializer, LanguageSerializer, NoteSerializer, \
+    NotificationSerializer, OfferSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AdminCreateSerializer, AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, \
-    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
-    OperatorCreateSerializer, \
+    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, \
     PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
-from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
-    CategoryUpdateSerializer, CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, GlobalSettingUpdateSerializer, LanguageUpdateSerializer, \
+from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, CategoryUpdateSerializer, \
+    CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, GlobalSettingUpdateSerializer, LanguageUpdateSerializer, \
     OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceAreaUpdateSerializer, ServiceRootUpdateSerializer
+from core_backend.serializers.serializers_plain import ExpenseSerializer
 from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
-from django.core.mail import BadHeaderError, send_mail, EmailMultiAlternatives
-from django.http import HttpResponse, JsonResponse
-from django.conf import settings
-from django.contrib.auth import get_user_model
-from .tasks import *
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer

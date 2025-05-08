@@ -8,11 +8,11 @@ from core_backend.models import Admin, Affiliation, Agent, Authorization, Bookin
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
     CategorySerializer, CompanyRelationshipSerializer, \
     CompanyWithParentSerializer, \
-    ContactSerializer, ExpenseSerializer, GlobalSettingSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, NotificationOptionSerializer, \
+    ContactSerializer, GlobalSettingSerializer, LanguageSerializer, LocationSerializer, NoteSerializer, NotificationOptionSerializer, \
     NotificationSerializer, OperatorSerializer, PayerSerializer, RateSerializer, ServiceNoProviderSerializer, \
     UserSerializer
 from core_backend.serializers.serializers_fields import BusinessField
-from core_backend.serializers.serializers_plain import NoteUnsafeSerializer
+from core_backend.serializers.serializers_plain import ExpenseSerializer, NoteUnsafeSerializer
 from core_backend.serializers.serializers_utils import extendable_serializer, generic_serializer
 from core_backend.services.core_services import generate_public_id, manage_extra_attrs, update_model_unique_field, \
     user_sync_email_with_contact
