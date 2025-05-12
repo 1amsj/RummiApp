@@ -21,7 +21,7 @@ from rest_framework.utils.urls import replace_query_param
 # from django.views.decorators.cache import cache_page
 # from django.utils.decorators import method_decorator
 
-from core_api.constants import ApiSpecialKeys, CacheTime
+from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
@@ -1248,7 +1248,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking.is_deleted = True
         booking.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
+    
+# @permission_classes([IsAuthenticated])
 class ManageEvents(basic_view_manager(Event, EventSerializer)):
 
     @classmethod
@@ -1276,7 +1277,8 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         query_param_id = request.GET.get('id', None)
         
         user = request.user
-        
+        concurrent_booking = request.data.get('concurrent_booking', None)
+        print(f"Valor de concurrent_booking: {concurrent_booking}")
         if not user.is_operator and not user.is_provider and not user.is_admin:
             return Response({'error': 'Forbidden'}, status=403)
         
@@ -1290,7 +1292,7 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
         query_field_to_sort = 'event.start_at'
         query_order_to_sort = 'ASC' if query_param_order_to_sort == 'asc' else 'DESC'
-        
+        print(f"query_start_at: {query_start_at}, query_end_at: {query_end_at}")
         if query_param_field_to_sort is not None:
             if query_param_field_to_sort == 'booking__services__provider__user__first_name':
                 query_field_to_sort = 'provider_user.first_name'
@@ -1459,6 +1461,10 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @transaction.atomic
     @expect_key_error
     def post(request, business_name=None):
+        print("Solicitud recibida en la vista ManageEvents POST")
+        
+        concurrent_booking = request.data.get('concurrent_booking', None)  # concurrent_booking se asigna aquí
+        print(f"Valor de concurrent_booking antes de llamar a create_event: {concurrent_booking}")
         """
         Create a new event.
         If the payload is an array of objects, the events will be created/updated depending on whether they provide
@@ -1496,6 +1502,8 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def put(request, event_id=None):
+        print(f"Datos recibidos: {request.data}")
+        
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         event = Event.objects.get(id=event_id)
@@ -1513,7 +1521,7 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @expect_does_not_exist(Event)
     def patch(cls, request, business_name=None):
         data = request.data
-
+        print(f"Datos recibidos en PATCH: {data}")
         # Extract query keys
         try:
             patch_query = data.pop(ApiSpecialKeys.PATCH_QUERY)
