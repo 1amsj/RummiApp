@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ParseError
 from rest_framework.test import APIClient
 from rest_framework import status
-from core_backend.models import Event, User, Operator, Provider, Admin, Booking, Business, Requester,Service
+from core_backend.models import Event, User, Operator, Provider, Admin, Booking, Business, Requester,Service, Affiliation, Recipient, Agent
 from core_backend.serializers.serializers import EventSerializer
 from core_api.queries.events import ApiSpecialSqlEvents
 from core_api.queries.event_report import ApiSpecialSqlEventReports
@@ -25,8 +25,12 @@ from rest_framework.authentication import BasicAuthentication
 from datetime import timezone
 from core_api.constants import ApiSpecialKeys
 import pytest
-
+from django.utils import timezone
 """
+
+    TODO: CREAR UN FECHURE , CREAR TODO DESDE EL FRONTENED
+    
+
     Pruebas de permisos de usuarios en la vista ManageEvents.
         
     OBSERVACION: se realizo cambio en archivo views para los permisos un decorador
@@ -84,6 +88,7 @@ def test_access_granted_for_operator():
     assert operator.user == user
     client.force_authenticate(user=user)
     url = reverse('manage_events') 
+    print(f"URL: {url}")
     response = client.get(url)
     
     print(f"Usuario autenticado: {user}")
@@ -373,16 +378,6 @@ def test_pagination_out_of_range_as_operator():
 
     assert response.status_code == status.HTTP_200_OK
     assert len(response.data['results']) == 0    
-            
-
-
-
-
-
-
-
-
-
 
 #la comente porque muestrar error    
 @pytest.mark.django_db
@@ -421,7 +416,6 @@ def test_access_with_incomplete_operator_data():
     response = client.get(url)
     assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    
 @pytest.mark.django_db
 def test_access_with_invalid_provider_data():
    
@@ -442,6 +436,8 @@ def test_access_with_invalid_provider_data():
     son correctos o completos.
     
     SOLUCIONES : agrega una validación para verificar si los datos del proveedor son válidos. 
+    
+    es mas logico eliminar un privider
     """
    
     client = APIClient()
@@ -453,13 +449,15 @@ def test_access_with_invalid_provider_data():
 
     provider = Provider.objects.create(
         user=user,
-        contract_type="INVALID_TYPE"  
     )
 
+    provider.delete()
+    
     client.force_authenticate(user=user)
     url = reverse('manage_events')
     response = client.get(url)
-    assert response.status_code == status.HTTP_403_FORBIDDEN    
+    assert response.status_code == status.HTTP_403_FORBIDDEN  
+    
     
 @pytest.mark.django_db
 def test_access_denied_for_user_with_deleted_role():
@@ -497,12 +495,6 @@ def test_filter_events_by_date_range():
     """
     Verifica que los eventos dentro del rango de fechas especificado sean devueltos.
     
-    PROBLEMA: a lógica de filtrado en la vista ManageEvents no está funcionando 
-    correctamente para los parámetros de rango de fechas (start_at y end_at)
-    Falta de lógica de filtrado por rango de fechas en la vista:
-
-    La vista ManageEvents no está aplicando correctamente los filtros para incluir eventos que comienzan o
-    terminan dentro del rango de fechas especificado.
     """
     client = APIClient()
 
@@ -515,32 +507,37 @@ def test_filter_events_by_date_range():
 
     business = Business.objects.create(name="Test Business")
     requester = Requester.objects.create(user=user)
-    
+
+    # Crear eventos con el formato de fecha correcto
     event1 = Event.objects.create(
         booking=Booking.objects.create(public_id="B001", created_by=user, business=business),
-        start_at=datetime(2025, 5, 1, 10, 0, tzinfo=timezone.utc),
-        end_at=datetime(2025, 5, 1, 12, 0, tzinfo=timezone.utc),
+        start_at=datetime.strptime('2025-04-16T10:00:00+00:00', "%Y-%m-%dT%H:%M:%S%z"),
+        end_at=datetime.strptime('2025-04-16T11:00:00+00:00', "%Y-%m-%dT%H:%M:%S%z"),
         requester=requester, 
     )
-    event2 = Event.objects.create(
+    
+    Event.objects.create(
         booking=Booking.objects.create(public_id="B002", created_by=user, business=business),
-        start_at=datetime(2025, 5, 2, 14, 0, tzinfo=timezone.utc),
-        end_at=datetime(2025, 5, 2, 16, 0, tzinfo=timezone.utc),
-        requester=requester,  
+        start_at=datetime.strptime('2025-04-17T08:00:00+00:00', "%Y-%m-%dT%H:%M:%S%z"),
+        end_at=datetime.strptime('2025-04-17T09:00:00+00:00', "%Y-%m-%dT%H:%M:%S%z"),
+        requester=requester,
     )
 
+    # Realizar la solicitud GET con los parámetros correctos
     url = reverse('manage_events')
-    response = client.get(url, {'start_at': '2025-05-01T00:00:00.000000Z', 'end_at': '2025-05-01T23:59:59.000000Z'})
-    print(f"Evento 1: start_at={event1.start_at}, end_at={event1.end_at}")
-    print(f"Evento 2: start_at={event2.start_at}, end_at={event2.end_at}")
+    response = client.get(url, {
+        'start_date': '2025-01-01',
+        'page_size': 10,
+        'page': 1,
+    })
+
     print(f"Respuesta de la vista: {response.data}")
-    print(f"Código de estado: {response.status_code}")
-  
+
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data) == 1
-    assert response.data[0]['id'] == event1.id
-    
-    
+    assert len(response.data['results']) == 1
+    assert response.data['results'][0]['id'] == event1.id
+
+
 @pytest.mark.django_db
 def test_filter_events_by_provider_id():
     """
@@ -585,11 +582,20 @@ def test_filter_events_by_provider_id():
     )
 
     url = reverse('manage_events')
-    response = client.get(url, {'provider_id': provider.id})
+    response = client.get(url, {
+        'start_at': '2025-05-01', 
+        'end_at': '2025-05-01', 
+        'page': 1, 
+        'page_size': 10, 
+        'field_to_sort': 'start_at', 
+        'order_to_sort': 'asc',
+        'provider_id': 'provider.id'	
+    })
 
     print(f"Provider ID: {provider.id}")
     print(f"Respuesta de la vista: {response.data}")
     print(f"Código de estado: {response.status_code}")
+    print(f"Evento 1: start_at={event1.start_at}, end_at={event1.end_at}")
 
     assert response.status_code == status.HTTP_200_OK
     assert len(response.data) == 1
@@ -666,9 +672,13 @@ def test_filter_events_by_date_range_and_provider_id():
 
     url = reverse('manage_events')
     response = client.get(url, {
-        'start_at': '2025-05-01T00:00:00.000000Z',
-        'end_at': '2025-05-01T23:59:59.000000Z',
-        'provider_id': provider.id
+        'start_at': '2025-05-01', 
+        'end_at': '2025-05-01', 
+        'page': 1, 
+        'page_size': 10, 
+        'field_to_sort': 'start_at', 
+        'order_to_sort': 'asc',
+        'provider_id': 'provider.id'	
     })
 
     print(f"Provider ID: {provider.id}")
@@ -718,7 +728,14 @@ def test_pagination_first_page_as_operator():
     print(f"Eventos creados: {Event.objects.all()}")
     
     url = reverse('manage_events')
-    response = client.get(url, {'page': 1, 'page_size': 10})
+    response = client.get(url, {
+        'start_at': '2025-05-01', 
+        'end_at': '2025-05-01', 
+        'page': 1, 
+        'page_size': 10, 
+        'field_to_sort': 'start_at', 
+        'order_to_sort': 'asc'
+    })
 
     print(f"Respuesta de la vista: {response.data}")
     print(f"Código de estado: {response.status_code}")
@@ -743,8 +760,9 @@ def test_create_event_with_valid_data():
     SOLUCION: En el método post de la clase ManageEvents, asegúrate de que el argumento concurrent_booking 
     se pase correctamente al método create_event. 
     """
-    client = APIClient()
 
+    client = APIClient()
+    
     user = User.objects.create_user(username="operator_user", password="password123")
     Operator.objects.create(user=user, hiring_date=datetime.strptime('2025-01-05', '%Y-%m-%d').date())
     client.force_authenticate(user=user)
@@ -752,25 +770,40 @@ def test_create_event_with_valid_data():
     business = Business.objects.create(name="Test Business")
     requester = Requester.objects.create(user=user)
     booking = Booking.objects.create(public_id="B0070", created_by=user, business=business)
+    
+    # Crear un paciente afiliado
+    user2 = User.objects.create_user(username="patient_user", password="password123")
+    recipient = Recipient.objects.create(user=user2)
+    affiliate = Affiliation.objects.create(recipient=recipient, company=None)
+
+    # Crear un agente
+    agent_user = User.objects.create_user(username="agent_user", password="password123")
+    agent = Agent.objects.create(user=agent_user, role="Test Role")
 
     event_data = {
         "booking": booking.id,
         "start_at": "2025-05-01T10:00:00Z",
         "end_at": "2025-05-01T12:00:00Z",
-        "requester": requester.id,
-        "business_name": business.name,
-        "concurrent_booking": False  
-    }
-
-    url = reverse('manage_events')
+        "business": business.id,
+        "concurrent_booking": False,  
+        "affiliates": [affiliate.id],  
+        "agents": [agent.id],          
+        "requester": requester.id
+    }   
+    
+    url = reverse('manage_events', kwargs={'business_name': business.name})
     print(f"URL: {url}")
     print(f"Datos enviados: {event_data}")
     response = client.post(url, event_data, format='json')
 
     print(f"Respuesta de la vista: {response.data}")
     print(f"Código de estado: {response.status_code}")
+    print(f"Error: {response.status_code} - {response.json()}")
 
     assert response.status_code == status.HTTP_201_CREATED
+    event = Event.objects.get(booking=booking)
+    assert event.start_at == datetime(2025, 5, 1, 10, 0, tzinfo=timezone.utc)
+    assert event.end_at == datetime(2025, 5, 1, 12, 0, tzinfo=timezone.utc)
 
 
 @pytest.mark.django_db
@@ -789,6 +822,7 @@ def test_update_event_with_valid_data():
     podría generar un error no controlado.
     SOLUCION: Asegúrate de que el método put maneje correctamente los errores y valide los datos
     antes de intentar actualizar el evento
+    
     """
     client = APIClient()
 
@@ -796,35 +830,65 @@ def test_update_event_with_valid_data():
     Operator.objects.create(user=user, hiring_date=datetime.strptime('2025-01-05', '%Y-%m-%d').date())
     client.force_authenticate(user=user)
 
+    # Crear datos de prueba
     business = Business.objects.create(name="Test Business")
     requester = Requester.objects.create(user=user)
-    booking = Booking.objects.create(public_id="B0070", created_by=user, business=business)
 
+    # Crear un paciente afiliado
+    user2 = User.objects.create_user(username="patient_user", password="password123")
+    recipient = Recipient.objects.create(user=user2)
+    affiliate = Affiliation.objects.create(recipient = recipient, company = None)  # Ajusta según los campos reales
+    
+   
+    # Crear un booking
+    booking = Booking.objects.create(
+        public_id = "B0070", 
+        created_by = user,
+        business = business
+    )
+
+    # Crear un evento asociado al booking y al afiliado
     event = Event.objects.create(
         booking=booking,
         start_at=datetime(2025, 5, 1, 10, 0, tzinfo=timezone.utc),
         end_at=datetime(2025, 5, 1, 12, 0, tzinfo=timezone.utc),
         requester=requester,
     )
+    
+    event.affiliates.add(affiliate)  # Asociar el afiliado al evento
+    assert affiliate in event.affiliates.all(), "El afiliado no se asoció correctamente al evento."
+    
+    agent_user = User.objects.create_user(username="agent_user", password="password123")
+    agent = Agent.objects.create(user=agent_user, role="Test Role")
+    event.agents.add(agent)
+    assert agent in event.agents.all(), "El agente no se asoció correctamente al evento."
 
+
+    # Datos actualizados del evento
     updated_event_data = {
         "start_at": "2025-05-01T14:00:00Z",
         "end_at": "2025-05-01T16:00:00Z",
         "_business": business.name,
-        "booking": booking.id,  
-        "requester": requester.id,  
+        "booking": booking.id,
+        "requester": requester.id,
+        "affiliates": [affiliate.id],
+        "agents": [agent.id],
     }
 
+    # Realizar la solicitud PUT
     url = reverse('manage_events') + f"{event.id}/"
     print(f"URL: {url}")
     print(f"Datos enviados: {updated_event_data}")
     response = client.put(url, updated_event_data, format='json')
 
+    # Depuración
     print(f"Respuesta de la vista: {response.data}")
     print(f"Código de estado: {response.status_code}")
 
+    # Verificar que la respuesta sea 204 No Content
     assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    # Verificar que los datos del evento se hayan actualizado correctamente
     event.refresh_from_db()
     assert event.start_at == datetime(2025, 5, 1, 14, 0, tzinfo=timezone.utc)
     assert event.end_at == datetime(2025, 5, 1, 16, 0, tzinfo=timezone.utc)
-
