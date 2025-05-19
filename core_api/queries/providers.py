@@ -23,7 +23,9 @@ class ApiSpecialSqlProviders():
         limit,
         offset,
         first_name,
-        last_name
+        last_name,
+        phone=None,
+        email=None
     ):
         params = []
         limit_statement = ''
@@ -40,6 +42,13 @@ class ApiSpecialSqlProviders():
         if last_name is not None:
             where_conditions += ' AND POSITION(%s IN provider_user.last_name) > 0'
             params.append(last_name)
+        if phone is not None:
+            where_conditions += ' AND POSITION(%s IN provider_user.phone) > 0'
+            params.append(phone)
+
+        if email is not None:
+            where_conditions += ' AND POSITION(%s IN provider_user.email) > 0'
+            params.append(email)    
 
         if limit is not None and limit > 0 and offset is not None and offset >= 0:
             limit_statement = 'LIMIT %s OFFSET %s'
@@ -57,7 +66,9 @@ class ApiSpecialSqlProviders():
         first_name,
         last_name,
         field_to_sort,
-        order_to_sort
+        order_to_sort,
+        phone=None,
+        email=None
     ):
         parent_ct_id = ApiSpecialSqlProviders.get_provider_sql_ct_id(cursor)
         parent_service_ct_id = ApiSpecialSqlServices.get_service_sql_ct_id(cursor)
@@ -66,7 +77,9 @@ class ApiSpecialSqlProviders():
             limit,
             offset,
             first_name,
-            last_name
+            last_name, 
+            phone,
+            email
         )
 
         query = """--sql
@@ -212,14 +225,18 @@ class ApiSpecialSqlProviders():
         cursor,
         id,
         first_name,
-        last_name
+        last_name,
+        phone=None,
+        email=None
     ):
         params, where_conditions, _ = ApiSpecialSqlProviders.get_provider_sql_where_clause(
             id,
             None,
             None,
             first_name,
-            last_name
+            last_name, 
+            phone,
+            email
         )
 
         query = """--sql
