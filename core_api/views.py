@@ -1,13 +1,21 @@
 import html2text
+import base64
+import pytz
+
 from datetime import datetime
 from typing import Type, Union
-import base64
+
+from .tasks import *
 
 from django.db import connection, models, transaction
 from django.db.models import Q, QuerySet
 from django.utils import timezone
 from django.template.loader import render_to_string
-import pytz
+from django.core.mail import BadHeaderError, send_mail, EmailMultiAlternatives
+from django.http import HttpResponse, JsonResponse
+from django.conf import settings
+from django.contrib.auth import get_user_model
+
 from rest_framework import generics, serializers, status
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
@@ -18,8 +26,6 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.utils.urls import replace_query_param
-# from django.views.decorators.cache import cache_page
-# from django.utils.decorators import method_decorator
 
 from core_api.constants import ApiSpecialKeys, CacheTime
 from core_api.decorators import expect_does_not_exist, expect_key_error
@@ -42,40 +48,34 @@ from core_api.services import calculate_booking_status, prepare_query_params
 from core_api.services_datamanagement import create_affiliations_wrap, create_agent_wrap, create_booking, create_company, create_event, \
     create_events_wrap, create_offers_wrap, create_operator_wrap, create_payer_wrap, create_provider_wrap, \
     create_recipient_wrap, \
-    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_relationships_bulk, handle_events_bulk, handle_rates_bulk, \
+    create_reports_wrap, create_requester_wrap, create_services_wrap, create_service_areas_wrap, create_user, handle_agents_bulk, handle_company_relationships_bulk, handle_events_bulk, handle_notification_option, handle_rates_bulk, \
     handle_services_bulk, handle_service_areas_bulk, update_event_wrap, \
     update_provider_wrap, \
     update_recipient_wrap, update_user
+
 from core_backend.datastructures import QueryParams
 from core_backend.models import Admin, Affiliation, Agent, Authorization, Booking, Business, Category, Company, CompanyRelationship, Contact, Event, \
     Expense, ExtraQuerySet, GlobalSetting, Invoice, Language, Note, Notification, Offer, Operator, Payer, Provider, Rate, Recipient, Requester, \
-    Service, \
-    ServiceArea, ServiceRoot, User
+    Service, ServiceArea, ServiceRoot, User
 from core_backend.notification_builders import build_from_template
-from core_backend.serializers.serializers_light import EventLightSerializer
 from core_backend.serializers.serializers import AffiliationSerializer, AgentWithCompaniesSerializer, AuthorizationBaseSerializer, \
-    AuthorizationSerializer, BookingNoEventsSerializer, BookingSerializer, CategorySerializer, ChangePasswordSerializer, CompanyRelationshipSerializer, CompanyRelationshipWithCompaniesSerializer, \
-    CompanyWithParentSerializer, CompanyWithRolesSerializer, EventNoBookingSerializer, EventSerializer, \
-    ExpenseSerializer, GetUser, GlobalSettingSerializer, InvoiceSerializer, LanguageSerializer, NoteSerializer, NotificationSerializer, OfferSerializer, OperatorSerializer, \
-    PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, ServiceRootBaseSerializer, \
+    BookingSerializer, CategorySerializer, ChangePasswordSerializer, CompanyRelationshipSerializer, CompanyRelationshipWithCompaniesSerializer, \
+    CompanyWithParentSerializer, EventSerializer, GetUser, GlobalSettingSerializer, InvoiceSerializer, LanguageSerializer, NoteSerializer, \
+    NotificationSerializer, OfferSerializer, OperatorSerializer, PayerSerializer, ProviderSerializer, RecipientSerializer, RequesterSerializer, \
     ServiceRootBookingSerializer, ServiceSerializer, ServiceAreaSerializer, UserSerializer
 from core_backend.serializers.serializers_create import AdminCreateSerializer, AffiliationCreateSerializer, AgentCreateSerializer, \
     AuthorizationCreateSerializer, CategoryCreateSerializer, CompanyRelationshipCreateSerializer, ExpenseCreateSerializer, GlobalSettingCreateSerializer, \
-    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, \
-    OperatorCreateSerializer, \
+    LanguageCreateSerializer, NoteCreateSerializer, NotificationCreateSerializer, OfferCreateSerializer, OperatorCreateSerializer, \
     PayerCreateSerializer, RecipientCreateSerializer, ServiceCreateSerializer, ServiceAreaCreateSerializer, ServiceRootCreateSerializer, \
     UserCreateSerializer
 from core_backend.serializers.serializers_patch import EventPatchSerializer
-from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, \
-    CategoryUpdateSerializer, CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, GlobalSettingUpdateSerializer, LanguageUpdateSerializer, \
+from core_backend.serializers.serializers_update import AuthorizationUpdateSerializer, BookingUpdateSerializer, CategoryUpdateSerializer, \
+    CompanyRelationshipUpdateSerializer, CompanyUpdateSerializer, ExpenseUpdateSerializer, GlobalSettingUpdateSerializer, LanguageUpdateSerializer, \
     OfferUpdateSerializer, ProviderUpdateSerializer, RecipientUpdateSerializer, ServiceAreaUpdateSerializer, ServiceRootUpdateSerializer
+from core_backend.serializers.serializers_plain import ExpenseSerializer
 from core_backend.services.concord.concord_interfaces import FaxPushNotification, FaxStatusCode
 from core_backend.services.core_services import filter_params, is_extendable
 from core_backend.settings import VERSION_FILE_DIR
-from django.core.mail import BadHeaderError, send_mail, EmailMultiAlternatives
-from django.http import HttpResponse, JsonResponse
-from django.conf import settings
-from django.contrib.auth import get_user_model
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
@@ -876,8 +876,8 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
         query_param_id = request.GET.get('id', None)
         query_param_first_name = request.GET.get('first_name', None)
         query_param_last_name = request.GET.get('last_name', None)
-        query_param_phone = request.GET.get('phone')
-        query_param_email = request.GET.get('email')
+        query_param_email = request.GET.get('email', None)
+        query_param_phone = request.GET.get('phone', None)
         
         query_provider_id = provider_id if provider_id is not None else query_param_id
         query_field_to_sort = 'provider_user.first_name'
@@ -903,10 +903,10 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
                 offset,
                 query_param_first_name,
                 query_param_last_name,
+                query_param_email,
+                query_param_phone, # <-- Añadir el parámetro phone aquí
                 query_field_to_sort,
-                query_order_to_sort,
-                query_param_phone,
-                query_param_email
+                query_order_to_sort
             )
 
         if query_param_page_size > 0:
@@ -916,8 +916,8 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
                     query_provider_id,
                     query_param_first_name,
                     query_param_last_name,
-                    query_param_phone,
-                    query_param_email
+                    query_param_email,
+                    query_param_phone, # <-- Añadir el parámetro phone aquí también
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None
@@ -1084,10 +1084,9 @@ def validator_short_type(value):
     return (value[-1]['payer_company_type'] == 'insurance' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'agency' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'lawfirm' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None)
-@permission_classes([IsAuthenticated])
+
 class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
     @classmethod
-    
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, booking_id=None):
         query_param_id = request.GET.get('id', None)
@@ -1256,7 +1255,9 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-class ManageEventsMixin:
+class ManageEvents(basic_view_manager(Event, EventSerializer)):
+    serializer_class = EventSerializer
+    patch_serializer_class = EventPatchSerializer
 
     @classmethod
     @expect_does_not_exist(Event)
@@ -1281,6 +1282,16 @@ class ManageEventsMixin:
         query_param_order_to_sort = request.GET.get('order_to_sort', None)
         query_param_report = request.GET.get('report', False)
         query_param_id = request.GET.get('id', None)
+        
+        user = request.user
+        
+        if not user.is_operator and not user.is_provider and not user.is_admin:
+            return Response({'error': 'Forbidden'}, status=403)
+        
+        query_provider_id = query_param_provider_id
+
+        if query_provider_id is None and not user.is_operator and not user.is_admin:
+            query_provider_id = user.as_provider.id
         
         query_event_id = event_id if event_id is not None else query_param_id
         query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
@@ -1325,7 +1336,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
@@ -1397,7 +1408,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
@@ -1421,7 +1432,7 @@ class ManageEventsMixin:
                     query_param_items_excluded,
                     query_param_recipient_id,
                     query_param_agent_id,
-                    query_param_provider_id,
+                    query_provider_id,
                     query_param_start_date,
                     query_param_end_date,
                     query_param_provider_name,
@@ -1537,26 +1548,12 @@ class ManageEventsMixin:
         Event.objects.get(id=event_id).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
-class ManageEventsLight(ManageEventsMixin, basic_view_manager(Event, EventLightSerializer)):
-    serializer_class = EventLightSerializer
-    no_booking_serializer_class = EventNoBookingSerializer
-    patch_serializer_class = EventPatchSerializer
-    pagination_class = StandardResultsSetPagination
-
-
-class ManageEvents(ManageEventsMixin, basic_view_manager(Event, EventSerializer)):
-    serializer_class = EventSerializer
-    no_booking_serializer_class = EventNoBookingSerializer
-    patch_serializer_class = EventPatchSerializer
-    pagination_class = StandardResultsSetPagination
-
 class ManageExpenses(basic_view_manager(Expense, ExpenseSerializer)):
     @classmethod
     @expect_does_not_exist(Expense)
     def get(cls, request, business_name=None, expense_id=None):
         if expense_id:
-            expense = Expense.objects.all().not_deleted('booking').get(id=expense_id)
+            expense = Expense.objects.filter(id=expense_id, is_deleted=False).first()
             serialized = ExpenseSerializer(expense)
             return Response(serialized.data)
         try:
@@ -1749,6 +1746,7 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS_DATA, None)
 
         company_id = create_company(request.data, business_name)
 
@@ -1758,6 +1756,11 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
             agents_ids = handle_agents_bulk(agents_data, company_id, business_name)
 
             response["agents_ids"] = agents_ids
+
+        if (notification_options.__len__() > 0):
+            notification_option_ids = handle_notification_option(notification_options, company_id)
+
+            response["notification_option_ids"] = notification_option_ids
 
         if (company_rates_datalist.__len__() > 0):
             company_rates_ids = handle_rates_bulk(company_rates_datalist, business_name, company_id)
@@ -1780,12 +1783,15 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
         company_rates_datalist = request.data.pop(ApiSpecialKeys.RATES_DATALIST, [])
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
         company_relationships_data = request.data.pop(ApiSpecialKeys.COMPANY_RELATIONSHIPS_DATA, [])
+        notification_options = request.data.pop(ApiSpecialKeys.NOTIFICATION_OPTIONS, None)
         parent_company_id = request.data.get('parent_company')
+        
         if parent_company_id and int(parent_company_id) == int(company_id):
          return Response(
             {"error": "A company cannot have itself as its parent company."},
             status=status.HTTP_400_BAD_REQUEST
         )
+      
         company = Company.objects.get(id=company_id)
         serializer = CompanyUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -1793,6 +1799,9 @@ class ManageCompany(basic_view_manager(Company, CompanyWithParentSerializer)):
 
         if (agents_data.__len__() > 0):
             handle_agents_bulk(agents_data, company_id, business_name)
+        
+        if (notification_options.__len__() > 0):
+            handle_notification_option(notification_options, company_id)
 
         if (company_rates_datalist.__len__() > 0):
             handle_rates_bulk(company_rates_datalist, business_name, company_id)
