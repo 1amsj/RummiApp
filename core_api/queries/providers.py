@@ -262,4 +262,3 @@ class ApiSpecialSqlProviders():
             return result[0]
 
         return 0
-    

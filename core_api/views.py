@@ -2410,4 +2410,3 @@ class ManageUsersRecover(generics.GenericAPIView):
             return Response({'success': 'Found!'}, status=200)
         else:
             return Response({'error': 'Not Found'}, status=400)
-        
