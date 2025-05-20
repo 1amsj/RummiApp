@@ -903,8 +903,8 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
                 offset,
                 query_param_first_name,
                 query_param_last_name,
+                query_param_phone,
                 query_param_email,
-                query_param_phone, # <-- Añadir el parámetro phone aquí
                 query_field_to_sort,
                 query_order_to_sort
             )
@@ -916,8 +916,8 @@ class ManageProviders(user_subtype_view_manager(Provider, ProviderSerializer)):
                     query_provider_id,
                     query_param_first_name,
                     query_param_last_name,
+                    query_param_phone,
                     query_param_email,
-                    query_param_phone, # <-- Añadir el parámetro phone aquí también
                 )
 
             next_page = query_param_page + 1 if (count > (query_param_page_size * query_param_page)) else None

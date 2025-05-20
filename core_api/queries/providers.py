@@ -24,8 +24,8 @@ class ApiSpecialSqlProviders():
         offset,
         first_name,
         last_name,
-        phone=None,
-        email=None
+        phone,
+        email
     ):
         params = []
         limit_statement = ''
@@ -42,9 +42,16 @@ class ApiSpecialSqlProviders():
         if last_name is not None:
             where_conditions += ' AND POSITION(%s IN provider_user.last_name) > 0'
             params.append(last_name)
+            
         if phone is not None:
-            where_conditions += ' AND POSITION(%s IN provider_user.phone) > 0'
-            params.append(phone)
+            where_conditions += """
+                AND EXISTS (
+                    SELECT 1
+                    FROM "core_backend_user_contacts" _uc
+                    INNER JOIN "core_backend_contact" _c ON _uc.contact_id = _c.id
+                    WHERE _uc.user_id = provider_user.id AND _c.phone ILIKE %s AND _c.is_deleted = FALSE
+                )"""
+            params.append(f'%{phone}%')
 
         if email is not None:
             where_conditions += ' AND POSITION(%s IN provider_user.email) > 0'
@@ -65,10 +72,10 @@ class ApiSpecialSqlProviders():
         offset,
         first_name,
         last_name,
+        email,
+        phone,
         field_to_sort,
-        order_to_sort,
-        phone=None,
-        email=None
+        order_to_sort
     ):
         parent_ct_id = ApiSpecialSqlProviders.get_provider_sql_ct_id(cursor)
         parent_service_ct_id = ApiSpecialSqlServices.get_service_sql_ct_id(cursor)
@@ -78,8 +85,8 @@ class ApiSpecialSqlProviders():
             offset,
             first_name,
             last_name, 
-            phone,
-            email
+            email,
+            phone
         )
 
         query = """--sql
@@ -226,8 +233,8 @@ class ApiSpecialSqlProviders():
         id,
         first_name,
         last_name,
-        phone=None,
-        email=None
+        email,
+        phone
     ):
         params, where_conditions, _ = ApiSpecialSqlProviders.get_provider_sql_where_clause(
             id,
@@ -235,8 +242,9 @@ class ApiSpecialSqlProviders():
             None,
             first_name,
             last_name, 
-            phone,
-            email
+            email,
+            phone
+            
         )
 
         query = """--sql
