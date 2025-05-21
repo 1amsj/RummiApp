@@ -47,9 +47,9 @@ class ApiSpecialSqlProviders():
             where_conditions += """
                 AND EXISTS (
                     SELECT 1
-                    FROM "core_backend_user_contacts" _uc
-                    INNER JOIN "core_backend_contact" _c ON _uc.contact_id = _c.id
-                    WHERE _uc.user_id = provider_user.id AND _c.phone ILIKE %s AND _c.is_deleted = FALSE
+                    FROM "core_backend_user_contacts" _user_contact
+                    INNER JOIN "core_backend_contact" _c ON _user_contact.contact_id = _c.id
+                    WHERE _user_contact.user_id = provider_user.id AND _c.phone ILIKE %s AND _c.is_deleted = FALSE
                 )"""
             params.append(f'%{phone}%')
 
