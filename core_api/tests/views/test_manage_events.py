@@ -101,8 +101,6 @@ class TestManageEvents:
 
         url = reverse('manage_events')
         url = url + "interpretation/"
-        for event in multiple_events:
-            print("url", event.end_at, url)
         response = authenticated_client.get(url, {
             'start_date': '2025-05-01', 
             'end_date': '2025-05-01', 
@@ -111,7 +109,6 @@ class TestManageEvents:
             'field_to_sort': 'start_at', 
             'order_to_sort': 'asc'
         })
-        # print("response", len(response.data['results']))
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 10
