@@ -48,8 +48,8 @@ class ApiSpecialSqlProviders():
                 AND EXISTS (
                     SELECT 1
                     FROM "core_backend_user_contacts" _user_contact
-                    INNER JOIN "core_backend_contact" _c ON _user_contact.contact_id = _c.id
-                    WHERE _user_contact.user_id = provider_user.id AND _c.phone ILIKE %s AND _c.is_deleted = FALSE
+                    INNER JOIN "core_backend_contact" _contact ON _user_contact.contact_id = _contact.id
+                    WHERE _user_contact.user_id = provider_user.id AND _contact.phone ILIKE %s AND _contact.is_deleted = FALSE
                 )"""
             params.append(f'%{phone}%')
 
@@ -104,65 +104,65 @@ class ApiSpecialSqlProviders():
                         'contacts', COALESCE((
                             SELECT 
                                 json_agg(json_build_object(
-                                    'id', _contacts.id,
-                                    'is_deleted', _contacts.is_deleted,
-                                    'email', _contacts.email,
-                                    'phone', _contacts.phone,
-                                    'fax', _contacts.fax,
-                                    'phone_context', _contacts.phone_context,
-                                    'email_context', _contacts.email_context,
-                                    'fax_context', _contacts.fax_context
+                                    'id', _contact.id,
+                                    'is_deleted', _contact.is_deleted,
+                                    'email', _contact.email,
+                                    'phone', _contact.phone,
+                                    'fax', _contact.fax,
+                                    'phone_context', _contact.phone_context,
+                                    'email_context', _contact.email_context,
+                                    'fax_context', _contact.fax_context
                                 )
                             )
-                            FROM "core_backend_user_contacts" _user_contacts
-                            INNER JOIN "core_backend_contact" _contacts
-                                ON _user_contacts.contact_id = _contacts.id
-                            WHERE _user_contacts.user_id = provider_user.id AND _contacts.is_deleted=FALSE
+                            FROM "core_backend_user_contacts" _user_contact
+                            INNER JOIN "core_backend_contact" _contact
+                                ON _user_contact.contact_id = _contact.id
+                            WHERE _user_contact.user_id = provider_user.id AND _contact.is_deleted=FALSE
                         ), '[]'::json),
                         'location', (
                             SELECT 
                                 json_build_object(
-                                    'id', _locations.id,
-                                    'is_deleted', _locations.is_deleted,
-                                    'country', _locations.country,
-                                    'address', _locations.address,
-                                    'city', _locations.city,
-                                    'state', _locations.state,
-                                    'zip', _locations.zip,
-                                    'unit_number', _locations.unit_number
+                                    'id', _location.id,
+                                    'is_deleted', _location.is_deleted,
+                                    'country', _location.country,
+                                    'address', _location.address,
+                                    'city', _location.city,
+                                    'state', _location.state,
+                                    'zip', _location.zip,
+                                    'unit_number', _location.unit_number
                                 )
-                            FROM "core_backend_location" _locations
-                            WHERE _locations.id = provider_user.location_id AND _locations.is_deleted=FALSE
+                            FROM "core_backend_location" _location
+                            WHERE _location.id = provider_user.location_id AND _location.is_deleted=FALSE
                         ),
                         'notes', COALESCE((
                             SELECT
                                 json_agg(json_build_object(
-                                    'id', _provider_notes.id,
-                                    'is_deleted', _provider_notes.is_deleted,
-                                    'created_by', _provider_notes.created_by_id,
+                                    'id', _provider_note.id,
+                                    'is_deleted', _provider_note.is_deleted,
+                                    'created_by', _provider_note.created_by_id,
                                     'created_by_first_name', _note_created_by.first_name,
                                     'created_by_last_name', _note_created_by.last_name,
-                                    'text', _provider_notes.text,
-                                    'created_at', _provider_notes.created_at,
-                                    'last_updated_at', _provider_notes.last_updated_at,
-                                    'provider', _provider_notes.provider_id
+                                    'text', _provider_note.text,
+                                    'created_at', _provider_note.created_at,
+                                    'last_updated_at', _provider_note.last_updated_at,
+                                    'provider', _provider_note.provider_id
                                 ))
-                            FROM "core_backend_note" _provider_notes
+                            FROM "core_backend_note" _provider_note
                                 INNER JOIN "core_backend_user" _note_created_by
-                                    ON _provider_notes.created_by_id = _note_created_by.id
-                            WHERE _provider_notes.provider_id = provider.id AND _provider_notes.is_deleted=FALSE
+                                    ON _provider_note.created_by_id = _note_created_by.id
+                            WHERE _provider_note.provider_id = provider.id AND _provider_note.is_deleted=FALSE
                         ), '[]'::JSON),
                         'services', COALESCE((
                             SELECT
                                 json_agg(json_build_object(
-                                    'id', _services.id,
-                                    'is_deleted', _services.is_deleted,
-                                    'bill_rate', _services.bill_rate,
-                                    'bill_amount', _services.bill_amount,
-                                    'bill_min_payment', _services.bill_min_payment,
-                                    'bill_rate_type', _services.bill_rate_type,
-                                    'bill_no_show_fee', _services.bill_no_show_fee,
-                                    'bill_rate_minutes_threshold', _services.bill_rate_minutes_threshold,
+                                    'id', _service.id,
+                                    'is_deleted', _service.is_deleted,
+                                    'bill_rate', _service.bill_rate,
+                                    'bill_amount', _service.bill_amount,
+                                    'bill_min_payment', _service.bill_min_payment,
+                                    'bill_rate_type', _service.bill_rate_type,
+                                    'bill_no_show_fee', _service.bill_no_show_fee,
+                                    'bill_rate_minutes_threshold', _service.bill_rate_minutes_threshold,
                                     'root', (
                                         SELECT
                                             json_build_object(
@@ -172,17 +172,17 @@ class ApiSpecialSqlProviders():
                                                 'description', _root.description
                                             )
                                         FROM "core_backend_serviceroot" _root
-                                        WHERE _root.id = _services.root_id AND _root.is_deleted=FALSE
+                                        WHERE _root.id = _service.root_id AND _root.is_deleted=FALSE
                                     )
                                 )::jsonb ||
                                 COALESCE((
                                     SELECT
-                                        json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '\"', ''), '\\', ''))
+                                        json_object_agg(extra.key, REPLACE(REPLACE(extra.data::text, '"', ''), '\\', ''))
                                     FROM "core_backend_extra" extra
-                                    WHERE extra.parent_ct_id = %s AND extra.parent_id = _services.id
+                                    WHERE extra.parent_ct_id = %s AND extra.parent_id = _service.id
                                 )::jsonb, '{}'::jsonb))
-                            FROM "core_backend_service" _services
-                            WHERE _services.provider_id = provider.id AND _services.is_deleted = FALSE
+                            FROM "core_backend_service" _service
+                            WHERE _service.provider_id = provider.id AND _service.is_deleted = FALSE
                         )::jsonb, '[]'::jsonb),
                         'certifications', COALESCE((
                             SELECT
@@ -193,16 +193,16 @@ class ApiSpecialSqlProviders():
                         'service_areas', COALESCE((
                             SELECT
                                 json_agg(json_build_object(
-                                    'id', _service_areas.id,
-                                    'is_deleted', _service_areas.is_deleted,
-                                    'country', _service_areas.country,
-                                    'state', _service_areas.state,
-                                    'county', _service_areas.county,
-                                    'city', _service_areas.city,
-                                    'zip', _service_areas.zip
+                                    'id', _service_area.id,
+                                    'is_deleted', _service_area.is_deleted,
+                                    'country', _service_area.country,
+                                    'state', _service_area.state,
+                                    'county', _service_area.county,
+                                    'city', _service_area.city,
+                                    'zip', _service_area.zip
                                 ))
-                            FROM "core_backend_servicearea" _service_areas
-                            WHERE _service_areas.provider_id = provider.id AND _service_areas.is_deleted=FALSE
+                            FROM "core_backend_servicearea" _service_area
+                            WHERE _service_area.provider_id = provider.id AND _service_area.is_deleted=FALSE
                         ), '[]'::json)
                     )::jsonb ||
                     COALESCE((
