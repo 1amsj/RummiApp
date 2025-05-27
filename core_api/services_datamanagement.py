@@ -510,6 +510,9 @@ def update_company_relationship_wrap(data, company_id, company_relationship_inst
 
 @transaction.atomic
 def update_event_wrap(data, business_name, event_instance, group_booking = False):
+    print(f"Datos para actualizar el evento: {data}")
+    print(f"Business name: {business_name}")
+    print(f"Evento antes de actualizar: {event_instance}")
     if not business_name:
         raise BusinessNotProvidedException
 
@@ -517,7 +520,7 @@ def update_event_wrap(data, business_name, event_instance, group_booking = False
         serializer = EventUpdateSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         serializer.update(event_instance, business_name, group_booking)
-
+        print(f"Evento después de actualizar: {event_instance}")
     except ValidationError as exc:
         # Wrap errors
         raise ValidationError({

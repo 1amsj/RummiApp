@@ -330,11 +330,13 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
 
     @property
     def is_operator(self):
-        return getattr(self, 'as_operator', None) is not None
+        operator = getattr(self, 'as_operator', None)
+        return operator is not None and not operator.is_deleted
 
     @property
     def is_provider(self):
-        return getattr(self, 'as_provider', None) is not None
+        provider = getattr(self, 'as_provider', None)
+        return provider is not None and not provider.is_deleted
 
     @property
     def is_recipient(self):
@@ -347,14 +349,12 @@ class User(SoftDeletableModel, AbstractUser, HistoricalModel):
     @property
     def is_payer(self):
         return getattr(self, 'as_payer', None) is not None
-
-    @property
-    def is_provider(self):
-        return getattr(self, 'as_provider', None) is not None
     
     @property
     def is_admin(self):
-        return getattr(self, 'as_admin', None) is not None
+        admin = getattr(self, 'as_admin', None)
+        return admin is not None and not admin.is_deleted
+    
 
     def delete_related(self):
         if self.is_agent:

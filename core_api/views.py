@@ -27,7 +27,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.utils.urls import replace_query_param
 
-from core_api.constants import ApiSpecialKeys, CacheTime
+from core_api.constants import ApiSpecialKeys
 from core_api.decorators import expect_does_not_exist, expect_key_error
 from core_api.exceptions import BadRequestException
 from core_api.permissions import CanManageOperators, CanPushFaxNotifications, can_manage_model_basic_permissions
@@ -1254,7 +1254,8 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         booking.is_deleted = True
         booking.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
+    
+@permission_classes([IsAuthenticated])
 class ManageEvents(basic_view_manager(Event, EventSerializer)):
     serializer_class = EventSerializer
     patch_serializer_class = EventPatchSerializer
@@ -1263,6 +1264,11 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @expect_does_not_exist(Event)
     # @method_decorator(cache_page(10 * CacheTime.MINUTE))
     def get(cls, request, business_name=None, event_id=None):
+        user = request.user
+
+        if not user.is_provider and not user.is_operator and not user.is_admin:
+            return Response({'error': 'Forbidden - No active valid roles'}, status=403)
+
         query_param_start_at = request.GET.get('start_at', None)
         query_param_end_at = request.GET.get('end_at', None)
         query_param_items_included = request.GET.getlist('items_included[]', [])
@@ -1283,10 +1289,27 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         query_param_report = request.GET.get('report', False)
         query_param_id = request.GET.get('id', None)
         
-        user = request.user
-        
-        if not user.is_operator and not user.is_provider and not user.is_admin:
-            return Response({'error': 'Forbidden'}, status=403)
+        if query_param_start_at is not None:
+            try:
+                query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc)
+            except ValueError:
+                try:
+                    query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S%z").astimezone(pytz.utc)
+                except ValueError:
+                    return Response({'detail': f'invalid "start_at": {query_param_start_at}'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            query_start_at = None
+
+        if query_param_end_at is not None:
+            try:
+                query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc)
+            except ValueError:
+                try:
+                    query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S%z").astimezone(pytz.utc)
+                except ValueError:
+                    return Response({'detail': f'invalid "end_at": {query_param_end_at}'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            query_end_at = None
         
         query_provider_id = query_param_provider_id
 
@@ -1294,7 +1317,6 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
             query_provider_id = user.as_provider.id
         
         query_event_id = event_id if event_id is not None else query_param_id
-        query_start_at = datetime.strptime(query_param_start_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_start_at is not None else None
         query_end_at = datetime.strptime(query_param_end_at, "%Y-%m-%dT%H:%M:%S.%f%z").astimezone(pytz.utc) if query_param_end_at is not None else None
         query_field_to_sort = 'event.start_at'
         query_order_to_sort = 'ASC' if query_param_order_to_sort == 'asc' else 'DESC'
@@ -1419,8 +1441,7 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
                     query_param_booking_public_id,
                     query_field_to_sort,
                     query_order_to_sort
-                )
-
+                )                              
         if query_param_page_size > 0 and query_param_report == False:
             with connection.cursor() as cursor:
                 count = ApiSpecialSqlEvents.get_event_count_sql(
@@ -1491,8 +1512,9 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
         event_id = create_event(
             data,
             business_name,
-            concurrent_booking,
-            requester_id
+            requester_id,
+            None,
+            concurrent_booking
         )
 
         if report_datalist:
@@ -1504,6 +1526,8 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @transaction.atomic
     @expect_does_not_exist(Event)
     def put(request, event_id=None):
+        print(f"Datos recibidos: {request.data}")
+        
         business_name = request.data.pop(ApiSpecialKeys.BUSINESS)
 
         event = Event.objects.get(id=event_id)
@@ -1521,7 +1545,7 @@ class ManageEvents(basic_view_manager(Event, EventSerializer)):
     @expect_does_not_exist(Event)
     def patch(cls, request, business_name=None):
         data = request.data
-
+        print(f"Datos recibidos en PATCH: {data}")
         # Extract query keys
         try:
             patch_query = data.pop(ApiSpecialKeys.PATCH_QUERY)
