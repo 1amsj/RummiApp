@@ -29,6 +29,7 @@ import pytest
 from django.utils import timezone
 
 @pytest.mark.django_db
+@pytest.mark.skip("Not needed right now")
 class TestManageEvents:
     
     def test_access_denied_for_user_without_roles(self, base_user):

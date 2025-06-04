@@ -1074,6 +1074,9 @@ class ManageAffiliations(basic_view_manager(Affiliation, AffiliationSerializer))
         return Response(affiliation.id, status=status.HTTP_201_CREATED)
 
 def validator_type(value):
+    if value is None or len(value) == 0:
+        return False
+
     return (value[-1]['payer_company_type'] == 'insurance' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'agency' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'lawfirm' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
@@ -1081,6 +1084,9 @@ def validator_type(value):
             (value[-1]['payer_company_type'] == 'patient' and value[-1]['payer'] is not None)
 
 def validator_short_type(value):
+    if value is None or len(value) == 0:
+        return False
+
     return (value[-1]['payer_company_type'] == 'insurance' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'agency' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None) or \
             (value[-1]['payer_company_type'] == 'lawfirm' and value[-1]['payer'] is not None and value[-1]['payer_company'] is not None)

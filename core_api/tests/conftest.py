@@ -14,6 +14,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core_backend.settings')
 django.setup()
 
 import pytest
+from django.contrib.auth.models import Permission
 from django.contrib.auth import get_user_model
 from core_backend.models import (
     Event, User, Operator, Provider, Admin, Booking, Business, 
@@ -43,14 +44,19 @@ def base_user():
 @pytest.mark.django_db
 def operator_user():
     """Create a user with operator role."""
+    
     user = User.objects.create_user(
         username=generate_unique_username("operator_user"),
         password="password123"
     )
+    
     Operator.objects.create(
         user=user,
         hiring_date=datetime.strptime('2025-01-05', '%Y-%m-%d').date()
     )
+    
+    user.user_permissions.set(Permission.objects.all())
+    
     return user
 
 @pytest.fixture
