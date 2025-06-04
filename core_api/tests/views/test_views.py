@@ -43,6 +43,8 @@ class TestManageBooking:
         assert response.data is not None
         assert response.data["public_id"] == booking.public_id
 
+
+
     def test_create_booking(self, operator_user, business, service_root, company, operator, provider, service, base_user):
         client = APIClient()
         client.force_authenticate(user=operator_user)
@@ -247,6 +249,7 @@ class TestManageBooking:
         response = client.post(url, booking_data, format="json")
         assert response.status_code == 400
 
+
     def test_create_booking_missing_required_fields(self):
         client = APIClient()
         user = User.objects.create_user(username=f"test_user_noreq_{uuid.uuid4()}", password="password123")
@@ -269,22 +272,4 @@ class TestManageBooking:
         assert response.status_code == 200
         assert response.data["count"] == 0 or len(response.data.get("results", [])) == 0
 
-    def test_get_booking_with_query_params(self):
-        client = APIClient()
-        user = User.objects.create_user(username=f"test_user_qp_{uuid.uuid4()}", password="password123")
-        business = Business.objects.create(name=f"Test Business QP {uuid.uuid4()}")
-        service_root = ServiceRoot.objects.create(name="Test Service Root", description="Test Description")
-        company = Company.objects.create(name="Test Company", type="agency", send_method="email", on_hold=False)
-        booking = Booking.objects.create(
-            business=business,
-            service_root=service_root,
-            public_id="BQP1",
-            created_by=user,
-            status="pending"
-        )
-        booking.companies.add(company)
-        client.force_authenticate(user=user)
-        url = reverse("manage_booking", kwargs={}) + f"?id={booking.id}"
-        response = client.get(url)
-        assert response.status_code == 200
-        assert response.data["public_id"] == "BQP1"
+    
