@@ -3,7 +3,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'react-native';
 import {Listado} from './components/Listado';
-
+import Calendario from './components/Calendario';
 
 
 export default function App() {
@@ -27,62 +27,7 @@ export default function App() {
         </View>
 
         {/* Month and Days */}
-        <View style = {styles.month}>
-          <View style = {styles.MonthNameContainer}>
-            <Text style = {styles.monthText}>
-              Junio
-            </Text>
-          </View>
-
-          <View style = {styles.WeekDayTextContainer}>
-            <Text style = {styles.dayText}>
-              Lunes
-            </Text>
-            <Text style = {styles.dayText}>
-              Martes
-            </Text>
-            <Text style = {styles.dayText}>
-              Miércoles
-            </Text>
-            <Text style = {styles.dayText}>
-              Jueves
-            </Text>
-            <Text style = {styles.dayText}>
-              Viernes
-            </Text>
-            <Text style = {styles.dayText}>
-              Sábado
-            </Text>
-            <Text style = {styles.dayText}>
-              Domingo
-            </Text>
-          </View>
-          
-          {/* Days of the month */}
-          <View style = {styles.dayTextContainer}>
-            <Text style = {styles.dayText}>
-              1
-            </Text>
-            <Text style = {styles.dayText}>
-              2
-            </Text>
-            <Text style = {styles.dayText}>
-              3
-            </Text>
-            <Text style = {styles.dayText}>
-              4
-            </Text>
-            <Text style = {styles.dayText}>
-              5
-            </Text>
-            <Text style = {styles.dayText}>
-              6
-            </Text>
-            <Text style = {styles.dayText}>
-              7
-            </Text>
-          </View>
-        </View>
+        <Calendario />
       </View>
 
       <View style = {styles.container2}>
@@ -200,30 +145,6 @@ const styles = StyleSheet.create({
     },
 
   // Calendario Containers
-
-  month: {
-    flex: 1,
-    backgroundColor: '#fff',
-    gap: 15,
-  },
-
-  MonthNameContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignContent: 'center',
-  },
-
-  WeekDayTextContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-
-  dayTextContainer: { 
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 10,
-  },
-
 
   //Containers del container del botón 
 
