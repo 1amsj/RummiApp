@@ -4,7 +4,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerContentScrollView } from '@react-navigation/drawer';
 import MainScreen from './components/MainScreen';
 import Listado from './components/Listado';
-<<<<<<< HEAD
 import Calendario from './components/Calendario';
 import AddAnimal from './components/AddAnimal';
 import NewTask from './components/NewTask';
@@ -72,13 +71,6 @@ export default function App() {
       </Drawer.Navigator>
     </NavigationContainer>
   );
-=======
-import NewTask from './components/NewTask';
-import AddAnimal from './components/AddAnimal';
-
-export default function App() {
-  return <AddAnimal />;
->>>>>>> main
 }
 
 const styles = StyleSheet.create({
