@@ -7,7 +7,7 @@ import Listado from './components/Listado';
 import Calendario from './components/Calendario';
 import AddAnimal from './components/AddAnimal';
 import NewTask from './components/NewTask';
-import { Text, TouchableOpacity, StyleSheet, View } from 'react-native';
+import { Text, TouchableOpacity, StyleSheet, View, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Drawer = createDrawerNavigator();
@@ -18,43 +18,62 @@ function MenuLateral(props) {
     <DrawerContentScrollView {...props} contentContainerStyle={styles.drawer}>
       <DrawerItem
         label="Inicio"
-        icon="home-outline"
+        imageSource = {require('./assets/casa.png')}
         onPress={() => props.navigation.navigate('Inicio')}
       />
-      <Text style={styles.sectionTitle}>Gestión de ganado</Text>
+      <View style = {styles.container}>
+        <View style = {styles.ImageContainer}>
+          <Image source = {require('./assets/vaca.png')} style = {styles.ImagenStyles}/>
+        </View>
+        <View style = {styles.TextContainer}>
+          <Text style={styles.sectionTitle}>Gestión de ganado</Text>
+        </View>
+      </View>
+      
       <DrawerItem
         label="Listado"
-        icon="clipboard-list-outline"
+        imageSource={require('./assets/portapapeles.png')}
         onPress={() => props.navigation.navigate('Listado')}
       />
       <DrawerItem
         label="Agregar animal"
-        icon="plus-box-outline"
+        imageSource={require('./assets/agregar1.png')}
         onPress={() => props.navigation.navigate('AddAnimal')}
       />
-      <Text style={styles.sectionTitle}>Agenda</Text>
+      <View style = {styles.container}>
+        <View style = {styles.ImageContainer}>
+          <Image source = {require('./assets/agenda.png')} style = {styles.ImagenStyles}/>
+        </View>
+        <View style = {styles.TextContainer}>
+          <Text style={styles.sectionTitle}>Agenda</Text>
+        </View>
+      </View>
       <DrawerItem
         label="Calendario"
-        icon="calendar-month-outline"
+        imageSource={require('./assets/calendario.png')}
         onPress={() => props.navigation.navigate('Calendario')}
       />
       <DrawerItem
         label="Agregar tarea"
-        icon="plus-box-outline"
+        imageSource={require('./assets/agregar1.png')}
         onPress={() => props.navigation.navigate('NewTask')}
       />
     </DrawerContentScrollView>
   );
 }
 
-function DrawerItem({ label, icon, onPress }) {
+function DrawerItem({ label, imageSource, onPress }) {
   return (
     <TouchableOpacity style={styles.item} onPress={onPress}>
-      <Icon name={icon} size={24} color="#000" style={{ marginRight: 10 }} />
+      <Image
+        source={imageSource}
+        style={styles.iconImage}
+      />
       <Text style={styles.itemText}>{label}</Text>
     </TouchableOpacity>
   );
 }
+
 
 export default function App() {
   return (
@@ -86,7 +105,7 @@ const styles = StyleSheet.create({
     paddingLeft: 20,
   },
   itemText: {
-    fontSize: 16,
+    fontSize: 20,
     color: '#000',
   },
   sectionTitle: {
@@ -95,6 +114,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginLeft: 20,
     color: '#000',
+    fontSize: 22,
   },
   screen: {
     flex: 1,
@@ -104,5 +124,25 @@ const styles = StyleSheet.create({
   screenText: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+
+  iconImage: {
+    width: 24,
+    height: 24,
+    margin: 10,
+  },
+
+  ImagenStyles: {
+    width: 30,
+    height: 30,
+    margin: 10,
+  },
+
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingLeft: 5
+
   },
 });
