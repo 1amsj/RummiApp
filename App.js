@@ -18,18 +18,18 @@ function MenuLateral(props) {
     <DrawerContentScrollView {...props} contentContainerStyle={styles.drawer}>
       <DrawerItem
         label="Inicio"
-        imageSource = {require('./assets/casa.png')}
+        imageSource={require('./assets/casa.png')}
         onPress={() => props.navigation.navigate('Inicio')}
       />
-      <View style = {styles.container}>
-        <View style = {styles.ImageContainer}>
-          <Image source = {require('./assets/vaca.png')} style = {styles.ImagenStyles}/>
+      <View style={styles.container}>
+        <View style={styles.ImageContainer}>
+          <Image source={require('./assets/vaca.png')} style={styles.ImagenStyles} />
         </View>
-        <View style = {styles.TextContainer}>
+        <View style={styles.TextContainer}>
           <Text style={styles.sectionTitle}>Gestión de ganado</Text>
         </View>
       </View>
-      
+
       <DrawerItem
         label="Listado"
         imageSource={require('./assets/portapapeles.png')}
@@ -40,11 +40,11 @@ function MenuLateral(props) {
         imageSource={require('./assets/agregar1.png')}
         onPress={() => props.navigation.navigate('AddAnimal')}
       />
-      <View style = {styles.container}>
-        <View style = {styles.ImageContainer}>
-          <Image source = {require('./assets/agenda.png')} style = {styles.ImagenStyles}/>
+      <View style={styles.container}>
+        <View style={styles.ImageContainer}>
+          <Image source={require('./assets/agenda.png')} style={styles.ImagenStyles} />
         </View>
-        <View style = {styles.TextContainer}>
+        <View style={styles.TextContainer}>
           <Text style={styles.sectionTitle}>Agenda</Text>
         </View>
       </View>
@@ -81,7 +81,7 @@ export default function App() {
       <Drawer.Navigator
         drawerContent={props => <MenuLateral {...props} />}
         screenOptions={{ headerShown: false }}
-        >
+      >
         <Drawer.Screen name="Inicio" component={MainScreen} />
         <Drawer.Screen name="Listado" component={Listado} />
         <Drawer.Screen name="AddAnimal" component={AddAnimal} />
