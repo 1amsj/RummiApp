@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   },
 
     container2: {
-    flex: 3,
+    flex: 4,
     gap:20,
     alignContent: 'center', 
     alignItems: 'center',
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     },
 
     searchInput: {
-        backgroundColor: '#fff',
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
         flex: 1,
         padding: 10,
         borderRadius: 10,
