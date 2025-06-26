@@ -3,17 +3,31 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import { Image } from 'react-native';
 
+<<<<<<< HEAD
 export default function App({ navigation }) {
+=======
+export default function App() {
+>>>>>>> main
     return (
         <View style={styles.container}>
             <View style={styles.container1}>
                 {/* Header */}
                 <View style = {styles.headerContainer}>
+<<<<<<< HEAD
                     <TouchableOpacity style={styles.MenuButton} onPress={() => navigation.openDrawer()}>
                         <View style={styles.linea} />
                         <View style={styles.linea} />
                         <View style={styles.linea} />
                     </TouchableOpacity>
+=======
+                    <View style = {styles.MenuButtonContainer}>
+                        <TouchableOpacity style={styles.MenuButton}>
+                            <View style={styles.linea} />
+                            <View style={styles.linea} />
+                            <View style={styles.linea} />
+                        </TouchableOpacity>
+                    </View>
+>>>>>>> main
                     <View style = {styles.TextContainer}>
                         <Text style = {styles.headerText}>
                             Agregar Tareas
