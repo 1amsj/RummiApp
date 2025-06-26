@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export default function Calendario() {
+export default function Calendario({ navigation }) {
   return (
     <View style = {styles.month}>
               <View style = {styles.MonthNameContainer}>
@@ -48,7 +48,9 @@ export default function Calendario() {
 const styles = StyleSheet.create({
   month: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#fffbfa',
+    padding:5,
+    borderRadius: 25,
     gap: 15
   },
 

@@ -5,19 +5,17 @@ import { Image } from 'react-native';
 import { Listado } from './Listado';
 import Calendario from './Calendario';
 
-export default function MainScreen() {
+export default function MainScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.container1}>
         {/* Header */}
         <View style={styles.headerContainer}>
-          <View style={styles.MenuButtonContainer}>
-            <TouchableOpacity style={styles.MenuButton}>
-              <View style={styles.linea} />
-              <View style={styles.linea} />
-              <View style={styles.linea} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.MenuButton} onPress={() => navigation.openDrawer()}>
+            <View style={styles.linea} />
+            <View style={styles.linea} />
+            <View style={styles.linea} />
+          </TouchableOpacity>
           <View style={styles.TextContainer}>
             <Text style={styles.headerText}>
               RummiApp
