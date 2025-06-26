@@ -48,7 +48,9 @@ export default function Calendario() {
 const styles = StyleSheet.create({
   month: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#fffbfa',
+    padding:5,
+    borderRadius: 25,
     gap: 15
   },
 
