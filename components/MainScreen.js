@@ -78,7 +78,7 @@ useEffect(() => {
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {tareasHoy.length === 0 ? (
-            <Text style={{ color: '#777', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' }}>
+            <Text style={{ color: '#7a7a7a', textAlign: 'center', fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif' }}>
               No hay tareas para este día
             </Text>
           ) : (
@@ -150,13 +150,13 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   headerText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#000',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
   tasksContainer: {
-    backgroundColor: '#B8F574',
+    backgroundColor: 'rgba(184, 245, 116, 0.5)',
     margin: 20,
     padding: 15,
     borderRadius: 20,
@@ -208,9 +208,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     alignItems: 'center',
     padding: 10,
-    backgroundColor: '#B8F574',
+    backgroundColor: 'rgba(184, 245, 116, 0.5)',
     marginHorizontal: 50,
-    marginBottom: 20,
+    marginBottom: 35,
     borderRadius: 30,
   },
 });

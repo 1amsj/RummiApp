@@ -319,16 +319,18 @@ const styles = StyleSheet.create({
         borderRadius: 2,
     },
     titleText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
     },
     VacunasHeaderText: {
         marginBottom: 10,
         fontWeight: 'bold',
+        fontSize: 18,
     },
     headerText: {
         fontSize: 24,
         fontWeight: 'bold',
+        fontSize: 18,
     },
     input: {
         width: '90%',

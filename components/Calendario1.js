@@ -59,6 +59,7 @@ export default function CalendarioTareas({ navigation }) {
         theme={{
           selectedDayBackgroundColor: '#B8F574',
           arrowColor: '#B8F574',
+          selectedDayTextColor: 'black',
         }}
         style={{ marginBottom: 20 }}
       />
@@ -70,7 +71,7 @@ export default function CalendarioTareas({ navigation }) {
         </Text>
         <ScrollView contentContainerStyle={styles.listaTareas}>
           {tareas.length === 0 ? (
-            <Text style={{ color: '#777' }}>No hay tareas para esta fecha.</Text>
+            <Text style={{ color: '#7a7a7a' }}>No hay tareas para esta fecha.</Text>
           ) : (
             tareas.map((tarea) => (
               <View key={tarea.id} style={styles.tareaItem}>
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   headerText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
   },
   tareasContainer: {
