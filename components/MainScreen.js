@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'react-native';
-import { Listado } from './Listado';
+import Listado  from './Listado';
 import Calendario from './Calendario';
 
 export default function MainScreen({ navigation }) {
@@ -76,9 +76,9 @@ export default function MainScreen({ navigation }) {
         <View style={styles.buttonsContainer}>
           <View style={styles.buttons}>
             <TouchableOpacity style={styles.boton}>
-              <Image source={require('../assets/portapapeles.png')} style={styles.imagen} />
+              <Image source={require('../assets/portapapeles.png')} style={styles.imagen} onPress={() => navigation.Listado()} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.boton}>
+            <TouchableOpacity style={styles.boton} onPress={() => navigation.Calendario()}>
               <Image source={require('../assets/calendario.png')} style={styles.imagen} />
             </TouchableOpacity>
           </View>
