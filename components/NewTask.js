@@ -20,6 +20,7 @@ export default function Listado({ navigation }) {
     const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
     const [searchText, setSearchText] = useState("");
     const [error, setError] = useState("");
+    const [error1, setError1] = useState("");
 
     useEffect(() => {
         cargarTareas();
@@ -78,7 +79,7 @@ export default function Listado({ navigation }) {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <View style = {styles.container1}>
+            <View style={styles.container1}>
                 {/* Header con menú */}
                 <View style={styles.headerContainer}>
                     <TouchableOpacity
@@ -95,42 +96,77 @@ export default function Listado({ navigation }) {
                 </View>
             </View>
 
-            <View style = {styles.container2}>
-                <View style = {styles.AddTaskContainer}>
+            <View style={styles.container2}>
+                <View style={styles.AddTaskContainer}>
                     <Calendar
-                    onDayPress={(day) => setFechaSeleccionada(new Date(day.dateString))}
-                    markedDates={{
-                        [fechaSeleccionada.toISOString().split("T")[0]]: {
-                            selected: true,
-                            selectedColor: "#B8F574",
-                        },
-                    }}
-                    theme={{
-                        selectedDayBackgroundColor: "#B8F574",
-                        arrowColor: "#B8F574",
-                    }}
-                    style={{ marginBottom: 20 }}
+                        onDayPress={(day) => setFechaSeleccionada(new Date(day.dateString))}
+                        markedDates={{
+                            [fechaSeleccionada.toISOString().split("T")[0]]: {
+                                selected: true,
+                                selectedColor: "#B8F574",
+                            },
+                        }}
+                        theme={{
+                            selectedDayBackgroundColor: "#B8F574",
+                            arrowColor: "#B8F574",
+                        }}
+                        style={{ marginBottom: 20 }}
                     />
+                    <View style={styles.NameContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Nombre de tarea"
+                            value={nombre}
+                            onChangeText={setNombre}
+                            onBlur={() => {
+                                const texto1 = nombre.trim();
+                                if (texto1 === '') {
+                                    setError1("El campo no puede estar vacío");
+                                } 
+                                if (/\d/.test(texto1)) {
+                                    setError1("No debe incluir números");
+                                } 
+                                if (/[^a-zA-Z\s]/.test(texto1)) {
+                                    setError1("No incluir caracteres especiales");
+                                } else {
+                                    setError1("");
+                                }
+                            }}
+                        />
+                        {error1 !== "" && <Text style={styles.error}>{error1}</Text>}
+                    </View>
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Nombre de tarea"
-                        value={nombre}
-                        onChangeText={setNombre}
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Descripción"
-                        value={descripcion}
-                        onChangeText={setDescripcion}
-                    />
+
+
+                    <View style={styles.DescriptionContainer}>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Descripción"
+                            value={descripcion}
+                            onChangeText={setDescripcion}
+                            onBlur={() => {
+                                const texto = descripcion.trim();
+
+                                if (texto === '') {
+                                    setError("El campo no puede estar vacío");
+                                } else if (/\d/.test(texto)) {
+                                    setError("No debe incluir números");
+                                } else if (/[^a-zA-Z\s]/.test(texto)) {
+                                    setError("No incluir caracteres especiales");
+                                } else {
+                                    setError("");
+                                }
+                            }}
+                        />
+                        {error !== "" && <Text style={styles.error}>{error}</Text>}
+                    </View>
+
+
                     <TouchableOpacity style={styles.button} onPress={guardarTarea}>
                         <Image source={require('../assets/agregar1.png')} style={styles.taskButtonImage} />
                         <Text style={styles.buttonText}>Guardar tarea</Text>
                     </TouchableOpacity>
 
-
-                    {error !== "" && <Text style={styles.error}>{error}</Text>}
                 </View>
 
             </View>
@@ -141,12 +177,12 @@ export default function Listado({ navigation }) {
 
 const styles = StyleSheet.create({
     container: {
-        flex:1,
+        flex: 1,
         backgroundColor: "#fff",
         flexGrow: 1,
     },
 
-        container1: {
+    container1: {
         flex: 1,
         backgroundColor: '#fff',
         gap: 25,
@@ -154,11 +190,11 @@ const styles = StyleSheet.create({
     container2: {
         flex: 4,
         backgroundColor: '#fff',
-        gap:20,
-        alignContent: 'center', 
+        gap: 20,
+        alignContent: 'center',
         alignItems: 'center',
         padding: 15,
-        paddingBottom: 50,
+        paddingBottom: 20,
     },
     headerContainer: {
         flexDirection: "row",
@@ -242,18 +278,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
 
-        AddTaskContainer: {
+    AddTaskContainer: {
         flex: 1,
         backgroundColor: 'rgba(184, 245, 116, 0.5)',
         padding: 20,
         borderRadius: 20,
         width: '90%',
         height: '70%',
-        gap:25,
-        
+        gap: 15,
+
     },
 
-     taskButtonImage: {
+    taskButtonImage: {
         width: 40,
         height: 40,
     },
