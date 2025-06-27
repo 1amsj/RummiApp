@@ -1,108 +1,74 @@
+import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, TextInput, ScrollView } from 'react-native';
+import { Image } from 'react-native';
 
-  const commonVaccines = [              // Almacena las vacunas como un array de objetos (Base de datos?)
-    'Fiebre Aftosa',
-    'Carbunco Sintomático',
-    'Brucelosis',
-    'Rabia',
-    'Leptospirosis',
-  'Enfermedad Respiratoria Bovina',
-  'Mastitis',
-];
 
-export default function Vacuna() {
-
-   const [showVaccines, setShowVaccines] = useState(false);
-      const [selectedVaccines, setSelectedVaccines] = useState([]);   // Almacena las vacunas seleccionadas como un array de objetos (Base de datos?)
-
-  const toggleSelection = (vacuna) => {
-    if (selectedVaccines.includes(vacuna)) {
-      setSelectedVaccines(selectedVaccines.filter((v) => v !== vacuna));
-    } else {
-      setSelectedVaccines([...selectedVaccines, vacuna]);
-    }
-  };
-  const handleAddVacuna = () => {
-    setShowVaccines(true);
-  };
-
+export default function Vacunas({ navigation }) {
   return (
-   <View style={styles.vacunaSection}>
-      <View style={styles.vacunaHeader}>
-        <Text>Agregue una vacuna</Text>
-        <TouchableOpacity onPress={handleAddVacuna}>
-          <Image
-            source={require('../assets/agregar1.png')}
-            style={styles.addIcon}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {showVaccines && (
-        <View style={styles.vaccineList}>
-          {commonVaccines.map((vacuna, index) => {
-            const isSelected = selectedVaccines.includes(vacuna);
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.vaccineOption,
-                  isSelected && styles.selectedOption,
-                ]}
-                onPress={() => toggleSelection(vacuna)}
-              >
-                <Text
-                  style={{
-                fontWeight: isSelected ? 'bold' : 'normal',}}>
-                  {vacuna}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+    <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.container1}>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity style={styles.MenuButton} onPress={() => navigation.openDrawer()}>
+            <View style={styles.linea} />
+            <View style={styles.linea} />
+            <View style={styles.linea} />
+          </TouchableOpacity>
+          <View style={styles.TextContainer}>
+            <Text style={styles.headerText}>
+              RummiApp
+            </Text>
+          </View>
         </View>
-      )}
-    </View>
+      </View>
+      <StatusBar style="auto" />
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  
-  vacunaSection: {
-    marginTop: 10,
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    gap: 60,
+  },
+  container1: {
+    flex: 1,
+    backgroundColor: '#fff',
+    gap: 25,
+  },
+  container2: {
+    flex: 2,
+    backgroundColor: '#fff',
+    gap: 20,
   },
 
-  vacunaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+  headerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        padding: 10,
+        gap: 10,
+        backgroundColor: '#B8F574',
+        height: 130,
+    },
 
-  addIcon: {
-    width: 30,
-    height: 30,
-  },
+    TextContainer: {
+        paddingLeft: 10,
+    },
 
-  vaccineList: {
-    marginTop: 10,
-    backgroundColor: '#eaffda',
-    borderRadius: 10,
-    padding: 10,
-  },
+    linea: {
+        width: 30,
+        height: 2,
+        backgroundColor: 'black',
+        marginVertical: 2,
+        borderRadius: 2,
+    },
 
-  vaccineOption: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    borderRadius: 5,
-  },
-
-  selectedOption: {
-    backgroundColor: '#B8F574',
-  },
-
-  selection:{
-    
-  },
+    // texto
+    headerText:{
+        fontSize: 24,
+        fontWeight: 'bold',
+    },
 });

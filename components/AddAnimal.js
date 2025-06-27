@@ -182,7 +182,7 @@ export default function App({ navigation }) {
                         <View style={styles.linea} />
                     </TouchableOpacity>
                     <View style={styles.TextContainer}>
-                        <Text style={styles.headerText}>
+                        <Text style={styles.titleText}>
                             Agregar Animal
                         </Text>
                     </View>
@@ -193,7 +193,7 @@ export default function App({ navigation }) {
                 <View style={styles.AddAnimalContainer}>
                     <View style={styles.NameContainer}>
                         <View style={styles.TitleNameContainer}>
-                            <Text style={styles.NameheaderText}>Nombre del Animal</Text>
+                            <Text style={styles.headerText}>Nombre del Animal</Text>
                         </View>
                         <View style={styles.InputNameContainer}>
                             <TextInput style={styles.input} placeholder="Ingrese el nombre del animal" value={NameText} onChangeText={validarNombre} />
@@ -202,7 +202,7 @@ export default function App({ navigation }) {
                     </View>
                     <View style={styles.RazaContainer}>
                         <View style={styles.TitleRazaContainer}>
-                            <Text style={styles.RazaheaderText}>Raza</Text>
+                            <Text style={styles.headerText}>Raza</Text>
                         </View>
                         <View style={styles.InputRazaContainer}>
                             <TextInput style={styles.input} placeholder="Ingrese la raza del animal" value={RazaText} onChangeText={validarRaza} />
@@ -211,7 +211,7 @@ export default function App({ navigation }) {
                     </View>
                     <View style={styles.BornDateContainer}>
                         <View style={styles.TitleBornDateContainer}>
-                            <Text style={styles.BornDateheaderText}>Fecha de Nacimiento</Text>
+                            <Text style={styles.headerText}>Fecha de Nacimiento</Text>
                         </View>
                         <View style={styles.InputBornDateContainer}>
                             <TextInput style={styles.input} placeholder="DD/MM/AA" maxLength={8} value={fecha} onChangeText={validarFecha} />
@@ -220,7 +220,7 @@ export default function App({ navigation }) {
                     </View>
                     <View style={styles.EstadoDeSaludContainer}>
                         <View style={styles.TitleEstadoDeSaludContainer}>
-                            <Text style={styles.EstadoDeSaludheaderText}>Estado de Salud</Text>
+                            <Text style={styles.headerText}>Estado de Salud</Text>
                         </View>
                         <View style={styles.InputEstadoDeSaludContainer}>
                             <TextInput style={styles.input} placeholder="Ingrese el estado de salud del animal" value={SaludText} onChangeText={validarSalud} />
@@ -228,7 +228,7 @@ export default function App({ navigation }) {
                         </View>
                     </View>
                     <View style={styles.TitleVacunasContainer}>
-                        <Text style={styles.VacunasheaderText}>Vacunas</Text>
+                        <Text style={styles.VacunasHeaderText}>Vacunas</Text>
                         <Vacunas />
                     </View>
                     <View style = {styles.AddButtonContainer}>
@@ -289,12 +289,17 @@ const styles = StyleSheet.create({
     },
 
     // texto
-    headerText: {
+    titleText: {
         fontSize: 24,
         fontWeight: 'bold',
     },
-    VacunasheaderText: {
+    VacunasHeaderText: {
         marginBottom: 10,
+        fontWeight: 'bold',
+    },
+    headerText:{
+        fontSize: 24,
+        fontWeight: 'bold',
     },
 
     //Input Styles
