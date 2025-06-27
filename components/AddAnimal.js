@@ -296,10 +296,11 @@ const styles = StyleSheet.create({
     VacunasHeaderText: {
         marginBottom: 10,
         fontWeight: 'bold',
+        fontSize: 24,
     },
     headerText:{
-        fontSize: 24,
         fontWeight: 'bold',
+        fontSize: 24,
     },
 
     //Input Styles

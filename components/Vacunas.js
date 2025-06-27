@@ -107,6 +107,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   selectedOption: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#B8F574',
   },
 });
