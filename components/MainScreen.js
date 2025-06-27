@@ -2,8 +2,9 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'react-native';
-import { Listado } from './Listado';
+import Listado  from './Listado';
 import Calendario from './Calendario';
+import NewTask from './NewTask';
 
 export default function MainScreen({ navigation }) {
   return (
@@ -37,7 +38,7 @@ export default function MainScreen({ navigation }) {
                 </Text>
               </View>
               <View style={styles.dailyAddTasksContainer}>
-                <TouchableOpacity style={styles.boton}>
+                <TouchableOpacity style={styles.boton} onPress={() => navigation.navigate('NewTask')}>
                   <Image source={require('../assets/agregar1.png')} style={styles.imagen} />
                 </TouchableOpacity>
               </View>
@@ -75,10 +76,10 @@ export default function MainScreen({ navigation }) {
         {/* Buttons */}
         <View style={styles.buttonsContainer}>
           <View style={styles.buttons}>
-            <TouchableOpacity style={styles.boton}>
+            <TouchableOpacity style={styles.boton} onPress={() => navigation.navigate('Listado')}>
               <Image source={require('../assets/portapapeles.png')} style={styles.imagen} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.boton}>
+            <TouchableOpacity style={styles.boton} onPress={() => navigation.navigate('Calendario')}>
               <Image source={require('../assets/calendario.png')} style={styles.imagen} />
             </TouchableOpacity>
           </View>
