@@ -1,7 +1,8 @@
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, TextInput,ScrollView } from 'react-native';
 import { Image } from 'react-native';
+import Vacunas from './Vacunas'; 
 
 export default function App({ navigation }) {
     const [NameText, setNameText] = useState('');
@@ -170,6 +171,7 @@ export default function App({ navigation }) {
     };
 
     return (
+        <ScrollView>
         <View style={styles.container}>
             <View style={styles.container1}>
                 {/* Header */}
@@ -225,9 +227,12 @@ export default function App({ navigation }) {
                             {error3 !== '' && <Text style={styles.errorText}>{error3}</Text>}
                         </View>
                     </View>
-
-                    <View style={styles.AddButtonContainer}>
-                        <TouchableOpacity style={styles.AddButton}>
+                    <View style={styles.TitleVacunasContainer}>
+                        <Text style={styles.VacunasheaderText}>Vacunas</Text>
+                        <Vacunas />
+                    </View>
+                    <View style = {styles.AddButtonContainer}>
+                        <TouchableOpacity style = {styles.AddButton}>
                             <Image source={require('../assets/agregar1.png')} style={styles.taskButtonImage} />
                         </TouchableOpacity>
                     </View>
@@ -235,7 +240,7 @@ export default function App({ navigation }) {
             </View>
             <StatusBar style="auto" />
         </View>
-
+        </ScrollView>
     );
 }
 
@@ -260,7 +265,6 @@ const styles = StyleSheet.create({
         padding: 15,
         paddingBottom: 50,
     },
-
     // Header Styles
     headerContainer: {
         flexDirection: 'row',
@@ -289,6 +293,9 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
     },
+    VacunasheaderText: {
+        marginBottom: 10,
+    },
 
     //Input Styles
     input: {
@@ -298,6 +305,17 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         paddingHorizontal: 10,
         fontSize: 16,
+    },
+    VacunaInput: {
+        width: '90%',
+        height: 50,
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        borderRadius: 10,
+        padding: 5,
+        paddingHorizontal: 10,
+        fontSize: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
     },
 
     //Containers
