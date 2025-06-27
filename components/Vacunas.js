@@ -1,74 +1,112 @@
-import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, TextInput, ScrollView } from 'react-native';
-import { Image } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  FlatList,
+} from 'react-native';
 
+const commonVaccines = [                // Almacena las vacunas como un array de objetos (Base de datos?)
+  'Fiebre Aftosa',
+  'Carbunco Sintomático',
+  'Brucelosis',
+  'Rabia',
+  'Leptospirosis',
+  'Enfermedad Respiratoria Bovina',
+  'Mastitis',
+];
 
-export default function Vacunas({ navigation }) {
+export default function Vacuna() {              
+  const [showVaccines, setShowVaccines] = useState(false);
+  const [selectedVaccines, setSelectedVaccines] = useState([]);   // Almacena las vacunas seleccionadas como un array de objetos (Base de datos?)
+
+  const toggleSelection = (vacuna) => {
+    if (selectedVaccines.includes(vacuna)) {
+      setSelectedVaccines(selectedVaccines.filter((v) => v !== vacuna));
+    } else {
+      setSelectedVaccines([...selectedVaccines, vacuna]);
+    }
+  };
+
+  const handleAddVacuna = () => {
+    setShowVaccines(true);
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.container1}>
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.MenuButton} onPress={() => navigation.openDrawer()}>
-            <View style={styles.linea} />
-            <View style={styles.linea} />
-            <View style={styles.linea} />
-          </TouchableOpacity>
-          <View style={styles.TextContainer}>
-            <Text style={styles.headerText}>
-              RummiApp
-            </Text>
-          </View>
-        </View>
+    <View style={styles.vacunaSection}>
+      <View style={styles.vacunaHeader}>
+        <Text style={styles.headerText}>Agregue una vacuna</Text>
+        <TouchableOpacity onPress={handleAddVacuna}>
+          <Image
+            source={require('../assets/agregar1.png')}
+            style={styles.addIcon}
+          />
+        </TouchableOpacity>
       </View>
-      <StatusBar style="auto" />
-    </ScrollView>
+
+      {showVaccines && (
+        <View style={styles.vaccineList}>
+          {commonVaccines.map((vacuna, index) => {
+            const isSelected = selectedVaccines.includes(vacuna);
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.vaccineOption,
+                  isSelected && styles.selectedOption,
+                ]}
+                onPress={() => toggleSelection(vacuna)}
+              >
+                <Text
+                  style={{
+                    color: isSelected ? '#fff' : '#000',
+                    fontWeight: isSelected ? 'bold' : 'normal',
+                  }}
+                >
+                  {vacuna}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    gap: 60,
+  vacunaSection: {
+    marginTop: 10,
   },
-  container1: {
-    flex: 1,
-    backgroundColor: '#fff',
-    gap: 25,
+  vacunaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  container2: {
-    flex: 2,
-    backgroundColor: '#fff',
-    gap: 20,
+  headerText: {
+    fontSize: 16,
   },
-
-  headerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        padding: 10,
-        gap: 10,
-        backgroundColor: '#B8F574',
-        height: 130,
-    },
-
-    TextContainer: {
-        paddingLeft: 10,
-    },
-
-    linea: {
-        width: 30,
-        height: 2,
-        backgroundColor: 'black',
-        marginVertical: 2,
-        borderRadius: 2,
-    },
-
-    // texto
-    headerText:{
-        fontSize: 24,
-        fontWeight: 'bold',
-    },
+  addIcon: {
+    width: 30,
+    height: 30,
+  },
+  vaccineList: {
+    marginTop: 10,
+    backgroundColor: '#eaffda',
+    borderRadius: 10,
+    padding: 10,
+  },
+  vaccineOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ccc',
+    borderRadius: 5,
+  },
+  selectedOption: {
+    backgroundColor: '#4CAF50',
+  },
 });
