@@ -27,8 +27,7 @@ export default function App({ navigation }) {
 
     const interval = setInterval(() => {
       cargarAnimales();
-    }, 60000); // 60000 ms = 60 segundos
-
+    }, 60); 
     return () => clearInterval(interval);
   }, []);
 
