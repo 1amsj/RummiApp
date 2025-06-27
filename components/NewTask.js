@@ -118,22 +118,7 @@ export default function Listado({ navigation }) {
                             placeholder="Nombre de tarea"
                             value={nombre}
                             onChangeText={setNombre}
-                            onBlur={() => {
-                                const texto1 = nombre.trim();
-                                if (texto1 === '') {
-                                    setError1("El campo no puede estar vacío");
-                                } 
-                                if (/\d/.test(texto1)) {
-                                    setError1("No debe incluir números");
-                                } 
-                                if (/[^a-zA-Z\s]/.test(texto1)) {
-                                    setError1("No incluir caracteres especiales");
-                                } else {
-                                    setError1("");
-                                }
-                            }}
                         />
-                        {error1 !== "" && <Text style={styles.error}>{error1}</Text>}
                     </View>
 
 
@@ -143,22 +128,7 @@ export default function Listado({ navigation }) {
                             style={styles.input}
                             placeholder="Descripción"
                             value={descripcion}
-                            onChangeText={setDescripcion}
-                            onBlur={() => {
-                                const texto = descripcion.trim();
-
-                                if (texto === '') {
-                                    setError("El campo no puede estar vacío");
-                                } else if (/\d/.test(texto)) {
-                                    setError("No debe incluir números");
-                                } else if (/[^a-zA-Z\s]/.test(texto)) {
-                                    setError("No incluir caracteres especiales");
-                                } else {
-                                    setError("");
-                                }
-                            }}
-                        />
-                        {error !== "" && <Text style={styles.error}>{error}</Text>}
+                            onChangeText={setDescripcion}/>
                     </View>
 
 
@@ -194,7 +164,7 @@ const styles = StyleSheet.create({
         alignContent: 'center',
         alignItems: 'center',
         padding: 15,
-        paddingBottom: 20,
+        paddingBottom: 50,
     },
     headerContainer: {
         flexDirection: "row",
