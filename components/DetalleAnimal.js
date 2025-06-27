@@ -25,7 +25,7 @@ export default function DetalleAnimal({ route }) {
       </View>
 
       <View style={styles.container2}>
-        <View syle={styles.DetailsContainer}>
+        <View style={styles.DetailsContainer}>
           <Text style={styles.section}>Raza: <Text style={styles.text}>{animal.raza}</Text></Text>
           <Text style={styles.section}>Estado de salud: <Text style={styles.text}>{animal.estadoSalud}</Text></Text>
 
