@@ -290,17 +290,17 @@ const styles = StyleSheet.create({
 
     // texto
     titleText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
     },
     VacunasHeaderText: {
         marginBottom: 10,
         fontWeight: 'bold',
-        fontSize: 24,
+        fontSize: 18,
     },
     headerText:{
         fontWeight: 'bold',
-        fontSize: 24,
+        fontSize: 18,
     },
 
     //Input Styles

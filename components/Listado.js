@@ -51,7 +51,7 @@ export default function App({ navigation }) {
                     </TouchableOpacity>
                     <View style={styles.TextContainer}>
                         <Text style={styles.headerText}>
-                            Listado
+                            Listado de tareas
                         </Text>
                     </View>
                 </View>
@@ -163,12 +163,12 @@ const styles = StyleSheet.create({
 
     // texto
     headerText: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 'bold',
     },
 
     DataNameText: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: 'bold',
         width: '20%',
         textAlign: 'center',
@@ -206,12 +206,15 @@ const styles = StyleSheet.create({
     DataContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        backgroundColor: 'rgba(255, 255, 255, 0.5)',
+        borderRadius: 10,
     },
 
     Data1Container: {
         width: '25%',
         paddingVertical: 5,
         alignItems: 'center',
+        
     },
 
     //Parte superior del listado

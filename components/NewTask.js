@@ -91,7 +91,7 @@ export default function Listado({ navigation }) {
                         <View style={styles.linea} />
                     </TouchableOpacity>
                     <View style={styles.TextContainer}>
-                        <Text style={styles.headerText}>Listado de Tareas</Text>
+                        <Text style={styles.headerText}>Agregar Tareas</Text>
                     </View>
                 </View>
             </View>
@@ -109,6 +109,7 @@ export default function Listado({ navigation }) {
                         theme={{
                             selectedDayBackgroundColor: "#B8F574",
                             arrowColor: "#B8F574",
+                            selectedDayTextColor: 'black'
                         }}
                         style={{ marginBottom: 20 }}
                     />
