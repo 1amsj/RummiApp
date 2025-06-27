@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function CalendarioTareas({ navigation }) {
-  const [fechaSeleccionada, setFechaSeleccionada] = useState('');
+  const obtenerFechaHoy = () => {
+    const hoy = new Date();
+    return hoy.toISOString().split('T')[0]; // formato: YYYY-MM-DD
+  };
+
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(obtenerFechaHoy());
   const [tareas, setTareas] = useState([]);
 
   useEffect(() => {
-    if (fechaSeleccionada !== '') {
-      obtenerTareas();
-    }
+    obtenerTareas();
   }, [fechaSeleccionada]);
 
   const obtenerTareas = async () => {
@@ -63,9 +66,7 @@ export default function CalendarioTareas({ navigation }) {
       {/* Tareas */}
       <View style={styles.tareasContainer}>
         <Text style={styles.tituloTareas}>
-          {fechaSeleccionada
-            ? `Tareas del ${formatearFechaParaTitulo(fechaSeleccionada)}`
-            : 'Selecciona una fecha'}
+          {`Tareas del ${formatearFechaParaTitulo(fechaSeleccionada)}`}
         </Text>
         <ScrollView contentContainerStyle={styles.listaTareas}>
           {tareas.length === 0 ? (
@@ -83,6 +84,7 @@ export default function CalendarioTareas({ navigation }) {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

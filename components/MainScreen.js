@@ -39,9 +39,18 @@ export default function MainScreen({ navigation }) {
     }
   };
 
-  useEffect(() => {
+useEffect(() => {
+  cargarTareasDelDia();
+}, [selectedDate]);
+
+// 2. Recarga periódica automática
+useEffect(() => {
+  const intervalo = setInterval(() => {
     cargarTareasDelDia();
-  }, [selectedDate]);
+  }, 60); // cada 60 segundos
+
+  return () => clearInterval(intervalo);
+}, []);
 
   return (
     <View style={styles.container}>
