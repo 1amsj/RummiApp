@@ -10,7 +10,7 @@ export default function App({ navigation }) {
     const [RazaText, setRazaText] = useState('');
     const [SaludText, setSaludText] = useState('');
     const [fecha, setFecha] = useState('');
-
+    const [tratamientos, setTratamientos] = useState([]);
     //mensaje error
     const [error, setError] = useState('');
     const [error1, setError1] = useState('');
@@ -159,6 +159,8 @@ export default function App({ navigation }) {
                 nombre: NameText,
                 raza: RazaText,
                 fechaNacimiento: fecha,
+                vacunas: [],
+                tratamientos: [],
                 estadoSalud: SaludText,
             };
 

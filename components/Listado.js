@@ -1,23 +1,30 @@
-import { StatusBar } from 'expo-status-bar';
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, TextInput, ScrollView } from 'react-native';
-import { Image } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { StatusBar } from "expo-status-bar";
+import React, { useState, useEffect } from "react";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  TextInput,
+  ScrollView,
+} from "react-native";
+import { Image } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function App({ navigation }) {
-  const [searchText, setSearchText] = useState('');
-  const [error, setError] = useState('');
+  const [searchText, setSearchText] = useState("");
+  const [error, setError] = useState("");
   const [animales, setAnimales] = useState([]);
   const [filteredAnimales, setFilteredAnimales] = useState([]);
 
   // Función para cargar animales desde AsyncStorage
   const cargarAnimales = async () => {
     try {
-      const almacenados = await AsyncStorage.getItem('animales');
+      const almacenados = await AsyncStorage.getItem("animales");
       const lista = almacenados ? JSON.parse(almacenados) : [];
       setAnimales(lista);
     } catch (error) {
-      console.error('Error cargando animales:', error);
+      console.error("Error cargando animales:", error);
     }
   };
 
@@ -27,20 +34,21 @@ export default function App({ navigation }) {
 
     const interval = setInterval(() => {
       cargarAnimales();
-    }, 60); 
+    }, 60);
     return () => clearInterval(interval);
   }, []);
 
   // Cada vez que cambien animales o searchText se actualiza el filtro
   useEffect(() => {
-    if (searchText.trim() === '') {
+    if (searchText.trim() === "") {
       setFilteredAnimales(animales);
-      setError('');
+      setError("");
       return;
     }
 
     // Validación de texto
-    let tieneNumero = false, tieneEspecial = false;
+    let tieneNumero = false,
+      tieneEspecial = false;
     for (let i = 0; i < searchText.length; i++) {
       const char = searchText[i];
       if (/[0-9]/.test(char)) tieneNumero = true;
@@ -48,17 +56,17 @@ export default function App({ navigation }) {
     }
 
     if (tieneNumero) {
-      setError('No debe incluir números');
+      setError("No debe incluir números");
       setFilteredAnimales([]);
       return;
     }
     if (tieneEspecial) {
-      setError('No incluir caracteres especiales');
+      setError("No incluir caracteres especiales");
       setFilteredAnimales([]);
       return;
     }
 
-    setError('');
+    setError("");
 
     const filtro = animales.filter((animal) =>
       animal.nombre.toLowerCase().includes(searchText.toLowerCase())
@@ -76,7 +84,10 @@ export default function App({ navigation }) {
       <View style={styles.container1}>
         {/* Header */}
         <View style={styles.headerContainer}>
-          <TouchableOpacity style={styles.MenuButton} onPress={() => navigation.openDrawer()}>
+          <TouchableOpacity
+            style={styles.MenuButton}
+            onPress={() => navigation.openDrawer()}
+          >
             <View style={styles.linea} />
             <View style={styles.linea} />
             <View style={styles.linea} />
@@ -90,7 +101,10 @@ export default function App({ navigation }) {
           <View style={styles.ListadoContainer}>
             <View style={styles.SuperiorContainer}>
               <View style={styles.CowContainer}>
-                <Image source={require('../assets/vaca.png')} style={styles.Imagen} />
+                <Image
+                  source={require("../assets/vaca.png")}
+                  style={styles.Imagen}
+                />
               </View>
               <View style={styles.SearchContainer}>
                 <View style={styles.SearchInputContainer}>
@@ -100,10 +114,15 @@ export default function App({ navigation }) {
                     value={searchText}
                     onChangeText={validarBusqueda}
                   />
-                  {error !== '' && <Text style={styles.errorText}>{error}</Text>}
+                  {error !== "" && (
+                    <Text style={styles.errorText}>{error}</Text>
+                  )}
                 </View>
                 <View style={styles.SearchButtonContainer}>
-                  <TouchableOpacity style={styles.SearchButton} onPress={() => validarBusqueda(searchText)}>
+                  <TouchableOpacity
+                    style={styles.SearchButton}
+                    onPress={() => validarBusqueda(searchText)}
+                  >
                     <Text style={styles.SearchButtonText}>Buscar</Text>
                   </TouchableOpacity>
                 </View>
@@ -120,30 +139,42 @@ export default function App({ navigation }) {
             <View style={styles.DataContainer}>
               {filteredAnimales.length > 0 ? (
                 filteredAnimales.map((animal) => {
-                  let edadTexto = 'Desconocida';
+                  let edadTexto = "Desconocida";
                   try {
-                    const parts = animal.fechaNacimiento.split('/');
+                    const parts = animal.fechaNacimiento.split("/");
                     if (parts.length === 3 || parts.length === 2) {
                       const dia = parseInt(parts[0], 10);
                       const mes = parseInt(parts[1], 10) - 1;
-                      let anio = parts.length === 3 ? parseInt(parts[2], 10) : 2000 + parseInt(parts[1], 10);
+                      let anio =
+                        parts.length === 3
+                          ? parseInt(parts[2], 10)
+                          : 2000 + parseInt(parts[1], 10);
                       if (anio < 100) anio += 2000;
 
                       const fechaNac = new Date(anio, mes, dia);
                       const hoy = new Date();
                       let edad = hoy.getFullYear() - fechaNac.getFullYear();
                       const m = hoy.getMonth() - fechaNac.getMonth();
-                      if (m < 0 || (m === 0 && hoy.getDate() < fechaNac.getDate())) {
+                      if (
+                        m < 0 ||
+                        (m === 0 && hoy.getDate() < fechaNac.getDate())
+                      ) {
                         edad--;
                       }
-                      if (edad >= 0) edadTexto = edad + ' años';
+                      if (edad >= 0) edadTexto = edad + " años";
                     }
                   } catch {
-                    edadTexto = 'Desconocida';
+                    edadTexto = "Desconocida";
                   }
 
                   return (
-                    <React.Fragment key={animal.id}>
+                    <TouchableOpacity
+                      key={animal.id}
+                      style={{ flexDirection: "row", width: "100%" }}
+                      onPress={() =>
+                        navigation.navigate("DetalleAnimal", { animal })
+                      }
+                    >
                       <View style={styles.Data1Container}>
                         <Text style={styles.DataText}>{animal.nombre}</Text>
                       </View>
@@ -154,13 +185,17 @@ export default function App({ navigation }) {
                         <Text style={styles.DataText}>{edadTexto}</Text>
                       </View>
                       <View style={styles.Data1Container}>
-                        <Text style={styles.DataText}>{animal.estadoSalud}</Text>
+                        <Text style={styles.DataText}>
+                          {animal.estadoSalud}
+                        </Text>
                       </View>
-                    </React.Fragment>
+                    </TouchableOpacity>
                   );
                 })
               ) : (
-                <Text style={{ textAlign: 'center', width: '100%', marginTop: 20 }}>
+                <Text
+                  style={{ textAlign: "center", width: "100%", marginTop: 20 }}
+                >
                   No hay animales que mostrar.
                 </Text>
               )}
@@ -176,29 +211,29 @@ export default function App({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     gap: 60,
   },
   container1: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     gap: 25,
   },
   container2: {
     flex: 4,
     gap: 20,
-    alignContent: 'center',
-    alignItems: 'center',
+    alignContent: "center",
+    alignItems: "center",
     padding: 15,
     paddingBottom: 50,
   },
   headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
     padding: 10,
     gap: 10,
-    backgroundColor: '#B8F574',
+    backgroundColor: "#B8F574",
     height: 130,
   },
   TextContainer: {
@@ -207,84 +242,84 @@ const styles = StyleSheet.create({
   linea: {
     width: 30,
     height: 2,
-    backgroundColor: 'black',
+    backgroundColor: "black",
     marginVertical: 2,
     borderRadius: 2,
   },
   headerText: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   DataNameText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    width: '20%',
-    textAlign: 'center',
+    fontWeight: "bold",
+    width: "20%",
+    textAlign: "center",
   },
   DataText: {
     fontSize: 16,
-    color: '#000',
+    color: "#000",
   },
   ListadoContainer: {
     flex: 1,
-    backgroundColor: 'rgba(184, 245, 116, 0.5)',
+    backgroundColor: "rgba(184, 245, 116, 0.5)",
     padding: 20,
     borderRadius: 10,
     gap: 20,
-    width: '90%',
-    height: '70%',
+    width: "90%",
+    height: "70%",
   },
   SuperiorContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     gap: 20,
   },
   DataNameContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   DataContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
   },
   Data1Container: {
-    width: '25%',
+    width: "25%",
     paddingVertical: 5,
-    alignItems: 'center',
+    alignItems: "center",
   },
   SearchContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   Imagen: {
     width: 50,
     height: 50,
   },
   SearchInputContainer: {
-    width: '70%',
+    width: "70%",
   },
   searchInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
     flex: 1,
     padding: 10,
     borderRadius: 10,
     fontSize: 16,
   },
   SearchButton: {
-    backgroundColor: '#B8F574',
+    backgroundColor: "#B8F574",
     padding: 10,
     borderRadius: 10,
     marginLeft: 10,
   },
   SearchButtonText: {
     fontSize: 16,
-    color: '#000',
+    color: "#000",
   },
   errorText: {
-    color: 'red',
+    color: "red",
     marginTop: 5,
     fontSize: 14,
   },

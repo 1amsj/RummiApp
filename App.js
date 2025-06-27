@@ -3,10 +3,11 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerContentScrollView } from '@react-navigation/drawer';
 import MainScreen from './components/MainScreen';
-import Listado from './components/Listado';
+import ListadoStack from './ListadoStack';
 import Calendario from './components/Calendario1';
 import AddAnimal from './components/AddAnimal';
 import NewTask from './components/NewTask';
+import Vacunas from './components/Vacunas';
 import { Text, TouchableOpacity, StyleSheet, View, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -49,7 +50,7 @@ function MenuLateral(props) {
         </View>
       </View>
       <DrawerItem
-        label="Calendario"
+        label="Listado"
         imageSource={require('./assets/calendario.png')}
         onPress={() => props.navigation.navigate('Calendario')}
       />
@@ -83,7 +84,7 @@ export default function App() {
         screenOptions={{ headerShown: false }}
       >
         <Drawer.Screen name="Inicio" component={MainScreen} />
-        <Drawer.Screen name="Listado" component={Listado} />
+        <Drawer.Screen name="Listado" component={ListadoStack} />
         <Drawer.Screen name="AddAnimal" component={AddAnimal} />
         <Drawer.Screen name="Calendario" component={Calendario} />
         <Drawer.Screen name="NewTask" component={NewTask} />
