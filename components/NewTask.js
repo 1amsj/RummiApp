@@ -1,179 +1,213 @@
-import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, TextInput } from 'react-native';
-import { Image } from 'react-native';
+import React, { useEffect, useState } from "react";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Alert,
+  ScrollView,
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Calendar } from "react-native-calendars";
 
-export default function App({ navigation }) {
-    return (
-        <View style={styles.container}>
-            <View style={styles.container1}>
-                {/* Header */}
-                <View style = {styles.headerContainer}>
-                    <TouchableOpacity style={styles.MenuButton} onPress={() => navigation.openDrawer()}>
-                        <View style={styles.linea} />
-                        <View style={styles.linea} />
-                        <View style={styles.linea} />
-                    </TouchableOpacity>
-                    <View style = {styles.TextContainer}>
-                        <Text style = {styles.headerText}>
-                            Agregar Tareas
-                        </Text>
-                    </View>
-                </View>
-            </View>
+export default function Listado({ navigation }) {
+  const [todasLasTareas, setTodasLasTareas] = useState([]);
+  const [tareasFiltradas, setTareasFiltradas] = useState([]);
+  const [nombre, setNombre] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(new Date());
+  const [searchText, setSearchText] = useState("");
+  const [error, setError] = useState("");
 
-            <View style={styles.container2}>
-                <View style={styles.AddTaskContainer}>
-                    <View style={styles.TaskNameInputContainer}>
-                        <Text style={styles.TaskNameInputText}>Nombre de la tarea</Text>
-                    </View>
-                    <View style={styles.TaskInputContainer}>
-                        <TextInput style={styles.taskInput} placeholder="Ingrese la tarea" />
-                    </View>
-                    <View style={styles.TaskDescriptionNameContainer}>
-                        <Text style={styles.TaskNameInputText}>Descripción de la tarea</Text>
-                    </View>
-                    <View style={styles.TaskDescriptionInputContainer}>
-                        <TextInput style={styles.taskInput1} placeholder="Ingrese la descripción" />
-                    </View>
-                    <View style={styles.TaskDateContainer}>
-                        <View style={styles.TaskDateTextContainer}>
-                            <Text style={styles.TaskNameInputText}>Calendario</Text>
-                        </View>
-                        <View style={styles.TaskCalendaryContainer}>
-                            <TextInput style={styles.taskInput} placeholder="Ingrese la fecha" />
-                        </View>
-                    </View>
-                    <View style={styles.TaskButtonContainer}>
-                        <TouchableOpacity style={styles.taskButton}>
-                            <Image source={require('../assets/agregar1.png')} style={styles.taskButtonImage} />
-                            <Text style={styles.taskButtonText}>Agregar Tarea</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
-            <StatusBar style="auto" />
-        </View>
+  useEffect(() => {
+    cargarTareas();
+  }, []);
+
+  useEffect(() => {
+    filtrarTareas();
+  }, [fechaSeleccionada, todasLasTareas, searchText]);
+
+  const guardarTarea = async () => {
+    if (nombre.trim() === "") {
+      Alert.alert("Error", "El nombre no puede estar vacío");
+      return;
+    }
+
+    const nuevaTarea = {
+      id: Date.now(),
+      nombre,
+      descripcion,
+      fecha: fechaSeleccionada.toISOString().split("T")[0],
+      status: 0, 
+    };
+
+    const actualizadas = [...todasLasTareas, nuevaTarea];
+    setTodasLasTareas(actualizadas);
+    await AsyncStorage.setItem("tareas", JSON.stringify(actualizadas));
+    setNombre("");
+    setDescripcion("");
+  };
+
+  const cargarTareas = async () => {
+    const datos = await AsyncStorage.getItem("tareas");
+    if (datos) {
+      setTodasLasTareas(JSON.parse(datos));
+    }
+  };
+
+  const filtrarTareas = () => {
+    const fechaStr = fechaSeleccionada.toISOString().split("T")[0];
+    const filtradas = todasLasTareas.filter(
+      (t) =>
+        t.fecha === fechaStr &&
+        t.nombre.toLowerCase().includes(searchText.toLowerCase())
     );
+    setTareasFiltradas(filtradas);
+  };
+
+  const validarBusqueda = (texto) => {
+    setSearchText(texto);
+    if (texto.trim() === "") setError("El nombre no puede estar vacío");
+    else if (/\d/.test(texto)) setError("No debe incluir números");
+    else if (/[^a-zA-Z\s]/.test(texto))
+      setError("No incluir caracteres especiales");
+    else setError("");
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      {/* Header con menú */}
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          style={styles.MenuButton}
+          onPress={() => navigation.openDrawer()}
+        >
+          <View style={styles.linea} />
+          <View style={styles.linea} />
+          <View style={styles.linea} />
+        </TouchableOpacity>
+        <View style={styles.TextContainer}>
+          <Text style={styles.headerText}>Listado de Tareas</Text>
+        </View>
+      </View>
+
+      <Calendar
+        onDayPress={(day) => setFechaSeleccionada(new Date(day.dateString))}
+        markedDates={{
+          [fechaSeleccionada.toISOString().split("T")[0]]: {
+            selected: true,
+            selectedColor: "#B8F574",
+          },
+        }}
+        theme={{
+          selectedDayBackgroundColor: "#B8F574",
+          arrowColor: "#B8F574",
+        }}
+        style={{ marginBottom: 20 }}
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Nombre de tarea"
+        value={nombre}
+        onChangeText={setNombre}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Descripción"
+        value={descripcion}
+        onChangeText={setDescripcion}
+      />
+      <TouchableOpacity style={styles.button} onPress={guardarTarea}>
+        <Text style={styles.buttonText}>Guardar tarea</Text>
+      </TouchableOpacity>
+
+      
+      {error !== "" && <Text style={styles.error}>{error}</Text>}
+
+      
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#fff',
-        gap: 40,
-    },
-
-    container1: {
-        flex: 1,
-        backgroundColor: '#fff',
-        gap: 25,
-    },
-
-    container2: {
-        flex: 4,
-        backgroundColor: '#fff',
-        gap:20,
-        alignContent: 'center', 
-        alignItems: 'center',
-        padding: 15,
-        paddingBottom: 50,
-    },
-
-    // Header Styles
-    headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
+  container: {
+    padding: 20,
+    backgroundColor: "#fff",
+    flexGrow: 1,
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     padding: 10,
     gap: 10,
-    backgroundColor: '#B8F574',
-    height: 130,
+    backgroundColor: "#B8F574",
+    height: 100,
+    marginBottom: 20,
   },
-
-  TextContainer: {
-    paddingLeft: 10,
+  MenuButton: {
+    justifyContent: "center",
+    alignItems: "center",
   },
-
-    linea: {
+  linea: {
     width: 30,
     height: 2,
-    backgroundColor: 'black',
+    backgroundColor: "black",
     marginVertical: 2,
     borderRadius: 2,
   },
-  
-  // texto
-
-    TaskNameInputText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-  
-    taskButtonText: {
-    fontSize: 18,
-    fontWeight: 'bold',
+  TextContainer: {
+    paddingLeft: 10,
   },
-
-    headerText: {
+  headerText: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
   },
-
-  //Add task cotainer principal
-    AddTaskContainer: {
-        flex: 1,
-        backgroundColor: 'rgba(184, 245, 116, 0.5)',
-        padding: 20,
-        borderRadius: 20,
-        width: '90%',
-        height: '70%',
-        gap:25,
-        
-    },
-    taskButton: {
-        flexDirection: 'row',
-        backgroundColor: '#B8F574',
-        width: '70%',
-        height: 60,
-        justifyContent: 'center',
-        alignItems: 'center',
-        alignSelf: 'center',
-        padding: 15,
-        borderRadius: 40,
-        gap: 10,
-        elevation: 6,
-    },
-
-    taskButtonImage: {
-        width: 40,
-        height: 40,
-    },
-
-    taskInput: {
-        width: '90%',
-        height: 50,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        borderWidth: 1,
-        borderRadius: 10,
-        paddingHorizontal: 10,
-        fontSize: 16,
-    },
-
-    taskInput1: {
-        width: '90%',
-        height: 100,
-        backgroundColor: 'rgba(255, 255, 255, 0.5)',
-        borderWidth: 1,
-        borderRadius: 10,
-        paddingHorizontal: 10,
-        fontSize: 16,
-    },
-
-    TaskDateContainer: {
-        flexDirection: 'column',
-        width: '90%',
-        gap: 10,
-    },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  button: {
+    backgroundColor: "#B8F574",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  subtitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginTop: 20,
+    marginBottom: 5,
+  },
+  error: {
+    color: "red",
+    marginBottom: 10,
+  },
+  tareaContainer: {
+    marginTop: 10,
+  },
+  tareaItem: {
+    backgroundColor: "#eef",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  tareaNombre: {
+    fontWeight: "bold",
+    fontSize: 16,
+  },
 });
-
