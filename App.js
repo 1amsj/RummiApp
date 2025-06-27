@@ -7,7 +7,7 @@ import Listado from './components/Listado';
 import Calendario from './components/Calendario1';
 import AddAnimal from './components/AddAnimal';
 import NewTask from './components/NewTask';
-import Vacunas from './components/Vacunas1';
+import Vacunas from './components/Vacunas';
 import { Text, TouchableOpacity, StyleSheet, View, Image } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 

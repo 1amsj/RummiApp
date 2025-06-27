@@ -2,7 +2,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, TextInput,ScrollView } from 'react-native';
 import { Image } from 'react-native';
-import Vacunas from './Vacunas1'; 
+import Vacunas from './Vacunas'; 
 
 export default function App({ navigation }) {
     const [NameText, setNameText] = useState('');
