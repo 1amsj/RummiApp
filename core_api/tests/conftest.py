@@ -1,8 +1,15 @@
+# Fixture para el idioma abk requerido por el backend
+import pytest
+
+
 import os
 import sys
 import django
 import uuid
 from datetime import datetime, timezone
+from django.conf import settings
+from django.test.utils import get_runner
+from django.db import connections, DEFAULT_DB_ALIAS, transaction
 
 # Add the project root to Python path
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,9 +25,33 @@ from django.contrib.auth.models import Permission
 from django.contrib.auth import get_user_model
 from core_backend.models import (
     Event, User, Operator, Provider, Admin, Booking, Business, 
-    Requester, Service, Affiliation, Recipient, Agent
+    Requester, Service, Affiliation, Recipient, Agent, Language
 )
+def pytest_configure(config):
+    TestRunner = get_runner(settings)
+    test_runner = TestRunner(verbosity=1, interactive=False)
 
+    # Test environment + creación de DB
+    test_runner.setup_test_environment()
+    config._databases = test_runner.setup_databases()
+    config._test_runner = test_runner
+
+def pytest_unconfigure(config):
+    test_runner = getattr(config, "_test_runner", None)
+    dbs = getattr(config, "_databases", None)
+
+    if test_runner and dbs:
+        test_runner.teardown_databases(dbs)
+        
+@pytest.fixture(autouse=True, scope="function")
+def django_transaction_per_test():
+    conn = connections[DEFAULT_DB_ALIAS]
+    conn.inc_thread_sharing()
+    with transaction.atomic():
+        yield
+        transaction.set_rollback(True)
+    conn.dec_thread_sharing()
+    
 User = get_user_model()
 
 def generate_unique_username(prefix="user"):
@@ -322,3 +353,32 @@ def event_factory():
             **defaults
         )
     return _create_event
+
+@pytest.fixture
+@pytest.mark.django_db
+def service_root():
+    """Create a ServiceRoot for use in tests."""
+    from core_backend.models import ServiceRoot
+    import uuid
+    return ServiceRoot.objects.create(
+        name=f"Test ServiceRoot {uuid.uuid4().hex[:6]}",
+        description="Test Description"
+    )
+    
+    
+@pytest.fixture
+@pytest.mark.django_db
+def company():
+    """Create a test company."""
+    from core_backend.models import Company
+    import uuid
+    return Company.objects.create(
+        name=f"Test Company {uuid.uuid4().hex[:6]}",
+        type="agency",
+        send_method="email",
+        on_hold=False
+    )
+@pytest.fixture
+@pytest.mark.django_db
+def abk_language():
+    return Language.objects.create(alpha3="abk", name="Abkhazian")

@@ -683,7 +683,7 @@ class ApiSpecialSqlBookings():
                         WHERE extra.parent_ct_id = %s AND extra.parent_id=booking.id
                     )::jsonb, '{}'::jsonb)) AS json_data
                 FROM "core_backend_booking" booking
-                    INNER JOIN "core_backend_event" _event 
+                    LEFT JOIN "core_backend_event" _event 
                         ON booking.id = _event.booking_id
                 WHERE %s
                 ORDER BY booking.public_id DESC, booking.id
@@ -701,13 +701,13 @@ class ApiSpecialSqlBookings():
                 parent_booking_ct_id, 
                 where_conditions, 
                 limit_statement
-               )
+            ) 
 
         cursor.execute(query, params)
         result = cursor.fetchone()
         if len(result) == 1:
             return result[0]
-
+        
         return []
     
     def get_bookings_sql(cursor, id, limit, offset, parent_id):

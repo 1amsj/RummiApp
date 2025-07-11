@@ -16,17 +16,21 @@ def representation_services(auth_id):
     return authorization.status
 
 def validator_claim_number(value):
+    if not value or len(value) == 0:
+        return None
     if 'claim_number' in value[-1]:
         return value[-1]['claim_number']
-    else:
-        return None
+    return None
 
 def calculate_booking_status(event_datalist, company_type_short_validation, company_type_validation, services) -> str:
     status = 'pending'
-    
+
+    if not event_datalist or len(event_datalist) == 0:
+        return status
+
     if validator_claim_number(event_datalist) is not None and company_type_validation and services.exists():
         status = "booked"
-        
+
     if event_datalist[-1].__contains__('authorizations'):
         auth = map(representation_services, event_datalist[-1]['authorizations'])
         list_auth = list(auth)
@@ -36,25 +40,27 @@ def calculate_booking_status(event_datalist, company_type_short_validation, comp
 
         if list_auth.__contains__('ACCEPTED') and company_type_short_validation:
             status = "authorized"
-        
-    if event_datalist[0]['payer_company_type'] == 'noPayer':
+
+    if event_datalist[0].get('payer_company_type') == 'noPayer':
         status = "abandoned"
-        
-    if not event_datalist[-1].__contains__('_report_datalist'):
+
+    if not event_datalist[-1].__contains__('_report_datalist') or len(event_datalist[-1]['_report_datalist']) == 0:
         return status
-            
-    if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('RESCHEDULED'):
+
+    last_report_status = event_datalist[-1]['_report_datalist'][-1].get('status', '')
+
+    if 'RESCHEDULED' in last_report_status:
         status = "rescheduled"
-    
-    if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('CANCELLED'):
+
+    if 'CANCELLED' in last_report_status:
         status = "cancelled"
-        
-    if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('NO_SHOW'):
+
+    if 'NO_SHOW' in last_report_status:
         status = "noShow"
 
-    if event_datalist[-1]['_report_datalist'][-1]['status'].__contains__('COMPLETED') \
+    if 'COMPLETED' in last_report_status \
         and company_type_validation and validator_claim_number(event_datalist) is not None \
         and services.exists() == True:
             status = "delivered"
-            
+
     return status

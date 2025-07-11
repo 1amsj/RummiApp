@@ -1112,7 +1112,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         offset = ((query_param_page - 1) * query_param_page_size) if (query_param_page_size > 0 and query_param_page > 0) else 0
 
         with connection.cursor() as cursor:
-            if query_param_parent_id is None:
+            if query_booking_id is not None:
                 result = ApiSpecialSqlBookings.get_booking_sql(
                     cursor,
                     query_booking_id,
@@ -1151,8 +1151,11 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
                 'previous': previous_page,
                 'results': result
             })
-        
+            
         if query_booking_id:
+            if result is None or len(result) == 0:
+                return Response({'error': 'Booking not found'}, status=status.HTTP_404_NOT_FOUND)
+
             return Response(result[0])
 
         return Response(result)
@@ -1191,7 +1194,13 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
             booking_id=booking_id,
         )
 
-        event = Event.objects.get(booking__id=booking_id)
+        try:
+            event = Event.objects.get(booking__id=booking_id)
+        except Event.DoesNotExist:
+            return Response(
+                {"detalle": "No existe un evento asociado al booking."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         language = Language.objects.get(alpha3=target_language_alpha3)
 
@@ -1214,7 +1223,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         target_language_alpha3 = request.data.get('target_language_alpha3')
         group_booking = request.data.get('group_booking', None)
         booking = Booking.objects.get(id=booking_id)
-        business = request.data.pop(ApiSpecialKeys.BUSINESS)
+        query_business = request.data.get(ApiSpecialKeys.BUSINESS)
         event_datalist = request.data.pop(ApiSpecialKeys.EVENT_DATALIST, [])
         requester = request.data.pop('requester', None)
         company_type_validation = validator_type(event_datalist)
@@ -1223,7 +1232,9 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
         initial_provider = ""
         if(len(list(booking.services.all())) > 0):
             initial_provider = booking.services.all()[0].provider.id
-
+        
+        business = Business.objects.get(id=query_business)
+        
         serializer = BookingUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         booking = serializer.update(booking, business)
@@ -1254,7 +1265,7 @@ class ManageBooking(basic_view_manager(Booking, BookingSerializer)):
 
     @staticmethod
     @transaction.atomic
-    @expect_does_not_exist(Event)
+    @expect_does_not_exist(Booking)
     def delete(request, booking_id=None):
         booking = Booking.objects.get(id=booking_id)
         booking.is_deleted = True
